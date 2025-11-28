@@ -25,16 +25,6 @@ const nextConfig = {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization',
           },
-          {
-            // Remove X-Frame-Options to allow iframe embedding
-            key: 'X-Frame-Options',
-            value: 'ALLOWALL',
-          },
-          {
-            // Allow embedding in Farcaster frames
-            key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://farcaster.xyz *;",
-          },
         ],
       },
     ];
