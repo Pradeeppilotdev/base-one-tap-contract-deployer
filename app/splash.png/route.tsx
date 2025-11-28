@@ -3,7 +3,7 @@ import { ImageResponse } from 'next/og';
 export const runtime = 'edge';
 
 export async function GET() {
-  return new ImageResponse(
+  const image = await new ImageResponse(
     (
       <div
         style={{
@@ -126,4 +126,13 @@ export async function GET() {
       height: 600,
     }
   );
+
+  return new Response(image.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
 }
