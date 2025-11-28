@@ -220,19 +220,11 @@ function ContractDeployer() {
   };
 
   useEffect(() => {
-    // Initialize Farcaster SDK - MUST call ready() IMMEDIATELY to hide splash screen
+    // Get Farcaster context (ready() is called at page level)
     const initSDK = async () => {
-      // Call ready() FIRST, before anything else - this is critical!
-      try {
-        console.log('Calling sdk.actions.ready()...');
-        await sdk.actions.ready();
-        setSdkReady(true);
-        console.log('Farcaster SDK ready() called successfully');
-      } catch (readyError) {
-        console.log('sdk.actions.ready() error (may be normal outside Farcaster):', readyError);
-      }
+      setSdkReady(true);
       
-      // Then try to get user context
+      // Try to get user context from Farcaster
       try {
         const context = await sdk.context;
         console.log('Farcaster context:', context);
@@ -258,7 +250,6 @@ function ContractDeployer() {
       }
     };
 
-    // Call immediately - do NOT delay!
     initSDK();
     
     return () => {
