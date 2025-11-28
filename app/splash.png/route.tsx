@@ -32,9 +32,9 @@ export async function GET() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 120,
-              height: 120,
-              borderRadius: '50%',
+              width: 200,
+              height: 200,
+              borderRadius: 100,
               backgroundColor: '#ffffff',
               position: 'relative',
             }}
@@ -42,11 +42,11 @@ export async function GET() {
             {/* Base "B" stylized as the Base logo */}
             <span
               style={{
-                fontSize: 72,
+                fontSize: 120,
                 fontWeight: 900,
                 color: '#1a1a1a',
                 fontFamily: 'system-ui, sans-serif',
-                letterSpacing: -4,
+                letterSpacing: -6,
               }}
             >
               B
@@ -59,19 +59,19 @@ export async function GET() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 48,
-              height: 48,
-              borderRadius: 8,
+              width: 72,
+              height: 72,
+              borderRadius: 12,
               backgroundColor: '#ffffff',
-              border: '3px solid #1a1a1a',
-              marginTop: -20,
+              border: '4px solid #1a1a1a',
+              marginTop: -32,
               position: 'relative',
             }}
           >
             {/* Contract/Document Icon */}
             <svg
-              width="28"
-              height="28"
+              width="40"
+              height="40"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#1a1a1a"
@@ -93,26 +93,37 @@ export async function GET() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            marginTop: 24,
+            marginTop: 40,
           }}
         >
           <span
             style={{
-              fontSize: 28,
+              fontSize: 48,
               fontWeight: 800,
               color: '#ffffff',
               fontFamily: 'system-ui, sans-serif',
-              letterSpacing: -1,
+              letterSpacing: -2,
             }}
           >
             Base Contract Deployer
+          </span>
+          <span
+            style={{
+              fontSize: 24,
+              fontWeight: 500,
+              color: '#888888',
+              fontFamily: 'system-ui, sans-serif',
+              marginTop: 8,
+            }}
+          >
+            Deploy smart contracts in one tap
           </span>
         </div>
       </div>
     ),
     {
-      width: 200,
-      height: 200,
+      width: 600,
+      height: 600,
     }
   );
 }

@@ -10,11 +10,30 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/.well-known/:path*',
+        // Allow iframe embedding for Farcaster mini apps
+        source: '/:path*',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
             value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+          {
+            // Remove X-Frame-Options to allow iframe embedding
+            key: 'X-Frame-Options',
+            value: 'ALLOWALL',
+          },
+          {
+            // Allow embedding in Farcaster frames
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://farcaster.xyz *;",
           },
         ],
       },

@@ -220,50 +220,41 @@ function ContractDeployer() {
   };
 
   useEffect(() => {
-    // Initialize Farcaster SDK - MUST call ready() to hide splash screen
+    // Initialize Farcaster SDK - MUST call ready() IMMEDIATELY to hide splash screen
     const initSDK = async () => {
+      // Call ready() FIRST, before anything else - this is critical!
       try {
-        // Call ready() immediately to hide the splash screen
-        // This is critical - do it first!
-        if (sdk?.actions?.ready) {
-          await sdk.actions.ready();
-          setSdkReady(true);
-          console.log('Farcaster SDK ready() called successfully');
+        console.log('Calling sdk.actions.ready()...');
+        await sdk.actions.ready();
+        setSdkReady(true);
+        console.log('Farcaster SDK ready() called successfully');
+      } catch (readyError) {
+        console.log('sdk.actions.ready() error (may be normal outside Farcaster):', readyError);
+      }
+      
+      // Then try to get user context
+      try {
+        const context = await sdk.context;
+        console.log('Farcaster context:', context);
+        
+        if (context?.user) {
+          setIsInFarcaster(true);
+          setFarcasterUser({
+            fid: context.user.fid,
+            username: context.user.username,
+            displayName: context.user.displayName,
+            pfpUrl: context.user.pfpUrl
+          });
+          console.log('Farcaster user:', context.user);
         }
         
-        // Get user context from Farcaster
-        if (sdk?.context) {
-          const context = await sdk.context;
-          console.log('Farcaster context:', context);
-          
-          if (context?.user) {
-            setIsInFarcaster(true);
-            setFarcasterUser({
-              fid: context.user.fid,
-              username: context.user.username,
-              displayName: context.user.displayName,
-              pfpUrl: context.user.pfpUrl
-            });
-            console.log('Farcaster user:', context.user);
-          }
-          
-          // Check if app is already added
-          if (context?.client?.added) {
-            setIsAppAdded(true);
-          }
+        // Check if app is already added
+        if (context?.client?.added) {
+          setIsAppAdded(true);
         }
-      } catch (error) {
-        console.log('Farcaster SDK initialization:', error);
+      } catch (contextError) {
+        console.log('Farcaster context error (normal outside Farcaster):', contextError);
         setIsInFarcaster(false);
-        // Even if there's an error, try to call ready() one more time
-        try {
-          if (sdk?.actions?.ready) {
-            await sdk.actions.ready();
-            setSdkReady(true);
-          }
-        } catch (e) {
-          console.log('Failed to call ready():', e);
-        }
       }
     };
 
