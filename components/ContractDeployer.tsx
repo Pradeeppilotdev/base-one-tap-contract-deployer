@@ -535,7 +535,7 @@ function ContractDeployer() {
       try {
         const estimatedGas = await provider.request({
           method: 'eth_estimateGas',
-          params: [{ from: account, data: deploymentData }]
+          params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
         });
         const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
         gasEstimate = '0x' + gasWithBuffer.toString(16);
@@ -547,8 +547,8 @@ function ContractDeployer() {
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
       const txParams: any = {
-        from: account,
-        data: deploymentData,
+        from: account as `0x${string}`,
+        data: deploymentData as `0x${string}`,
         gas: gasEstimate,
         value: '0x0',
         to: null
