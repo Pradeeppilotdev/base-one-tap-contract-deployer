@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#ec4899"/>
+    </linearGradient>
+    <linearGradient id="doodleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="#0f0f1a"/>
+  <!-- Doodle circles -->
+  <circle cx="80" cy="80" r="30" fill="url(#bgGrad)" opacity="0.3"/>
+  <circle cx="432" cy="432" r="40" fill="url(#bgGrad)" opacity="0.3"/>
+  <circle cx="450" cy="100" r="20" fill="#ec4899" opacity="0.4"/>
+  <!-- Main icon - Paint palette style -->
+  <ellipse cx="256" cy="280" rx="160" ry="140" fill="url(#bgGrad)" stroke="white" stroke-width="8"/>
+  <!-- Paint blobs -->
+  <circle cx="180" cy="240" r="30" fill="#f97316"/>
+  <circle cx="260" cy="200" r="25" fill="#22c55e"/>
+  <circle cx="330" cy="240" r="28" fill="#3b82f6"/>
+  <circle cx="300" cy="320" r="25" fill="#eab308"/>
+  <circle cx="200" cy="330" r="22" fill="#ef4444"/>
+  <!-- Brush hole -->
+  <ellipse cx="380" cy="300" rx="30" ry="40" fill="#0f0f1a"/>
+  <!-- Contract symbol (code brackets) -->
+  <text x="256" y="130" font-family="monospace" font-size="60" fill="white" text-anchor="middle" font-weight="bold">&lt;/&gt;</text>
+  <!-- Sparkles -->
+  <path d="M100 400 L110 380 L120 400 L110 420 Z" fill="#fbbf24"/>
+  <path d="M400 150 L408 135 L416 150 L408 165 Z" fill="#fbbf24"/>
+</svg>
+

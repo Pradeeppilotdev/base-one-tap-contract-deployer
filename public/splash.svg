@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#ec4899"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
+    </linearGradient>
+    <pattern id="doodlePattern" patternUnits="userSpaceOnUse" width="60" height="60">
+      <path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z" fill="#7c3aed" fill-opacity="0.1"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0f0f1a"/>
+  <rect width="1200" height="630" fill="url(#doodlePattern)"/>
+  
+  <!-- Glow effects -->
+  <ellipse cx="300" cy="400" rx="300" ry="200" fill="#7c3aed" opacity="0.15"/>
+  <ellipse cx="900" cy="200" rx="250" ry="180" fill="#ec4899" opacity="0.1"/>
+  
+  <!-- Doodle decorations -->
+  <circle cx="100" cy="100" r="40" fill="url(#mainGrad)" opacity="0.4"/>
+  <circle cx="1100" cy="530" r="50" fill="url(#mainGrad)" opacity="0.4"/>
+  <circle cx="1050" cy="80" r="25" fill="#ec4899" opacity="0.5"/>
+  <circle cx="150" cy="500" r="30" fill="#7c3aed" opacity="0.5"/>
+  
+  <!-- Squiggly lines -->
+  <path d="M50 300 Q100 280 150 300 Q200 320 250 300" stroke="#fbbf24" stroke-width="4" fill="none" opacity="0.5"/>
+  <path d="M950 400 Q1000 380 1050 400 Q1100 420 1150 400" stroke="#22c55e" stroke-width="4" fill="none" opacity="0.5"/>
+  
+  <!-- Stars/sparkles -->
+  <path d="M200 150 L210 130 L220 150 L210 170 Z" fill="#fbbf24"/>
+  <path d="M1000 480 L1010 460 L1020 480 L1010 500 Z" fill="#fbbf24"/>
+  <path d="M800 100 L808 85 L816 100 L808 115 Z" fill="#f97316"/>
+  
+  <!-- Main title area -->
+  <rect x="300" y="180" width="600" height="270" rx="40" fill="#1a1a2e" stroke="url(#mainGrad)" stroke-width="4"/>
+  
+  <!-- Paint palette icon -->
+  <ellipse cx="600" cy="260" rx="70" ry="55" fill="url(#mainGrad)"/>
+  <circle cx="560" cy="245" r="12" fill="#f97316"/>
+  <circle cx="600" cy="225" r="10" fill="#22c55e"/>
+  <circle cx="640" cy="245" r="11" fill="#3b82f6"/>
+  <circle cx="620" cy="275" r="10" fill="#eab308"/>
+  <circle cx="570" cy="275" r="9" fill="#ef4444"/>
+  <ellipse cx="665" cy="265" rx="12" ry="16" fill="#1a1a2e"/>
+  
+  <!-- Text -->
+  <text x="600" y="360" font-family="Arial, sans-serif" font-size="42" fill="white" text-anchor="middle" font-weight="bold">1-Tap Contract Deployer</text>
+  <text x="600" y="410" font-family="Arial, sans-serif" font-size="24" fill="#a1a1aa" text-anchor="middle">Deploy contracts to Base instantly</text>
+  
+  <!-- Code brackets decoration -->
+  <text x="380" y="280" font-family="monospace" font-size="40" fill="white" opacity="0.3">&lt;</text>
+  <text x="800" y="280" font-family="monospace" font-size="40" fill="white" opacity="0.3">/&gt;</text>
+  
+  <!-- Bottom decoration -->
+  <circle cx="550" cy="550" r="8" fill="#7c3aed"/>
+  <circle cx="600" cy="560" r="8" fill="#ec4899"/>
+  <circle cx="650" cy="550" r="8" fill="#fbbf24"/>
+</svg>
+

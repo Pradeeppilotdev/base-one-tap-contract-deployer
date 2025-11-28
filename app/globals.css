@@ -1,0 +1,509 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Darker+Grotesque:wght@300;400;500;600;700;800;900&family=Google+Sans:wght@400;500;700&display=swap');
+
+/* Google Sans fallback */
+@font-face {
+  font-family: 'Google Sans';
+  src: local('Google Sans'), local('GoogleSans-Regular'), local('Product Sans'), local('ProductSans-Regular');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: local('Google Sans Medium'), local('GoogleSans-Medium'), local('Product Sans Medium'), local('ProductSans-Medium');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: local('Google Sans Bold'), local('GoogleSans-Bold'), local('Product Sans Bold'), local('ProductSans-Bold');
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  --ink: #0a0a0a;
+  --paper: #fafafa;
+  --sketch: #1a1a1a;
+  --pencil: #404040;
+  --graphite: #666666;
+  --shade: #999999;
+  --light: #e5e5e5;
+  --highlight: #f5f5f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Darker Grotesque', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--paper);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+/* Doodle accent font for headings */
+.font-doodle {
+  font-family: 'Caveat', cursive;
+}
+
+/* Custom scrollbar - monochrome */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pencil);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink);
+}
+
+/* Prevent text selection on buttons */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Hand-drawn border effect */
+.doodle-border {
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  position: relative;
+}
+
+.doodle-border::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--pencil);
+  border-radius: 5px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Sketch card style */
+.sketch-card {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  box-shadow: 3px 3px 0 0 var(--ink);
+}
+
+/* Inked button style */
+.ink-button {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  font-family: 'Darker Grotesque', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.ink-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.4s ease;
+}
+
+.ink-button:hover::before {
+  left: 100%;
+}
+
+.ink-button:hover {
+  transform: scale(1.02);
+}
+
+.ink-button:active {
+  transform: scale(0.98);
+}
+
+.ink-button:disabled {
+  background: var(--shade);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ink-button:disabled::before {
+  display: none;
+}
+
+/* Outline button variant */
+.ink-button-outline {
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  font-family: 'Darker Grotesque', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.ink-button-outline:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Input field styling */
+.sketch-input {
+  background: var(--paper);
+  border: 2px solid var(--pencil);
+  border-radius: 2px;
+  font-family: 'Darker Grotesque', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--ink);
+  transition: all 0.2s ease;
+}
+
+.sketch-input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 0 var(--ink);
+}
+
+.sketch-input::placeholder {
+  color: var(--shade);
+  font-style: italic;
+}
+
+/* Radio button custom styling */
+.sketch-radio {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.sketch-radio:checked {
+  background: var(--ink);
+}
+
+.sketch-radio:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: var(--paper);
+  border-radius: 50%;
+}
+
+/* Status badges */
+.badge-success {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+}
+
+.badge-warning {
+  background: var(--light);
+  border: 2px dashed var(--pencil);
+  color: var(--pencil);
+}
+
+.badge-error {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  position: relative;
+}
+
+.badge-error::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+/* Sketch underline effect */
+.sketch-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.sketch-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--ink);
+  transform: skewX(-12deg);
+}
+
+/* Animated loading dots */
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-8px); }
+}
+
+.loading-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--ink);
+  border-radius: 50%;
+  margin: 0 4px;
+  animation: dot-bounce 1.4s infinite ease-in-out;
+}
+
+.loading-dot:nth-child(1) { animation-delay: 0s; }
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Diagonal stripes pattern */
+.stripe-pattern {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--paper),
+    var(--paper) 4px,
+    var(--light) 4px,
+    var(--light) 8px
+  );
+}
+
+/* Grid paper background */
+.grid-paper {
+  background-image: 
+    linear-gradient(var(--light) 1px, transparent 1px),
+    linear-gradient(90deg, var(--light) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Dotted paper background */
+.dotted-paper {
+  background-image: radial-gradient(var(--shade) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Pencil sketch background - darker */
+.pencil-sketch-bg {
+  background-color: var(--paper);
+  background-image: 
+    /* Horizontal sketch lines */
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 30px,
+      rgba(0, 0, 0, 0.08) 30px,
+      rgba(0, 0, 0, 0.08) 31px
+    ),
+    /* Diagonal sketch strokes - light */
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(0, 0, 0, 0.05) 40px,
+      rgba(0, 0, 0, 0.05) 41px
+    ),
+    /* Diagonal sketch strokes - opposite */
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 50px,
+      rgba(0, 0, 0, 0.04) 50px,
+      rgba(0, 0, 0, 0.04) 51px
+    ),
+    /* Scattered pencil marks effect */
+    radial-gradient(ellipse at 20% 30%, rgba(0, 0, 0, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(0, 0, 0, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 80%, rgba(0, 0, 0, 0.04) 0%, transparent 40%),
+    radial-gradient(ellipse at 60% 20%, rgba(0, 0, 0, 0.04) 0%, transparent 40%),
+    /* Additional cross-hatch effect */
+    repeating-linear-gradient(
+      30deg,
+      transparent,
+      transparent 70px,
+      rgba(0, 0, 0, 0.03) 70px,
+      rgba(0, 0, 0, 0.03) 71px
+    ),
+    repeating-linear-gradient(
+      -30deg,
+      transparent,
+      transparent 90px,
+      rgba(0, 0, 0, 0.025) 90px,
+      rgba(0, 0, 0, 0.025) 91px
+    );
+}
+
+/* Google Sans title - bold doodle style */
+.google-sans-title {
+  font-family: 'Google Sans', 'Product Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: var(--ink);
+  text-shadow: 
+    2px 2px 0 rgba(0, 0, 0, 0.1),
+    -1px -1px 0 rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+
+.google-sans-title::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 10%;
+  width: 80%;
+  height: 3px;
+  background: 
+    linear-gradient(90deg, 
+      transparent 0%, 
+      var(--ink) 5%, 
+      var(--ink) 20%,
+      transparent 21%,
+      transparent 25%,
+      var(--ink) 26%,
+      var(--ink) 50%,
+      transparent 51%,
+      transparent 55%,
+      var(--ink) 56%,
+      var(--ink) 90%,
+      transparent 100%
+    );
+  transform: rotate(-1deg);
+}
+
+/* Contract card animation */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+/* Stagger animation delay for list items */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+
+/* Ink splatter effect on hover */
+@keyframes ink-splash {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Pulse ring for connected status */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(10, 10, 10, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(10, 10, 10, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(10, 10, 10, 0); }
+}
+
+.pulse-ring {
+  animation: pulse-ring 2s infinite;
+}
+
+/* Crosshatch pattern for disabled states */
+.crosshatch {
+  background: 
+    linear-gradient(45deg, var(--shade) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--shade) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--shade) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--shade) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+}
+
+/* Link styling */
+.sketch-link {
+  color: var(--ink);
+  text-decoration: none;
+  position: relative;
+  font-weight: 600;
+}
+
+.sketch-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease;
+}
+
+.sketch-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Tooltip styling */
+.sketch-tooltip {
+  position: relative;
+}
+
+.sketch-tooltip::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 2px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.sketch-tooltip:hover::before {
+  opacity: 1;
+  visibility: visible;
+  bottom: calc(100% + 8px);
+}
