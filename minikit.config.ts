@@ -3,10 +3,9 @@ const ROOT_URL = process.env.NEXT_PUBLIC_ROOT_URL ||
 
 export const minikitConfig = {
   accountAssociation: {
-    // Generate at https://farcaster.xyz/~/developers/mini-apps/manifest after deploying
-    "header": "",
-    "payload": "",
-    "signature": ""
+    "header": "eyJmaWQiOjc4NzgzNywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDk2YzdhQjhiNGQ4ZDY0N0RGNWYxZTJiODRmOWJmODBGODQyRjFmNDMifQ",
+    "payload": "eyJkb21haW4iOiJiYXNlLW9uZS10YXAtY29udHJhY3QtZGVwbG95ZXIudmVyY2VsLmFwcCJ9",
+    "signature": "DQVP+pFbGv5BK4RF9xhPVIhbJuPjxZBv9JvtDiMToboYBVU9Fu/+TQSf6kz3+3iO9XELtTz3hvOeTahgtZMnZhw="
   },
   frame: {
     version: "1",
