@@ -846,30 +846,6 @@ function ContractDeployer() {
           </div>
         )}
 
-        {/* Stats Section */}
-        {deployedContracts.length > 0 && (
-          <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
-                Your Stats
-              </h3>
-              {referralCode && (
-                <div className="text-xs text-[var(--graphite)]">
-                  Ref: <span className="font-mono">{referralCode}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <div>
-                <div className="text-2xl font-bold text-[var(--ink)]">
-                  {deployedContracts.length}
-                </div>
-                <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
-              </div>
-            </div>
-          </div>
-        )}
-        
         {/* Top Bar - User Profile & Actions */}
         <div className="flex items-center justify-between mb-6">
           {/* Left side - Share & Add buttons */}
@@ -1275,41 +1251,67 @@ function ContractDeployer() {
           )}
         </div>
 
-        {/* Achievements Section - Always Visible at Bottom */}
+        {/* Stats & Achievements Section - Always Visible at Bottom */}
         <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
-          <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
-            Achievements
-          </h3>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {ACHIEVEMENTS.map(achievement => {
-              const Icon = achievement.icon;
-              const isUnlocked = achievements.find(a => a.id === achievement.id)?.unlocked || false;
-              return (
-                <div
-                  key={achievement.id}
-                  className={`flex flex-col items-center p-3 border-2 ${
-                    isUnlocked 
-                      ? 'border-[var(--ink)] bg-[var(--paper)]' 
-                      : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
-                  }`}
-                  title={isUnlocked ? `${achievement.name}: ${achievement.description}` : `Locked: ${achievement.description}`}
-                >
-                  <Icon 
-                    className={`w-6 h-6 mb-2 ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`} 
-                    strokeWidth={2} 
-                  />
-                  <div className={`text-xs text-center font-semibold ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
-                    {achievement.milestone}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
+              Your Stats & Achievements
+            </h3>
+            {referralCode && (
+              <div className="text-xs text-[var(--graphite)]">
+                Ref: <span className="font-mono">{referralCode}</span>
+              </div>
+            )}
           </div>
-          {achievements.filter(a => !a.unlocked).length > 0 && (
-            <div className="text-xs text-[var(--graphite)] mt-3 text-center">
-              Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
+          
+          {/* Stats Row */}
+          <div className="mb-4 pb-4 border-b-2 border-[var(--light)]">
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="text-2xl font-bold text-[var(--ink)]">
+                  {deployedContracts.length}
+                </div>
+                <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* Achievements Grid */}
+          <div>
+            <h4 className="font-bold text-[var(--ink)] text-xs uppercase tracking-wider mb-3">
+              Achievements
+            </h4>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {ACHIEVEMENTS.map(achievement => {
+                const Icon = achievement.icon;
+                const isUnlocked = achievements.find(a => a.id === achievement.id)?.unlocked || false;
+                return (
+                  <div
+                    key={achievement.id}
+                    className={`flex flex-col items-center p-3 border-2 ${
+                      isUnlocked 
+                        ? 'border-[var(--ink)] bg-[var(--paper)]' 
+                        : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
+                    }`}
+                    title={isUnlocked ? `${achievement.name}: ${achievement.description}` : `Locked: ${achievement.description}`}
+                  >
+                    <Icon 
+                      className={`w-6 h-6 mb-2 ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`} 
+                      strokeWidth={2} 
+                    />
+                    <div className={`text-xs text-center font-semibold ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                      {achievement.milestone}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {achievements.filter(a => !a.unlocked).length > 0 && (
+              <div className="text-xs text-[var(--graphite)] mt-3 text-center">
+                Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
