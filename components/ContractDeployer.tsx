@@ -19,7 +19,13 @@ import {
   Box,
   Share2,
   User,
-  Plus
+  Plus,
+  Sparkles,
+  Trophy,
+  Crown,
+  Rocket,
+  Gem,
+  Star
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
@@ -156,19 +162,19 @@ interface Achievement {
   id: string;
   name: string;
   description: string;
-  emoji: string;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
   milestone: number;
   unlocked: boolean;
   unlockedAt?: number;
 }
 
 const ACHIEVEMENTS: Achievement[] = [
-  { id: 'first', name: 'First Deploy', description: 'Deploy your first contract', emoji: '🎉', milestone: 1, unlocked: false },
-  { id: 'five', name: 'Power User', description: 'Deploy 5 contracts', emoji: '⚡', milestone: 5, unlocked: false },
-  { id: 'ten', name: 'Contract Master', description: 'Deploy 10 contracts', emoji: '🏆', milestone: 10, unlocked: false },
-  { id: 'twenty', name: 'Deployment Legend', description: 'Deploy 20 contracts', emoji: '👑', milestone: 20, unlocked: false },
-  { id: 'fifty', name: 'Base Builder', description: 'Deploy 50 contracts', emoji: '🚀', milestone: 50, unlocked: false },
-  { id: 'hundred', name: 'Contract Deity', description: 'Deploy 100 contracts', emoji: '💎', milestone: 100, unlocked: false },
+  { id: 'first', name: 'First Deploy', description: 'Deploy your first contract', icon: Sparkles, milestone: 1, unlocked: false },
+  { id: 'five', name: 'Power User', description: 'Deploy 5 contracts', icon: Zap, milestone: 5, unlocked: false },
+  { id: 'ten', name: 'Contract Master', description: 'Deploy 10 contracts', icon: Trophy, milestone: 10, unlocked: false },
+  { id: 'twenty', name: 'Deployment Legend', description: 'Deploy 20 contracts', icon: Crown, milestone: 20, unlocked: false },
+  { id: 'fifty', name: 'Base Builder', description: 'Deploy 50 contracts', icon: Rocket, milestone: 50, unlocked: false },
+  { id: 'hundred', name: 'Contract Deity', description: 'Deploy 100 contracts', icon: Gem, milestone: 100, unlocked: false },
 ];
 
 function ContractDeployer() {
@@ -256,7 +262,7 @@ function ContractDeployer() {
     
     if (newlyUnlocked) {
       setNewAchievement(newlyUnlocked);
-      setTimeout(() => setNewAchievement(null), 5000);
+      setTimeout(() => setNewAchievement(null), 1500);
     }
     
     setAchievements(updated);
@@ -744,12 +750,12 @@ function ContractDeployer() {
     });
   };
 
-  // Get achievement badges for share
+  // Get achievement badges for share (using names instead of emojis)
   const getAchievementBadges = (): string => {
     const unlocked = achievements.filter(a => a.unlocked);
     if (unlocked.length === 0) return '';
     const top3 = unlocked.slice(-3).reverse(); // Get latest 3
-    return top3.map(a => a.emoji).join(' ');
+    return top3.map(a => a.name).join(' • ');
   };
 
   // Get share message with achievements
@@ -765,10 +771,10 @@ function ContractDeployer() {
     
     const latestAchievement = achievements.filter(a => a.unlocked).pop();
     const achievementText = latestAchievement 
-      ? `\n\n${latestAchievement.emoji} Just unlocked: ${latestAchievement.name}!`
+      ? `\n\nJust unlocked: ${latestAchievement.name}! 🚀`
       : '';
     
-    return `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! ${badges} 🚀\n\nDeploy smart contracts in zip zap - no code needed!${achievementText}\n\n${appUrl}`;
+    return `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! ${badges}\n\nDeploy smart contracts in zip zap - no code needed!${achievementText}\n\n${appUrl}`;
   };
 
   // Share the app via Farcaster
@@ -822,31 +828,25 @@ function ContractDeployer() {
     <div className="min-h-screen bg-[var(--paper)] pencil-sketch-bg p-4">
       <div className="max-w-xl mx-auto pt-6 pb-12">
         
-        {/* Achievement Celebration Modal */}
+        {/* Achievement Celebration Modal - Subtle */}
         {newAchievement && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-[var(--paper)] border-4 border-[var(--ink)] p-8 max-w-sm w-full text-center animate-bounce">
-              <div className="text-6xl mb-4">{newAchievement.emoji}</div>
-              <h2 className="text-2xl font-bold text-[var(--ink)] mb-2">
-                Achievement Unlocked!
-              </h2>
-              <h3 className="text-xl font-semibold text-[var(--ink)] mb-2">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 pointer-events-none">
+            <div className="bg-[var(--paper)] border-2 border-[var(--ink)] p-6 max-w-xs w-full text-center opacity-0 animate-fade-in">
+              {(() => {
+                const Icon = newAchievement.icon;
+                return <Icon className="w-12 h-12 mx-auto mb-3 text-[var(--ink)]" strokeWidth={2} />;
+              })()}
+              <h3 className="text-lg font-bold text-[var(--ink)] mb-1">
                 {newAchievement.name}
               </h3>
-              <p className="text-[var(--graphite)] mb-6">
+              <p className="text-sm text-[var(--graphite)]">
                 {newAchievement.description}
               </p>
-              <button
-                onClick={() => setNewAchievement(null)}
-                className="ink-button px-6 py-2"
-              >
-                Awesome!
-              </button>
             </div>
           </div>
         )}
 
-        {/* Stats & Achievements Section */}
+        {/* Stats Section */}
         {deployedContracts.length > 0 && (
           <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
             <div className="flex items-center justify-between mb-3">
@@ -859,40 +859,14 @@ function ContractDeployer() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-4 mb-3">
+            <div className="flex items-center gap-4">
               <div>
                 <div className="text-2xl font-bold text-[var(--ink)]">
                   {deployedContracts.length}
                 </div>
                 <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
               </div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-[var(--ink)] mb-1">
-                  Achievements
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {achievements.filter(a => a.unlocked).map(achievement => (
-                    <div
-                      key={achievement.id}
-                      className="text-2xl"
-                      title={`${achievement.name}: ${achievement.description}`}
-                    >
-                      {achievement.emoji}
-                    </div>
-                  ))}
-                  {achievements.filter(a => a.unlocked).length === 0 && (
-                    <span className="text-xs text-[var(--graphite)] italic">
-                      Deploy contracts to unlock achievements!
-                    </span>
-                  )}
-                </div>
-              </div>
             </div>
-            {achievements.filter(a => !a.unlocked).length > 0 && (
-              <div className="text-xs text-[var(--graphite)] mt-2">
-                Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
-              </div>
-            )}
           </div>
         )}
         
@@ -1300,6 +1274,45 @@ function ContractDeployer() {
             </div>
           )}
         </div>
+
+        {/* Achievements Section - Below Contracts */}
+        {deployedContracts.length > 0 && (
+          <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
+            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
+              Achievements
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {ACHIEVEMENTS.map(achievement => {
+                const Icon = achievement.icon;
+                const isUnlocked = achievement.unlocked;
+                return (
+                  <div
+                    key={achievement.id}
+                    className={`flex flex-col items-center p-3 border-2 ${
+                      isUnlocked 
+                        ? 'border-[var(--ink)] bg-[var(--paper)]' 
+                        : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
+                    }`}
+                    title={isUnlocked ? `${achievement.name}: ${achievement.description}` : `Locked: ${achievement.description}`}
+                  >
+                    <Icon 
+                      className={`w-6 h-6 mb-2 ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`} 
+                      strokeWidth={2} 
+                    />
+                    <div className={`text-xs text-center font-semibold ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                      {achievement.milestone}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {achievements.filter(a => !a.unlocked).length > 0 && (
+              <div className="text-xs text-[var(--graphite)] mt-3 text-center">
+                Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="mt-8 text-center">
