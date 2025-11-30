@@ -49,7 +49,7 @@ export async function GET() {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'public, max-age=300',
+      'Cache-Control': 'public, max-age=60, must-revalidate',
     },
   });
 }
