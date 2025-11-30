@@ -827,30 +827,32 @@ function ContractDeployer() {
               </div>
             ) : (
               <div className="p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-[var(--ink)] rounded-full pulse-ring" />
-                    <div>
-                      <span className="font-mono text-sm font-semibold text-[var(--ink)]">
-                        {account.slice(0, 6)}...{account.slice(-4)}
-                      </span>
-                      <span className="text-xs text-[var(--graphite)] ml-2">
-                        ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
-                      </span>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-3 h-3 bg-[var(--ink)] rounded-full pulse-ring flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm font-semibold text-[var(--ink)] whitespace-nowrap">
+                          {account.slice(0, 6)}...{account.slice(-4)}
+                        </span>
+                        <span className="text-xs text-[var(--graphite)] whitespace-nowrap">
+                          ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {chainId !== '0x2105' && (
                       <button
                         onClick={switchToBase}
-                        className="ink-button-outline px-3 py-1.5 text-xs"
+                        className="ink-button-outline px-3 py-1.5 text-xs whitespace-nowrap"
                       >
                         Switch to Base
                       </button>
                     )}
                     <button
                       onClick={disconnectWallet}
-                      className="px-3 py-1.5 text-xs text-[var(--graphite)] hover:text-[var(--ink)] transition-colors"
+                      className="px-3 py-1.5 text-xs text-[var(--graphite)] hover:text-[var(--ink)] transition-colors whitespace-nowrap"
                     >
                       Disconnect
                     </button>
