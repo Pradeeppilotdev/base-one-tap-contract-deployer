@@ -1,10 +1,11 @@
 {
   "redirects": [
-    {
-      "source": "/.well-known/farcaster.json",
-      "destination": "https://api.farcaster.xyz/miniapps/hosted-manifest/019ad47a-1b21-3b89-6a48-b3acc2e3bdae",
-      "permanent": false
-    }
+    // Temporarily disabled to test local manifest
+    // {
+    //   "source": "/.well-known/farcaster.json",
+    //   "destination": "https://api.farcaster.xyz/miniapps/hosted-manifest/019ad47a-1b21-3b89-6a48-b3acc2e3bdae",
+    //   "permanent": false
+    // }
   ],
   "headers": [
     {
