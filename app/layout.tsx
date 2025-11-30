@@ -11,15 +11,18 @@ export const viewport: Viewport = {
 };
 
 // Dynamic metadata for Farcaster Mini Apps
+// Use canonical domain for production, fallback to env var or localhost
 const appUrl = process.env.NEXT_PUBLIC_ROOT_URL || 
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://base-one-tap-contract-deployer.vercel.app'
+    : 'http://localhost:3000');
 
 // Mini App embed metadata (for fc:miniapp meta tag)
 const miniAppEmbed = {
   version: "1",
   imageUrl: `${appUrl}/og-image.png`,
   button: {
-    title: "Deploy to Base",
+    title: "Deploy Based!",
     action: {
       type: "launch_miniapp",
       url: appUrl,
