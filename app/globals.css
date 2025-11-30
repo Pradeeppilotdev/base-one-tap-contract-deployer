@@ -473,6 +473,25 @@ button {
   animation: fade-out 0.3s ease-in forwards;
 }
 
+/* Custom scrollbar for doodle theme */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: var(--light);
+  border-left: 2px solid var(--pencil);
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border: 1px solid var(--pencil);
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--sketch);
+}
+
 /* Crosshatch pattern for disabled states */
 .crosshatch {
   background: 
