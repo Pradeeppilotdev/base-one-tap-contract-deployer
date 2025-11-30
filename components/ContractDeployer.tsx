@@ -658,16 +658,30 @@ function ContractDeployer() {
     try {
       if (sdk?.actions?.composeCast) {
         const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const contractCount = deployedContracts.length;
+        let shareText: string;
+        
+        if (contractCount > 0) {
+          shareText = `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! 🚀 Deploy smart contracts in zip zap!`;
+        } else {
+          shareText = `Deploy contracts on Base in zip zap! 🚀 One tap, instant deploy!`;
+        }
+        
         await sdk.actions.composeCast({
-          text: `Deploy smart contracts to Base with one tap! 🚀`,
+          text: shareText,
           embeds: [appUrl]
         });
       } else {
         // Fallback for non-Farcaster environments
         if (navigator.share) {
+          const contractCount = deployedContracts.length;
+          const shareText = contractCount > 0 
+            ? `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! Deploy smart contracts in zip zap!`
+            : 'Deploy contracts on Base in zip zap! One tap, instant deploy!';
+          
           await navigator.share({
             title: '1-Tap Contract Deployer',
-            text: 'Deploy smart contracts to Base with one tap!',
+            text: shareText,
             url: window.location.href
           });
         } else {

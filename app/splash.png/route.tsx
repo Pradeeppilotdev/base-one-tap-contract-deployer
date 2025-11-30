@@ -32,9 +32,9 @@ export async function GET() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 200,
-              height: 200,
-              borderRadius: 100,
+              width: 400,
+              height: 400,
+              borderRadius: 200,
               backgroundColor: '#ffffff',
               position: 'relative',
             }}
@@ -42,11 +42,11 @@ export async function GET() {
             {/* Base "B" stylized as the Base logo */}
             <span
               style={{
-                fontSize: 120,
+                fontSize: 240,
                 fontWeight: 900,
                 color: '#1a1a1a',
                 fontFamily: 'system-ui, sans-serif',
-                letterSpacing: -6,
+                letterSpacing: -12,
               }}
             >
               B
@@ -59,19 +59,19 @@ export async function GET() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 72,
-              height: 72,
-              borderRadius: 12,
+              width: 144,
+              height: 144,
+              borderRadius: 24,
               backgroundColor: '#ffffff',
-              border: '4px solid #1a1a1a',
-              marginTop: -32,
+              border: '8px solid #1a1a1a',
+              marginTop: -64,
               position: 'relative',
             }}
           >
             {/* Contract/Document Icon */}
             <svg
-              width="40"
-              height="40"
+              width="80"
+              height="80"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#1a1a1a"
@@ -93,7 +93,7 @@ export async function GET() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            marginTop: 40,
+            marginTop: 60,
           }}
         >
           <span
