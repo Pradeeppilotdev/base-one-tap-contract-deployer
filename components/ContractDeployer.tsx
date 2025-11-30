@@ -162,7 +162,7 @@ interface Achievement {
   id: string;
   name: string;
   description: string;
-  icon: React.ComponentType<{ className?: string; size?: number }>;
+  icon: React.ComponentType<any>;
   milestone: number;
   unlocked: boolean;
   unlockedAt?: number;
