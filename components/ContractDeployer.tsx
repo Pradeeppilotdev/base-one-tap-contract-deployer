@@ -201,14 +201,24 @@ function ContractDeployer() {
   // Load deployed contracts, achievements, and referral code from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Load achievements FIRST (before checking)
+      const achievementsStored = localStorage.getItem(ACHIEVEMENTS_KEY);
+      if (achievementsStored) {
+        try {
+          const loadedAchievements = JSON.parse(achievementsStored);
+          setAchievements(loadedAchievements);
+        } catch (e) {
+          console.error('Failed to parse achievements:', e);
+        }
+      }
+      
       // Load contracts
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
           const contracts = JSON.parse(stored);
           setDeployedContracts(contracts);
-          // Check for achievements
-          checkAchievements(contracts.length);
+          // Don't check achievements on page load - only when new contract is deployed
         } catch (e) {
           console.error('Failed to parse stored contracts:', e);
         }
@@ -217,15 +227,6 @@ function ContractDeployer() {
       const showHistoryStored = localStorage.getItem(SHOW_HISTORY_KEY);
       if (showHistoryStored !== null) {
         setShowHistory(showHistoryStored === 'true');
-      }
-      // Load achievements
-      const achievementsStored = localStorage.getItem(ACHIEVEMENTS_KEY);
-      if (achievementsStored) {
-        try {
-          setAchievements(JSON.parse(achievementsStored));
-        } catch (e) {
-          console.error('Failed to parse achievements:', e);
-        }
       }
       // Load referral code
       const referralStored = localStorage.getItem(REFERRAL_KEY);
@@ -242,32 +243,54 @@ function ContractDeployer() {
     }
   }, [farcasterUser?.fid]);
 
-  // Check and unlock achievements
-  const checkAchievements = (count: number) => {
-    const updated = achievements.map(achievement => {
-      if (!achievement.unlocked && count >= achievement.milestone) {
-        return {
-          ...achievement,
-          unlocked: true,
-          unlockedAt: Date.now()
-        };
-      }
-      return achievement;
-    });
-    
-    const newlyUnlocked = updated.find(a => 
-      a.unlocked && 
-      !achievements.find(oldA => oldA.id === a.id && oldA.unlocked)
-    );
-    
-    if (newlyUnlocked) {
-      setNewAchievement(newlyUnlocked);
-      setTimeout(() => setNewAchievement(null), 1500);
-    }
-    
-    setAchievements(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(updated));
+  // Check and unlock achievements (only show popup for newly unlocked)
+  const checkAchievements = (count: number, showPopup: boolean = true) => {
+    try {
+      setAchievements(currentAchievements => {
+        const updated = currentAchievements.map(achievement => {
+          if (!achievement.unlocked && count >= achievement.milestone) {
+            return {
+              ...achievement,
+              unlocked: true,
+              unlockedAt: Date.now()
+            };
+          }
+          return achievement;
+        });
+        
+        // Only show popup if this is a new unlock (not on page load)
+        if (showPopup) {
+          const newlyUnlocked = updated.find(a => 
+            a.unlocked && 
+            !currentAchievements.find(oldA => oldA.id === a.id && oldA.unlocked)
+          );
+          
+          if (newlyUnlocked) {
+            // Use setTimeout to ensure state is updated
+            setTimeout(() => {
+              setNewAchievement(newlyUnlocked);
+              // Auto-hide after 1.5 seconds with fade out
+              setTimeout(() => {
+                setNewAchievement(null);
+              }, 1500);
+            }, 100);
+          }
+        }
+        
+        // Save to localStorage
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.error('Failed to save achievements:', e);
+          }
+        }
+        
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error checking achievements:', error);
+      // Don't crash the app - just log the error
     }
   };
 
@@ -828,19 +851,27 @@ function ContractDeployer() {
     <div className="min-h-screen bg-[var(--paper)] pencil-sketch-bg p-4">
       <div className="max-w-xl mx-auto pt-6 pb-12">
         
-        {/* Achievement Celebration Modal - Subtle */}
+        {/* Achievement Celebration Modal - Subtle with Error Handling */}
         {newAchievement && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 pointer-events-none">
-            <div className="bg-[var(--paper)] border-2 border-[var(--ink)] p-6 max-w-xs w-full text-center opacity-0 animate-fade-in">
+            <div className="bg-[var(--paper)] border-2 border-[var(--ink)] p-6 max-w-xs w-full text-center animate-fade-in">
               {(() => {
-                const Icon = newAchievement.icon;
-                return <Icon className="w-12 h-12 mx-auto mb-3 text-[var(--ink)]" strokeWidth={2} />;
+                try {
+                  const Icon = newAchievement.icon;
+                  if (Icon && typeof Icon === 'function') {
+                    return <Icon className="w-12 h-12 mx-auto mb-3 text-[var(--ink)]" strokeWidth={2} />;
+                  }
+                  return <div className="w-12 h-12 mx-auto mb-3 text-[var(--ink)] text-2xl">✓</div>;
+                } catch (error) {
+                  console.error('Error rendering achievement icon:', error);
+                  return <div className="w-12 h-12 mx-auto mb-3 text-[var(--ink)] text-2xl">✓</div>;
+                }
               })()}
               <h3 className="text-lg font-bold text-[var(--ink)] mb-1">
-                {newAchievement.name}
+                {newAchievement?.name || 'Achievement Unlocked'}
               </h3>
               <p className="text-sm text-[var(--graphite)]">
-                {newAchievement.description}
+                {newAchievement?.description || ''}
               </p>
             </div>
           </div>
