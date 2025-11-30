@@ -1211,7 +1211,7 @@ function ContractDeployer() {
                   <p className="text-[var(--graphite)] text-sm">No contracts deployed yet</p>
                 </div>
               ) : (
-                <div className="divide-y-2 divide-[var(--light)]">
+                <div className={`divide-y-2 divide-[var(--light)] ${deployedContracts.length > 5 ? 'max-h-[400px] overflow-y-auto' : ''}`}>
                   {deployedContracts.map((contract, index) => {
                     const template = CONTRACT_TEMPLATES[contract.contractType as keyof typeof CONTRACT_TEMPLATES];
                     const Icon = template?.icon || FileCode2;
@@ -1282,8 +1282,8 @@ function ContractDeployer() {
           )}
         </div>
 
-        {/* Stats & Achievements Section - Always Visible at Bottom */}
-        <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
+        {/* Stats & Achievements Section - Always Visible at Bottom with Gap */}
+        <div className="mt-8 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
               Your Stats & Achievements
@@ -1307,19 +1307,19 @@ function ContractDeployer() {
             </div>
           </div>
 
-          {/* Achievements Grid */}
+          {/* Achievements Grid - Doodle Themed */}
           <div>
             <h4 className="font-bold text-[var(--ink)] text-xs uppercase tracking-wider mb-3">
               Achievements
             </h4>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-              {ACHIEVEMENTS.map(achievement => {
+              {ACHIEVEMENTS.map((achievement, index) => {
                 const Icon = achievement.icon;
                 const isUnlocked = achievements.find(a => a.id === achievement.id)?.unlocked || false;
                 return (
                   <div
                     key={achievement.id}
-                    className={`flex flex-col items-center p-3 border-2 ${
+                    className={`flex flex-col items-center p-3 border-2 animate-slide-in stagger-${Math.min(index + 1, 3)} ${
                       isUnlocked 
                         ? 'border-[var(--ink)] bg-[var(--paper)]' 
                         : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
