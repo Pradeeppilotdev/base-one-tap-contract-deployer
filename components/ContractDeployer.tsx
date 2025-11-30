@@ -148,6 +148,28 @@ const CONTRACT_TEMPLATES = {
 
 const STORAGE_KEY = 'base-deployer-contracts';
 const SHOW_HISTORY_KEY = 'base-deployer-show-history';
+const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
+const REFERRAL_KEY = 'base-deployer-referral';
+
+// Achievement system
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  milestone: number;
+  unlocked: boolean;
+  unlockedAt?: number;
+}
+
+const ACHIEVEMENTS: Achievement[] = [
+  { id: 'first', name: 'First Deploy', description: 'Deploy your first contract', emoji: '🎉', milestone: 1, unlocked: false },
+  { id: 'five', name: 'Power User', description: 'Deploy 5 contracts', emoji: '⚡', milestone: 5, unlocked: false },
+  { id: 'ten', name: 'Contract Master', description: 'Deploy 10 contracts', emoji: '🏆', milestone: 10, unlocked: false },
+  { id: 'twenty', name: 'Deployment Legend', description: 'Deploy 20 contracts', emoji: '👑', milestone: 20, unlocked: false },
+  { id: 'fifty', name: 'Base Builder', description: 'Deploy 50 contracts', emoji: '🚀', milestone: 50, unlocked: false },
+  { id: 'hundred', name: 'Contract Deity', description: 'Deploy 100 contracts', emoji: '💎', milestone: 100, unlocked: false },
+];
 
 function ContractDeployer() {
   const [account, setAccount] = useState<string | null>(null);
@@ -166,15 +188,21 @@ function ContractDeployer() {
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [isAppAdded, setIsAppAdded] = useState(false);
+  const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
+  const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
-  // Load deployed contracts and show history state from localStorage
+  // Load deployed contracts, achievements, and referral code from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Load contracts
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
-          setDeployedContracts(JSON.parse(stored));
+          const contracts = JSON.parse(stored);
+          setDeployedContracts(contracts);
+          // Check for achievements
+          checkAchievements(contracts.length);
         } catch (e) {
           console.error('Failed to parse stored contracts:', e);
         }
@@ -184,8 +212,58 @@ function ContractDeployer() {
       if (showHistoryStored !== null) {
         setShowHistory(showHistoryStored === 'true');
       }
+      // Load achievements
+      const achievementsStored = localStorage.getItem(ACHIEVEMENTS_KEY);
+      if (achievementsStored) {
+        try {
+          setAchievements(JSON.parse(achievementsStored));
+        } catch (e) {
+          console.error('Failed to parse achievements:', e);
+        }
+      }
+      // Load referral code
+      const referralStored = localStorage.getItem(REFERRAL_KEY);
+      if (referralStored) {
+        setReferralCode(referralStored);
+      }
+      // Check for referral in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      if (ref && !referralStored) {
+        // Track referral (could send to analytics/backend)
+        console.log('Referred by:', ref);
+      }
     }
-  }, []);
+  }, [farcasterUser?.fid]);
+
+  // Check and unlock achievements
+  const checkAchievements = (count: number) => {
+    const updated = achievements.map(achievement => {
+      if (!achievement.unlocked && count >= achievement.milestone) {
+        return {
+          ...achievement,
+          unlocked: true,
+          unlockedAt: Date.now()
+        };
+      }
+      return achievement;
+    });
+    
+    const newlyUnlocked = updated.find(a => 
+      a.unlocked && 
+      !achievements.find(oldA => oldA.id === a.id && oldA.unlocked)
+    );
+    
+    if (newlyUnlocked) {
+      setNewAchievement(newlyUnlocked);
+      setTimeout(() => setNewAchievement(null), 5000);
+    }
+    
+    setAchievements(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(updated));
+    }
+  };
 
   // Toggle show history and save to localStorage
   const toggleShowHistory = () => {
@@ -202,6 +280,8 @@ function ContractDeployer() {
     setDeployedContracts(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      // Check for new achievements
+      checkAchievements(updated.length);
     }
   };
 
@@ -231,13 +311,24 @@ function ContractDeployer() {
         
         if (context?.user) {
           setIsInFarcaster(true);
-          setFarcasterUser({
+          const user = {
             fid: context.user.fid,
             username: context.user.username,
             displayName: context.user.displayName,
             pfpUrl: context.user.pfpUrl
-          });
+          };
+          setFarcasterUser(user);
           console.log('Farcaster user:', context.user);
+          
+          // Generate referral code if not exists
+          if (typeof window !== 'undefined') {
+            const referralStored = localStorage.getItem(REFERRAL_KEY);
+            if (!referralStored && user.fid) {
+              const code = `ref-${user.fid}`;
+              setReferralCode(code);
+              localStorage.setItem(REFERRAL_KEY, code);
+            }
+          }
         }
         
         // Check if app is already added
@@ -653,19 +744,39 @@ function ContractDeployer() {
     });
   };
 
+  // Get achievement badges for share
+  const getAchievementBadges = (): string => {
+    const unlocked = achievements.filter(a => a.unlocked);
+    if (unlocked.length === 0) return '';
+    const top3 = unlocked.slice(-3).reverse(); // Get latest 3
+    return top3.map(a => a.emoji).join(' ');
+  };
+
+  // Get share message with achievements
+  const getShareMessage = (): string => {
+    const contractCount = deployedContracts.length;
+    const badges = getAchievementBadges();
+    const refParam = referralCode ? `?ref=${referralCode}` : '';
+    const appUrl = typeof window !== 'undefined' ? `${window.location.origin}${refParam}` : '';
+    
+    if (contractCount === 0) {
+      return `Deploy contracts on Base in zip zap! 🚀 One tap, instant deploy!\n\n${appUrl}`;
+    }
+    
+    const latestAchievement = achievements.filter(a => a.unlocked).pop();
+    const achievementText = latestAchievement 
+      ? `\n\n${latestAchievement.emoji} Just unlocked: ${latestAchievement.name}!`
+      : '';
+    
+    return `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! ${badges} 🚀\n\nDeploy smart contracts in zip zap - no code needed!${achievementText}\n\n${appUrl}`;
+  };
+
   // Share the app via Farcaster
   const shareApp = async () => {
     try {
       if (sdk?.actions?.composeCast) {
         const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
-        const contractCount = deployedContracts.length;
-        let shareText: string;
-        
-        if (contractCount > 0) {
-          shareText = `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! 🚀 Deploy smart contracts in zip zap!`;
-        } else {
-          shareText = `Deploy contracts on Base in zip zap! 🚀 One tap, instant deploy!`;
-        }
+        const shareText = getShareMessage();
         
         await sdk.actions.composeCast({
           text: shareText,
@@ -674,20 +785,16 @@ function ContractDeployer() {
       } else {
         // Fallback for non-Farcaster environments
         if (navigator.share) {
-          const contractCount = deployedContracts.length;
-          const shareText = contractCount > 0 
-            ? `I've deployed ${contractCount} contract${contractCount > 1 ? 's' : ''} on Base! Deploy smart contracts in zip zap!`
-            : 'Deploy contracts on Base in zip zap! One tap, instant deploy!';
-          
           await navigator.share({
             title: '1-Tap Contract Deployer',
-            text: shareText,
+            text: getShareMessage(),
             url: window.location.href
           });
         } else {
           // Copy link to clipboard
-          await navigator.clipboard.writeText(window.location.href);
-          setError('Link copied to clipboard!');
+          const shareText = getShareMessage();
+          await navigator.clipboard.writeText(shareText);
+          setError('Share text copied to clipboard!');
           setTimeout(() => setError(null), 2000);
         }
       }
@@ -714,6 +821,80 @@ function ContractDeployer() {
   return (
     <div className="min-h-screen bg-[var(--paper)] pencil-sketch-bg p-4">
       <div className="max-w-xl mx-auto pt-6 pb-12">
+        
+        {/* Achievement Celebration Modal */}
+        {newAchievement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-[var(--paper)] border-4 border-[var(--ink)] p-8 max-w-sm w-full text-center animate-bounce">
+              <div className="text-6xl mb-4">{newAchievement.emoji}</div>
+              <h2 className="text-2xl font-bold text-[var(--ink)] mb-2">
+                Achievement Unlocked!
+              </h2>
+              <h3 className="text-xl font-semibold text-[var(--ink)] mb-2">
+                {newAchievement.name}
+              </h3>
+              <p className="text-[var(--graphite)] mb-6">
+                {newAchievement.description}
+              </p>
+              <button
+                onClick={() => setNewAchievement(null)}
+                className="ink-button px-6 py-2"
+              >
+                Awesome!
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Stats & Achievements Section */}
+        {deployedContracts.length > 0 && (
+          <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
+                Your Stats
+              </h3>
+              {referralCode && (
+                <div className="text-xs text-[var(--graphite)]">
+                  Ref: <span className="font-mono">{referralCode}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-4 mb-3">
+              <div>
+                <div className="text-2xl font-bold text-[var(--ink)]">
+                  {deployedContracts.length}
+                </div>
+                <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-[var(--ink)] mb-1">
+                  Achievements
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {achievements.filter(a => a.unlocked).map(achievement => (
+                    <div
+                      key={achievement.id}
+                      className="text-2xl"
+                      title={`${achievement.name}: ${achievement.description}`}
+                    >
+                      {achievement.emoji}
+                    </div>
+                  ))}
+                  {achievements.filter(a => a.unlocked).length === 0 && (
+                    <span className="text-xs text-[var(--graphite)] italic">
+                      Deploy contracts to unlock achievements!
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {achievements.filter(a => !a.unlocked).length > 0 && (
+              <div className="text-xs text-[var(--graphite)] mt-2">
+                Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
+              </div>
+            )}
+          </div>
+        )}
         
         {/* Top Bar - User Profile & Actions */}
         <div className="flex items-center justify-between mb-6">
