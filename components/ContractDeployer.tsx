@@ -410,12 +410,26 @@ function ContractDeployer() {
   const getProvider = () => {
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
       const farcasterProvider = sdk.wallet.ethProvider;
-      // Wrap Farcaster provider to intercept and fix eth_sendTransaction requests
+      // Wrap Farcaster provider to intercept and fix requests
       // This prevents the wallet from adding "to": "" during eth_createAccessList
       return new Proxy(farcasterProvider, {
         get(target, prop) {
           if (prop === 'request') {
             return async (args: { method: string; params?: any[] }) => {
+              // Intercept eth_createAccessList to fix the "to" field issue
+              if (args.method === 'eth_createAccessList' && args.params && args.params[0]) {
+                const txParams = args.params[0];
+                // Remove 'to' field if it's empty string or null
+                if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
+                  const cleanParams = { ...txParams };
+                  delete cleanParams.to;
+                  return target.request({
+                    method: args.method,
+                    params: [cleanParams, ...(args.params.slice(1) || [])]
+                  });
+                }
+              }
+              
               // Intercept eth_sendTransaction for contract deployments
               if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
                 const txParams = args.params[0];
@@ -431,6 +445,7 @@ function ContractDeployer() {
                   params: [cleanParams]
                 });
               }
+              
               // For other methods, pass through normally
               return target.request(args);
             };
