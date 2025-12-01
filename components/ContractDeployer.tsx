@@ -633,34 +633,38 @@ function ContractDeployer() {
         }
       }
 
+      // Skip gas estimation for Farcaster wallet to avoid eth_createAccessList call
+      // Farcaster wallet's SDK automatically calls eth_createAccessList during gas estimation
+      // and injects "to": "" which causes RPC errors for contract deployments
       let gasEstimate: string;
-      try {
-        const estimatedGas = await provider.request({
-          method: 'eth_estimateGas',
-          params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
-        });
-        const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
-        gasEstimate = '0x' + gasWithBuffer.toString(16);
-      } catch (err) {
+      if (walletType === 'farcaster') {
+        // Use safe default of 2M gas for Farcaster wallet (skips gas estimation)
         gasEstimate = '0x200000';
+      } else {
+        // For external wallets, estimate gas normally
+        try {
+          const estimatedGas = await provider.request({
+            method: 'eth_estimateGas',
+            params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
+          });
+          const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
+          gasEstimate = '0x' + gasWithBuffer.toString(16);
+        } catch (err) {
+          gasEstimate = '0x200000';
+        }
       }
       
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, completely omit 'to' field
-      // Some providers reject 'to: null' or 'to: ""'
-      const txParams: any = {
+      // Build clean transaction params - only include required fields
+      // Never touch the 'to' property to avoid wallet SDK issues
+      const txParams: Record<string, any> = {
         from: account as `0x${string}`,
         data: deploymentData as `0x${string}`,
         gas: gasEstimate,
         value: '0x0'
       };
-      
-      // Note: 'to' field is intentionally omitted for contract deployment
-      // Adding 'to: null' or 'to: ""' will cause RPC errors
-      // Explicitly delete to ensure it's not present
-      delete txParams.to;
       
       if (isCoinbaseWallet) {
         txParams.type = '0x2';
@@ -668,12 +672,13 @@ function ContractDeployer() {
       
       console.log('Sending transaction:', txParams);
       
-      const hash = await provider.request({
-        method: 'eth_sendTransaction',
-        params: [txParams]
-      });
+      try {
+        const hash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [txParams]
+        });
 
-      setTxHash(hash);
+        setTxHash(hash);
 
       // Poll for receipt using public RPC (more reliable than wallet provider)
       let receipt = null;
@@ -760,8 +765,46 @@ function ContractDeployer() {
       } else {
         setError(`Transaction still pending after timeout. Check BaseScan: https://basescan.org/tx/${hash}`);
       }
+      } catch (err: any) {
+        // Handle specific Farcaster wallet errors
+        const errorMessage = err.message || err.data?.message || '';
+        const errorCode = err.code;
+        
+        // Check for eth_createAccessList or Invalid params errors
+        if (
+          errorMessage.includes('eth_createAccessList') ||
+          errorMessage.includes('Invalid params') ||
+          errorMessage.includes('Invalid parameters') ||
+          errorCode === -32602 // Invalid params error code
+        ) {
+          setError(
+            'Farcaster Wallet has a limitation with contract deployments. ' +
+            'Please use an external wallet like MetaMask instead. ' +
+            'Click "Connect External Wallet" to switch.'
+          );
+        } else if (err.code === 4001 || errorMessage.includes('User rejected')) {
+          setError('Transaction cancelled');
+        } else {
+          setError(err.message || 'Deployment failed');
+        }
+      }
     } catch (err: any) {
-      if (err.code === 4001 || err.message?.includes('User rejected')) {
+      // Outer catch for any other errors in the deployment flow (outside transaction sending)
+      const errorMessage = err.message || err.data?.message || '';
+      const errorCode = err.code;
+      
+      if (
+        errorMessage.includes('eth_createAccessList') ||
+        errorMessage.includes('Invalid params') ||
+        errorMessage.includes('Invalid parameters') ||
+        errorCode === -32602
+      ) {
+        setError(
+          'Farcaster Wallet has a limitation with contract deployments. ' +
+          'Please use an external wallet like MetaMask instead. ' +
+          'Click "Connect External Wallet" to switch.'
+        );
+      } else if (err.code === 4001 || errorMessage.includes('User rejected')) {
         setError('Transaction cancelled');
       } else {
         setError(err.message || 'Deployment failed');
