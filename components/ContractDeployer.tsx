@@ -633,6 +633,20 @@ function ContractDeployer() {
         }
       }
 
+      // Farcaster wallet has a known bug: it calls eth_createAccessList internally
+      // and adds "to": "" which causes RPC errors for contract deployments
+      // We need to handle this differently for Farcaster wallet
+      if (walletType === 'farcaster') {
+        setError(
+          'Farcaster Wallet currently has a limitation with contract deployments. ' +
+          'The wallet automatically calls eth_createAccessList and adds an invalid "to" field. ' +
+          'Please use an external wallet like MetaMask for contract deployments. ' +
+          'Click "Use External Wallet" to switch.'
+        );
+        setDeploying(false);
+        return;
+      }
+      
       let gasEstimate: string;
       try {
         const estimatedGas = await provider.request({
