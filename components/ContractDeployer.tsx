@@ -419,10 +419,19 @@ function ContractDeployer() {
               // Intercept eth_createAccessList to fix the "to" field issue
               if (args.method === 'eth_createAccessList' && args.params && args.params[0]) {
                 const txParams = args.params[0];
-                // Remove 'to' field if it's empty string or null
-                if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
+                // Fix 'to' field: if it's empty string, set to null or remove it
+                if (txParams.to === '') {
                   const cleanParams = { ...txParams };
-                  delete cleanParams.to;
+                  cleanParams.to = null; // Set to null instead of empty string
+                  return target.request({
+                    method: args.method,
+                    params: [cleanParams, ...(args.params.slice(1) || [])]
+                  });
+                }
+                // If to is already null or undefined, ensure it stays null
+                if (txParams.to === null || txParams.to === undefined) {
+                  const cleanParams = { ...txParams };
+                  cleanParams.to = null;
                   return target.request({
                     method: args.method,
                     params: [cleanParams, ...(args.params.slice(1) || [])]
@@ -433,13 +442,15 @@ function ContractDeployer() {
               // Intercept eth_sendTransaction for contract deployments
               if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
                 const txParams = args.params[0];
-                // Ensure 'to' field is completely absent (not null, not empty string)
-                if ('to' in txParams) {
-                  delete txParams.to;
-                }
-                // Create a clean copy without 'to' field
+                // Ensure 'to' is null (not empty string) for contract creation
                 const cleanParams = { ...txParams };
-                delete cleanParams.to;
+                if (cleanParams.to === '' || cleanParams.to === undefined) {
+                  cleanParams.to = null;
+                }
+                // If to is already null, keep it null
+                if (cleanParams.to === null || !('to' in cleanParams)) {
+                  cleanParams.to = null;
+                }
                 return target.request({
                   method: args.method,
                   params: [cleanParams]
@@ -698,13 +709,14 @@ function ContractDeployer() {
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, omit 'to' field entirely (don't set it to null or empty string)
+      // For contract deployment, explicitly set 'to' to null
+      // This prevents wallet providers from adding 'to: ""' during validation
       const txParams: any = {
         from: account as `0x${string}`,
+        to: null, // Explicitly null for contract creation
         data: deploymentData as `0x${string}`,
         gas: gasEstimate,
         value: '0x0'
-        // 'to' field is intentionally omitted for contract deployment
       };
       
       if (isCoinbaseWallet) {
