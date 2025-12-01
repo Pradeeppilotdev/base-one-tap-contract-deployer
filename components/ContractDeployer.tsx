@@ -651,30 +651,25 @@ function ContractDeployer() {
       // For contract deployment, we need to ensure 'to' is completely absent
       // Some wallet providers (especially Farcaster) call eth_createAccessList internally
       // and add 'to: ""' if the field is missing, which causes RPC errors
-      // Solution: Build params object carefully to ensure 'to' is never present
-      const txParams: Record<string, any> = {
-        from: account as `0x${string}`,
-        data: deploymentData as `0x${string}`,
-        gas: gasEstimate,
-        value: '0x0'
-      };
+      // Solution: Use Object.create(null) to create a truly clean object without prototype
+      const txParams = Object.create(null) as Record<string, any>;
+      txParams.from = account as `0x${string}`;
+      txParams.data = deploymentData as `0x${string}`;
+      txParams.gas = gasEstimate;
+      txParams.value = '0x0';
       
       if (isCoinbaseWallet) {
         txParams.type = '0x2';
       }
       
-      // For Farcaster wallet, we might need to handle this differently
-      // But first, let's ensure the object is clean
-      const cleanParams = Object.keys(txParams).reduce((acc, key) => {
-        if (key !== 'to') {
-          acc[key] = txParams[key];
-        }
-        return acc;
-      }, {} as Record<string, any>);
+      // Ensure 'to' is never present (shouldn't be, but double-check)
+      if ('to' in txParams) {
+        delete txParams.to;
+      }
       
       const hash = await provider.request({
         method: 'eth_sendTransaction',
-        params: [cleanParams]
+        params: [txParams]
       });
 
       setTxHash(hash);
