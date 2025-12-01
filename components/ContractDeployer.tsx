@@ -410,60 +410,75 @@ function ContractDeployer() {
   const getProvider = () => {
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
       const farcasterProvider = sdk.wallet.ethProvider;
-      // Wrap Farcaster provider to intercept and fix requests
-      // This prevents the wallet from adding "to": "" during eth_createAccessList
-      return new Proxy(farcasterProvider, {
-        get(target, prop) {
-          if (prop === 'request') {
-            return async (args: { method: string; params?: any[] }) => {
-              // Intercept eth_createAccessList to fix the "to" field issue
-              if (args.method === 'eth_createAccessList' && args.params && args.params[0]) {
-                const txParams = args.params[0];
-                // Fix 'to' field: if it's empty string, set to null or remove it
-                if (txParams.to === '') {
-                  const cleanParams = { ...txParams };
-                  cleanParams.to = null; // Set to null instead of empty string
-                  return target.request({
-                    method: args.method,
-                    params: [cleanParams, ...(args.params.slice(1) || [])]
-                  });
-                }
-                // If to is already null or undefined, ensure it stays null
-                if (txParams.to === null || txParams.to === undefined) {
-                  const cleanParams = { ...txParams };
-                  cleanParams.to = null;
-                  return target.request({
-                    method: args.method,
-                    params: [cleanParams, ...(args.params.slice(1) || [])]
-                  });
-                }
+      
+      // Create a custom RPC handler that intercepts and fixes ALL RPC calls
+      // This completely bypasses the wallet's internal RPC handling
+      const createCustomProvider = () => {
+        return {
+          request: async (args: { method: string; params?: any[] }) => {
+            // Intercept and fix eth_createAccessList - this is where the wallet adds "to": ""
+            if (args.method === 'eth_createAccessList' && args.params && args.params[0]) {
+              const txParams = args.params[0];
+              // Create a clean copy and remove 'to' field entirely if it's empty string or null
+              const cleanParams: any = { ...txParams };
+              if (cleanParams.to === '' || cleanParams.to === null || cleanParams.to === undefined) {
+                delete cleanParams.to; // Remove it entirely, don't set to null
               }
-              
-              // Intercept eth_sendTransaction for contract deployments
-              if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
-                const txParams = args.params[0];
-                // Ensure 'to' is null (not empty string) for contract creation
-                const cleanParams = { ...txParams };
-                if (cleanParams.to === '' || cleanParams.to === undefined) {
-                  cleanParams.to = null;
-                }
-                // If to is already null, keep it null
-                if (cleanParams.to === null || !('to' in cleanParams)) {
-                  cleanParams.to = null;
-                }
-                return target.request({
+              // Call the original provider with fixed params
+              try {
+                return await farcasterProvider.request({
                   method: args.method,
-                  params: [cleanParams]
+                  params: [cleanParams, ...(args.params.slice(1) || [])]
                 });
+              } catch (err: any) {
+                // If eth_createAccessList fails, that's okay - we can still send the transaction
+                console.warn('eth_createAccessList failed (expected for contract creation):', err);
+                // Return empty access list to continue
+                return { accessList: [], gasUsed: '0x0' };
               }
-              
-              // For other methods, pass through normally
-              return target.request(args);
-            };
-          }
-          return target[prop as keyof typeof target];
-        }
-      });
+            }
+            
+            // Intercept eth_sendTransaction - ensure 'to' is properly handled
+            if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
+              const txParams = args.params[0];
+              const cleanParams: any = { ...txParams };
+              // For contract creation, remove 'to' field entirely (not null, not empty string)
+              if (cleanParams.to === '' || cleanParams.to === null || cleanParams.to === undefined) {
+                delete cleanParams.to;
+              }
+              return farcasterProvider.request({
+                method: args.method,
+                params: [cleanParams]
+              });
+            }
+            
+            // Intercept eth_estimateGas - also fix 'to' field here
+            if (args.method === 'eth_estimateGas' && args.params && args.params[0]) {
+              const txParams = args.params[0];
+              const cleanParams: any = { ...txParams };
+              if (cleanParams.to === '' || cleanParams.to === null || cleanParams.to === undefined) {
+                delete cleanParams.to;
+              }
+              return farcasterProvider.request({
+                method: args.method,
+                params: [cleanParams]
+              });
+            }
+            
+            // For all other methods, pass through normally
+            return farcasterProvider.request(args);
+          },
+          // Proxy other properties from the original provider
+          on: farcasterProvider.on?.bind(farcasterProvider),
+          removeListener: farcasterProvider.removeListener?.bind(farcasterProvider),
+          // Add any other properties that might be needed
+          ...Object.fromEntries(
+            Object.keys(farcasterProvider).map(key => [key, (farcasterProvider as any)[key]])
+          )
+        };
+      };
+      
+      return createCustomProvider() as any;
     }
     return window.ethereum;
   };
