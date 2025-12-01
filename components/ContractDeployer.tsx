@@ -409,7 +409,35 @@ function ContractDeployer() {
 
   const getProvider = () => {
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
-      return sdk.wallet.ethProvider;
+      const farcasterProvider = sdk.wallet.ethProvider;
+      // Wrap Farcaster provider to intercept and fix eth_sendTransaction requests
+      // This prevents the wallet from adding "to": "" during eth_createAccessList
+      return new Proxy(farcasterProvider, {
+        get(target, prop) {
+          if (prop === 'request') {
+            return async (args: { method: string; params?: any[] }) => {
+              // Intercept eth_sendTransaction for contract deployments
+              if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
+                const txParams = args.params[0];
+                // Ensure 'to' field is completely absent (not null, not empty string)
+                if ('to' in txParams) {
+                  delete txParams.to;
+                }
+                // Create a clean copy without 'to' field
+                const cleanParams = { ...txParams };
+                delete cleanParams.to;
+                return target.request({
+                  method: args.method,
+                  params: [cleanParams]
+                });
+              }
+              // For other methods, pass through normally
+              return target.request(args);
+            };
+          }
+          return target[prop as keyof typeof target];
+        }
+      });
     }
     return window.ethereum;
   };
@@ -633,30 +661,23 @@ function ContractDeployer() {
         }
       }
 
-      // Farcaster wallet has a known bug: it calls eth_createAccessList internally
-      // and adds "to": "" which causes RPC errors for contract deployments
-      // We need to handle this differently for Farcaster wallet
-      if (walletType === 'farcaster') {
-        setError(
-          'Farcaster Wallet currently has a limitation with contract deployments. ' +
-          'The wallet automatically calls eth_createAccessList and adds an invalid "to" field. ' +
-          'Please use an external wallet like MetaMask for contract deployments. ' +
-          'Click "Use External Wallet" to switch.'
-        );
-        setDeploying(false);
-        return;
-      }
-      
+      // For Farcaster wallet, skip gas estimation to avoid eth_createAccessList call
+      // The wallet SDK calls eth_createAccessList during gas estimation and adds "to": ""
       let gasEstimate: string;
-      try {
-        const estimatedGas = await provider.request({
-          method: 'eth_estimateGas',
-          params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
-        });
-        const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
-        gasEstimate = '0x' + gasWithBuffer.toString(16);
-      } catch (err) {
-        gasEstimate = '0x200000';
+      if (walletType === 'farcaster') {
+        // Use safe default for Farcaster wallet - skip gas estimation
+        gasEstimate = '0x200000'; // 2M gas should be enough for simple contracts
+      } else {
+        try {
+          const estimatedGas = await provider.request({
+            method: 'eth_estimateGas',
+            params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
+          });
+          const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
+          gasEstimate = '0x' + gasWithBuffer.toString(16);
+        } catch (err) {
+          gasEstimate = '0x200000';
+        }
       }
       
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
