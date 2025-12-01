@@ -648,14 +648,18 @@ function ContractDeployer() {
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, set 'to' to null explicitly
-      // This prevents wallet providers from adding 'to: ""' which causes RPC errors
+      // For contract deployment, completely omit 'to' field
+      // Some providers reject 'to: null' or 'to: ""'
       const txParams: any = {
         from: account as `0x${string}`,
         data: deploymentData as `0x${string}`,
         gas: gasEstimate,
         value: '0x0'
       };
+      
+      // Note: 'to' field is intentionally omitted for contract deployment
+      // Adding 'to: null' or 'to: ""' will cause RPC errors
+      // Explicitly delete to ensure it's not present
       delete txParams.to;
       
       if (isCoinbaseWallet) {
@@ -663,10 +667,6 @@ function ContractDeployer() {
       }
       
       console.log('Sending transaction:', txParams);
-      
-      if (isCoinbaseWallet) {
-        txParams.type = '0x2';
-      }
       
       const hash = await provider.request({
         method: 'eth_sendTransaction',
