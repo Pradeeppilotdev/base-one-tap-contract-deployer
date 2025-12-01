@@ -648,23 +648,17 @@ function ContractDeployer() {
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, we need to ensure 'to' is completely absent
-      // Some wallet providers (especially Farcaster) call eth_createAccessList internally
-      // and add 'to: ""' if the field is missing, which causes RPC errors
-      // Solution: Use Object.create(null) to create a truly clean object without prototype
-      const txParams = Object.create(null) as Record<string, any>;
-      txParams.from = account as `0x${string}`;
-      txParams.data = deploymentData as `0x${string}`;
-      txParams.gas = gasEstimate;
-      txParams.value = '0x0';
+      // For contract deployment, omit 'to' field entirely (don't set it to null or empty string)
+      const txParams: any = {
+        from: account as `0x${string}`,
+        data: deploymentData as `0x${string}`,
+        gas: gasEstimate,
+        value: '0x0'
+        // 'to' field is intentionally omitted for contract deployment
+      };
       
       if (isCoinbaseWallet) {
         txParams.type = '0x2';
-      }
-      
-      // Ensure 'to' is never present (shouldn't be, but double-check)
-      if ('to' in txParams) {
-        delete txParams.to;
       }
       
       const hash = await provider.request({
