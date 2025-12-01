@@ -656,6 +656,13 @@ function ContractDeployer() {
         gas: gasEstimate,
         value: '0x0'
       };
+      delete txParams.to;
+      
+      if (isCoinbaseWallet) {
+        txParams.type = '0x2';
+      }
+      
+      console.log('Sending transaction:', txParams);
       
       if (isCoinbaseWallet) {
         txParams.type = '0x2';
