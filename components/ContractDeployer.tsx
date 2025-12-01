@@ -652,7 +652,6 @@ function ContractDeployer() {
       // This prevents wallet providers from adding 'to: ""' which causes RPC errors
       const txParams: any = {
         from: account as `0x${string}`,
-        to: null, // Explicitly null for contract creation
         data: deploymentData as `0x${string}`,
         gas: gasEstimate,
         value: '0x0'
