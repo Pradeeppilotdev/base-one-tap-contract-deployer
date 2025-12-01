@@ -648,13 +648,14 @@ function ContractDeployer() {
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, omit 'to' field entirely (don't set it to null or empty string)
+      // For contract deployment, set 'to' to null (some wallets require this instead of omitting)
+      // This prevents wallets from adding 'to: ""' which causes RPC errors
       const txParams: any = {
         from: account as `0x${string}`,
+        to: null, // Explicitly null for contract creation (not undefined or empty string)
         data: deploymentData as `0x${string}`,
         gas: gasEstimate,
         value: '0x0'
-        // 'to' field is intentionally omitted for contract deployment
       };
       
       if (isCoinbaseWallet) {
