@@ -411,74 +411,84 @@ function ContractDeployer() {
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
       const farcasterProvider = sdk.wallet.ethProvider;
       
-      // Create a custom RPC handler that intercepts and fixes ALL RPC calls
-      // This completely bypasses the wallet's internal RPC handling
-      const createCustomProvider = () => {
-        return {
-          request: async (args: { method: string; params?: any[] }) => {
-            // Intercept and fix eth_createAccessList - this is where the wallet adds "to": ""
-            if (args.method === 'eth_createAccessList' && args.params && args.params[0]) {
-              const txParams = args.params[0];
-              // Create a clean copy and remove 'to' field entirely if it's empty string or null
-              const cleanParams: any = { ...txParams };
-              if (cleanParams.to === '' || cleanParams.to === null || cleanParams.to === undefined) {
-                delete cleanParams.to; // Remove it entirely, don't set to null
-              }
-              // Call the original provider with fixed params
-              try {
-                return await farcasterProvider.request({
-                  method: args.method,
-                  params: [cleanParams, ...(args.params.slice(1) || [])]
-                });
-              } catch (err: any) {
-                // If eth_createAccessList fails, that's okay - we can still send the transaction
-                console.warn('eth_createAccessList failed (expected for contract creation):', err);
-                // Return empty access list to continue
-                return { accessList: [], gasUsed: '0x0' };
-              }
+      // Create a deep proxy that intercepts ALL property access and method calls
+      // This allows us to intercept even internal RPC calls made by the wallet SDK
+      const createDeepProxy = (target: any): any => {
+        return new Proxy(target, {
+          get(proxyTarget, prop) {
+            const value = proxyTarget[prop];
+            
+            // Intercept the request method - this is where all RPC calls go through
+            if (prop === 'request') {
+              return async (args: { method: string; params?: any[] }) => {
+                // Deep clone params to avoid mutating the original
+                const fixedArgs = JSON.parse(JSON.stringify(args));
+                
+                // Fix eth_createAccessList - remove 'to' field if it's empty string
+                if (fixedArgs.method === 'eth_createAccessList' && fixedArgs.params?.[0]) {
+                  const txParams = fixedArgs.params[0];
+                  if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
+                    delete txParams.to; // Remove entirely
+                  }
+                  // Also fix in the second param if it exists
+                  if (fixedArgs.params[1] && typeof fixedArgs.params[1] === 'object') {
+                    const blockParam = fixedArgs.params[1];
+                    if (blockParam.to === '' || blockParam.to === null) {
+                      delete blockParam.to;
+                    }
+                  }
+                  
+                  // Try to call with fixed params, but if it fails, return empty access list
+                  try {
+                    return await target.request(fixedArgs);
+                  } catch (err: any) {
+                    // If access list creation fails (common for contract creation), return empty
+                    console.warn('eth_createAccessList failed, continuing without access list:', err);
+                    return { accessList: [], gasUsed: '0x0' };
+                  }
+                }
+                
+                // Fix eth_sendTransaction - remove 'to' if empty string
+                if (fixedArgs.method === 'eth_sendTransaction' && fixedArgs.params?.[0]) {
+                  const txParams = fixedArgs.params[0];
+                  if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
+                    delete txParams.to; // Remove entirely
+                  }
+                }
+                
+                // Fix eth_estimateGas - remove 'to' if empty string
+                if (fixedArgs.method === 'eth_estimateGas' && fixedArgs.params?.[0]) {
+                  const txParams = fixedArgs.params[0];
+                  if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
+                    delete txParams.to; // Remove entirely
+                  }
+                }
+                
+                // Call the original with fixed params
+                return target.request(fixedArgs);
+              };
             }
             
-            // Intercept eth_sendTransaction - ensure 'to' is properly handled
-            if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
-              const txParams = args.params[0];
-              const cleanParams: any = { ...txParams };
-              // For contract creation, remove 'to' field entirely (not null, not empty string)
-              if (cleanParams.to === '' || cleanParams.to === null || cleanParams.to === undefined) {
-                delete cleanParams.to;
-              }
-              return farcasterProvider.request({
-                method: args.method,
-                params: [cleanParams]
-              });
+            // For functions, bind them to maintain context
+            if (typeof value === 'function') {
+              return value.bind(proxyTarget);
             }
             
-            // Intercept eth_estimateGas - also fix 'to' field here
-            if (args.method === 'eth_estimateGas' && args.params && args.params[0]) {
-              const txParams = args.params[0];
-              const cleanParams: any = { ...txParams };
-              if (cleanParams.to === '' || cleanParams.to === null || cleanParams.to === undefined) {
-                delete cleanParams.to;
-              }
-              return farcasterProvider.request({
-                method: args.method,
-                params: [cleanParams]
-              });
+            // For objects, create a deep proxy to intercept nested calls
+            if (value && typeof value === 'object') {
+              return createDeepProxy(value);
             }
             
-            // For all other methods, pass through normally
-            return farcasterProvider.request(args);
+            return value;
           },
-          // Proxy other properties from the original provider
-          on: farcasterProvider.on?.bind(farcasterProvider),
-          removeListener: farcasterProvider.removeListener?.bind(farcasterProvider),
-          // Add any other properties that might be needed
-          ...Object.fromEntries(
-            Object.keys(farcasterProvider).map(key => [key, (farcasterProvider as any)[key]])
-          )
-        };
+          set(proxyTarget, prop, value) {
+            proxyTarget[prop] = value;
+            return true;
+          }
+        });
       };
       
-      return createCustomProvider() as any;
+      return createDeepProxy(farcasterProvider);
     }
     return window.ethereum;
   };
