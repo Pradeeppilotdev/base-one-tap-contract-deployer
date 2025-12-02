@@ -28,6 +28,7 @@ import {
   Star
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
+import { encodeFunctionData, decodeEventLog } from 'viem';
 
 // Type for Farcaster user context
 interface FarcasterUser {
@@ -157,6 +158,56 @@ const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
 const REFERRAL_KEY = 'base-deployer-referral';
 
+// Factory Contract ABI and Address
+// Deployed to Base Mainnet
+const FACTORY_CONTRACT_ADDRESS = '0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3';
+const FACTORY_ABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "bytecode",
+        "type": "bytes"
+      }
+    ],
+    "name": "deployContractWithParams",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "deployedAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "deployedAddress",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "deployer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "salt",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ContractDeployed",
+    "type": "event"
+  }
+] as const;
+
 // Achievement system
 interface Achievement {
   id: string;
@@ -197,6 +248,124 @@ function ContractDeployer() {
   const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  // Network-level RPC interception - catches calls that bypass the provider
+  // The Farcaster wallet SDK makes direct HTTP requests to Alchemy RPC
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Intercept fetch requests to RPC endpoints
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const [url, options] = args;
+      
+      // Convert URL to string for checking
+      const urlString = typeof url === 'string' ? url : url instanceof URL ? url.href : String(url);
+      
+      // Check if this is an RPC call to Alchemy or Base RPC
+      if (urlString.includes('alchemy.com') || urlString.includes('base.org') || urlString.includes('base-mainnet.g.alchemy.com') || urlString.includes('g.alchemy.com')) {
+        console.log('🌐 [FETCH] Intercepted RPC call to:', urlString, 'Method:', options?.method);
+        
+        // Check if it's a POST request with JSON body
+        if (options?.method === 'POST' && options?.body) {
+          try {
+            let bodyStr = '';
+            let bodyObj: any;
+            
+            // Handle different body types
+            if (typeof options.body === 'string') {
+              bodyStr = options.body;
+              bodyObj = JSON.parse(bodyStr);
+            } else if (options.body instanceof ReadableStream) {
+              // Can't intercept ReadableStream easily, skip
+              return originalFetch.apply(this, args);
+            } else {
+              bodyObj = options.body;
+              bodyStr = JSON.stringify(bodyObj);
+            }
+            
+            // BLOCK eth_createAccessList entirely - return empty access list
+            // This prevents the problematic RPC call that causes "Invalid params" error
+            if (bodyObj.method === 'eth_createAccessList') {
+              console.log('🚫 [FETCH] BLOCKING eth_createAccessList - returning empty access list');
+              // Return a mock response with empty access list instead of making the RPC call
+              return new Response(JSON.stringify({
+                jsonrpc: '2.0',
+                id: bodyObj.id || 1,
+                result: { accessList: [], gasUsed: '0x0' }
+              }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+          } catch (e) {
+            // If parsing fails, continue with original request
+            console.log('❌ Failed to parse fetch body:', e, options?.body);
+          }
+        }
+      }
+      
+      // For all other requests, use original fetch
+      return originalFetch.apply(this, args);
+    };
+    
+    // Intercept XMLHttpRequest (some libraries use this instead of fetch)
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+    
+    XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
+      (this as any)._url = url;
+      (this as any)._method = method;
+      return originalXHROpen.call(this, method, url, async ?? true, username, password);
+    };
+    
+    XMLHttpRequest.prototype.send = function(body?: any) {
+      const url = (this as any)._url;
+      const method = (this as any)._method;
+      
+      // Convert URL to string for checking
+      const urlString = typeof url === 'string' ? url : url instanceof URL ? url.href : String(url);
+      
+      // Check if this is an RPC call
+      if ((urlString.includes('alchemy.com') || urlString.includes('base.org') || urlString.includes('base-mainnet.g.alchemy.com')) 
+          && method === 'POST' && body) {
+        try {
+          const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+          const bodyObj = typeof body === 'string' ? JSON.parse(body) : body;
+          
+          // Fix eth_createAccessList - convert to: "" to to: null (per Alchemy docs)
+          if (bodyObj.method === 'eth_createAccessList' && bodyObj.params?.[0]) {
+            const txParams = bodyObj.params[0];
+            if (txParams.to === '') {
+              console.log('🔧 [XHR] Fixing eth_createAccessList - to: "" -> to: null');
+              txParams.to = null; // Convert empty string to null (per Alchemy docs)
+              body = JSON.stringify(bodyObj);
+              console.log('✅ [XHR] Fixed body:', body);
+            } else if (txParams.to === undefined) {
+              // If to is undefined, set it to null
+              console.log('🔧 [XHR] Fixing eth_createAccessList - to: undefined -> to: null');
+              txParams.to = null;
+              body = JSON.stringify(bodyObj);
+              console.log('✅ [XHR] Fixed body:', body);
+            }
+          }
+        } catch (e) {
+          console.log('❌ Failed to parse XHR body:', e, body);
+        }
+      }
+      
+      return originalXHRSend.apply(this, [body]);
+    };
+    
+    console.log('✅ Network interceptors installed (fetch + XHR)');
+    
+    // Cleanup on unmount
+    return () => {
+      window.fetch = originalFetch;
+      XMLHttpRequest.prototype.open = originalXHROpen;
+      XMLHttpRequest.prototype.send = originalXHRSend;
+    };
+  }, []);
 
   // Load deployed contracts, achievements, and referral code from localStorage
   useEffect(() => {
@@ -421,46 +590,50 @@ function ContractDeployer() {
             // Intercept the request method - this is where all RPC calls go through
             if (prop === 'request') {
               return async (args: { method: string; params?: any[] }) => {
+                console.log('🔍 [PROXY] Intercepted request:', args.method, args.params);
+                
+                // BLOCK eth_createAccessList entirely - return empty access list immediately
+                // This prevents the wallet from making the problematic RPC call
+                if (args.method === 'eth_createAccessList') {
+                  console.log('🚫 [PROXY] Blocking eth_createAccessList - returning empty access list');
+                  return { accessList: [], gasUsed: '0x0' };
+                }
+                
                 // Deep clone params to avoid mutating the original
                 const fixedArgs = JSON.parse(JSON.stringify(args));
                 
-                // Fix eth_createAccessList - remove 'to' field if it's empty string
-                if (fixedArgs.method === 'eth_createAccessList' && fixedArgs.params?.[0]) {
-                  const txParams = fixedArgs.params[0];
-                  if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
-                    delete txParams.to; // Remove entirely
-                  }
-                  // Also fix in the second param if it exists
-                  if (fixedArgs.params[1] && typeof fixedArgs.params[1] === 'object') {
-                    const blockParam = fixedArgs.params[1];
-                    if (blockParam.to === '' || blockParam.to === null) {
-                      delete blockParam.to;
-                    }
-                  }
-                  
-                  // Try to call with fixed params, but if it fails, return empty access list
-                  try {
-                    return await target.request(fixedArgs);
-                  } catch (err: any) {
-                    // If access list creation fails (common for contract creation), return empty
-                    console.warn('eth_createAccessList failed, continuing without access list:', err);
-                    return { accessList: [], gasUsed: '0x0' };
-                  }
-                }
-                
-                // Fix eth_sendTransaction - remove 'to' if empty string
+                // Fix eth_sendTransaction - ensure to is null (not empty string) for contract creation
                 if (fixedArgs.method === 'eth_sendTransaction' && fixedArgs.params?.[0]) {
                   const txParams = fixedArgs.params[0];
-                  if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
-                    delete txParams.to; // Remove entirely
+                  console.log('🔍 [PROXY] eth_sendTransaction params before fix:', JSON.stringify(txParams, null, 2));
+                  
+                  // If this is a contract creation (no 'to' or 'to' is empty string), remove 'to' entirely
+                  // Omit 'to' field completely for contract creation
+                  if (txParams.to === '' || txParams.to === undefined || txParams.to === null) {
+                    console.log('🔧 [PROXY] Fixing eth_sendTransaction - removing to field for contract creation');
+                    delete txParams.to; // Remove 'to' entirely for contract creation
                   }
+                  
+                  // Ensure accessList is present (empty array) to prevent wallet from calculating it
+                  if (!txParams.accessList) {
+                    txParams.accessList = [];
+                  }
+                  
+                  // Ensure type is set for EIP-1559
+                  if (!txParams.type) {
+                    txParams.type = '0x2';
+                  }
+                  
+                  console.log('✅ [PROXY] eth_sendTransaction params after fix:', JSON.stringify(txParams, null, 2));
                 }
                 
-                // Fix eth_estimateGas - remove 'to' if empty string
+                // Fix eth_estimateGas - remove 'to' field if empty string or null
                 if (fixedArgs.method === 'eth_estimateGas' && fixedArgs.params?.[0]) {
                   const txParams = fixedArgs.params[0];
-                  if (txParams.to === '' || txParams.to === null || txParams.to === undefined) {
-                    delete txParams.to; // Remove entirely
+                  // If to is empty string, undefined, or null, remove it entirely
+                  if (txParams.to === '' || txParams.to === undefined || txParams.to === null) {
+                    console.log('🔧 [PROXY] Fixing eth_estimateGas - removing to field for contract creation');
+                    delete txParams.to;
                   }
                 }
                 
@@ -658,6 +831,36 @@ function ContractDeployer() {
     return '';
   };
 
+  // Helper function to create transaction params for contract creation
+  // Explicitly sets to: null to prevent JavaScript coercion issues
+  // This must be called BEFORE any simulation calls (eth_estimateGas, eth_createAccessList)
+  // The transaction object is constructed with to: null from the start to prevent
+  // the SDK from adding to: "" during internal validation/simulation
+  const createContractCreationTxParams = (
+    from: string,
+    data: string,
+    gas?: string,
+    value: string = '0x0'
+  ): any => {
+    // Create transaction object with to: null explicitly set FIRST
+    // This ensures the SDK sees to: null from the beginning and doesn't coerce it
+    const txParams: any = {
+      from: from as `0x${string}`,
+      to: null, // CRITICAL: Set to null FIRST before any other properties
+      data: data as `0x${string}`,
+      value: value
+    };
+    
+    // Add gas if provided
+    if (gas) {
+      txParams.gas = gas;
+    }
+    
+    // Return a new object to prevent any mutations
+    // This ensures to: null is preserved through the call chain
+    return { ...txParams };
+  };
+
   const deployContract = async () => {
     if (!account) {
       setError('Please connect your wallet first');
@@ -712,36 +915,51 @@ function ContractDeployer() {
         }
       }
 
-      // For Farcaster wallet, skip gas estimation to avoid eth_createAccessList call
-      // The wallet SDK calls eth_createAccessList during gas estimation and adds "to": ""
+      // Encode the factory function call
+      // deployContractWithParams(bytes memory bytecode)
+      const factoryCallData = encodeFunctionData({
+        abi: FACTORY_ABI,
+        functionName: 'deployContractWithParams',
+        args: [deploymentData as `0x${string}`]
+      });
+
+      // Gas estimation for factory call
       let gasEstimate: string;
       if (walletType === 'farcaster') {
-        // Use safe default for Farcaster wallet - skip gas estimation
-        gasEstimate = '0x200000'; // 2M gas should be enough for simple contracts
+        // Use safe default gas limit for factory call
+        gasEstimate = '0x300000'; // 3M gas should be enough for factory deployment
       } else {
         try {
+          const estimateParams = {
+            from: account,
+            to: FACTORY_CONTRACT_ADDRESS,
+            data: factoryCallData,
+            value: '0x0'
+          };
+          
           const estimatedGas = await provider.request({
             method: 'eth_estimateGas',
-            params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
+            params: [estimateParams]
           });
           const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
           gasEstimate = '0x' + gasWithBuffer.toString(16);
         } catch (err) {
-          gasEstimate = '0x200000';
+          gasEstimate = '0x300000';
         }
       }
       
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, explicitly set 'to' to null
-      // This prevents wallet providers from adding 'to: ""' during validation
+      // Call factory contract to deploy - this is a regular transaction, not contract creation
       const txParams: any = {
         from: account as `0x${string}`,
-        to: null, // Explicitly null for contract creation
-        data: deploymentData as `0x${string}`,
+        to: FACTORY_CONTRACT_ADDRESS, // Factory contract address
+        data: factoryCallData as `0x${string}`,
         gas: gasEstimate,
-        value: '0x0'
+        value: '0x0',
+        accessList: [],
+        type: '0x2'
       };
       
       if (isCoinbaseWallet) {
@@ -776,13 +994,56 @@ function ContractDeployer() {
 
       if (receipt) {
         const status = receipt.status;
-        const contractAddress = receipt.contractAddress;
         
         // Check for successful status (handle both hex string and number formats)
         const isSuccess = status === '0x1' || status === '0x01' || status === 1 || status === true;
         const isFailed = status === '0x0' || status === '0x00' || status === 0 || status === false;
         
         if (isSuccess) {
+          // Extract deployed contract address from event logs
+          let contractAddress: string | null = null;
+          
+          // Look for ContractDeployed event in logs
+          if (receipt.logs && receipt.logs.length > 0) {
+            for (const log of receipt.logs) {
+              try {
+                // Decode the event (topic[0] is the event signature)
+                // ContractDeployed(address indexed deployedAddress, address indexed deployer, bytes32 indexed salt)
+                const eventSignature = '0x41a1a1e5033fb48fa68ae6842ead9050d540ddf76974d1cee54faf540d1f49e6';
+                if (log.topics && log.topics[0] === eventSignature) {
+                  // deployedAddress is in topics[1] (first indexed parameter)
+                  contractAddress = '0x' + log.topics[1].slice(-40);
+                  break;
+                }
+              } catch (e) {
+                console.error('Error decoding event log:', e);
+              }
+            }
+          }
+          
+          // Fallback: try to decode using viem
+          if (!contractAddress) {
+            try {
+              for (const log of receipt.logs || []) {
+                try {
+                  const decoded = decodeEventLog({
+                    abi: FACTORY_ABI,
+                    data: log.data,
+                    topics: log.topics
+                  });
+                  if (decoded.eventName === 'ContractDeployed') {
+                    contractAddress = (decoded.args as any).deployedAddress;
+                    break;
+                  }
+                } catch (e) {
+                  // Not our event, continue
+                }
+              }
+            } catch (e) {
+              console.error('Error decoding with viem:', e);
+            }
+          }
+          
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
             
