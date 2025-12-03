@@ -19,7 +19,13 @@ import {
   Box,
   Share2,
   User,
-  Plus
+  Plus,
+  Sparkles,
+  Trophy,
+  Crown,
+  Rocket,
+  Gem,
+  Star
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
@@ -166,6 +172,8 @@ function ContractDeployer() {
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [isAppAdded, setIsAppAdded] = useState(false);
+  const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
+  const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -187,10 +195,17 @@ function ContractDeployer() {
         // Try to load from backend first
         const response = await fetch(`/api/user-data?wallet=${account}`);
         let backendContracts: DeployedContract[] = [];
+        let backendAchievements: Achievement[] = [];
         
         if (response.ok) {
           const data = await response.json();
           backendContracts = data.contracts || [];
+          backendAchievements = data.achievements || [];
+          
+          // Load achievements from backend if available
+          if (backendAchievements.length > 0) {
+            setAchievements(backendAchievements);
+          }
         }
 
         // Load from localStorage
@@ -224,6 +239,22 @@ function ContractDeployer() {
         const mergedContracts = Array.from(contractMap.values());
         setDeployedContracts(mergedContracts);
         
+        // Load achievements from localStorage if backend doesn't have them
+        if (backendAchievements.length === 0) {
+          const achievementsStored = localStorage.getItem(ACHIEVEMENTS_KEY);
+          if (achievementsStored) {
+            try {
+              const localAchievements = JSON.parse(achievementsStored);
+              setAchievements(localAchievements);
+            } catch (e) {
+              console.error('Failed to parse stored achievements:', e);
+            }
+          }
+        }
+        
+        // Check achievements based on contract count
+        checkAchievements(mergedContracts.length, false);
+        
         // If localStorage has contracts but backend doesn't, migrate them
         if (localContracts.length > 0 && backendContracts.length === 0) {
           console.log('Migrating localStorage contracts to backend...');
@@ -233,28 +264,30 @@ function ContractDeployer() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 walletAddress: account,
-                contracts: mergedContracts
+                contracts: mergedContracts,
+                achievements: achievements
               })
             });
             console.log('✅ Contracts migrated to backend successfully');
           } catch (err) {
             console.error('Failed to migrate contracts to backend:', err);
           }
-        } else if (mergedContracts.length > backendContracts.length) {
+        } else if (mergedContracts.length > backendContracts.length || achievements.length > 0) {
           // If merged has more than backend, sync to backend
-          console.log('Syncing contracts to backend...');
+          console.log('Syncing contracts and achievements to backend...');
           try {
             await fetch('/api/user-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 walletAddress: account,
-                contracts: mergedContracts
+                contracts: mergedContracts,
+                achievements: achievements
               })
             });
-            console.log('✅ Contracts synced to backend');
+            console.log('✅ Data synced to backend');
           } catch (err) {
-            console.error('Failed to sync contracts to backend:', err);
+            console.error('Failed to sync data to backend:', err);
           }
         }
         
@@ -287,6 +320,75 @@ function ContractDeployer() {
     }
   }, [account]);
 
+  // Check and unlock achievements (only show popup for newly unlocked)
+  const checkAchievements = (count: number, showPopup: boolean = true) => {
+    try {
+      setAchievements(currentAchievements => {
+        const updated = currentAchievements.map(achievement => {
+          if (!achievement.unlocked && count >= achievement.milestone) {
+            return {
+              ...achievement,
+              unlocked: true,
+              unlockedAt: Date.now()
+            };
+          }
+          return achievement;
+        });
+        
+        // Only show popup if this is a new unlock (not on page load)
+        if (showPopup) {
+          const newlyUnlocked = updated.find(a => 
+            a.unlocked && 
+            !currentAchievements.find(oldA => oldA.id === a.id && oldA.unlocked)
+          );
+          
+          if (newlyUnlocked) {
+            // Use setTimeout to ensure state is updated
+            setTimeout(() => {
+              setNewAchievement(newlyUnlocked);
+              // Auto-hide after 1.5 seconds with fade out
+              setTimeout(() => {
+                setNewAchievement(null);
+              }, 1500);
+            }, 100);
+          }
+        }
+        
+        // Save to localStorage (fallback)
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.error('Failed to save achievements to localStorage:', e);
+          }
+        }
+        
+        // Save to backend if account is available
+        if (account) {
+          setTimeout(async () => {
+            try {
+              await fetch('/api/user-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  walletAddress: account,
+                  contracts: deployedContracts,
+                  achievements: updated
+                })
+              });
+            } catch (err) {
+              console.error('Failed to save achievements to backend:', err);
+            }
+          }, 200);
+        }
+        
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error checking achievements:', error);
+    }
+  };
+
   // Toggle show history and save to localStorage
   const toggleShowHistory = () => {
     const newValue = !showHistory;
@@ -306,22 +408,28 @@ function ContractDeployer() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
     
+    // Check for new achievements
+    checkAchievements(updated.length);
+    
     // Save to backend if account is available
     if (account) {
-      try {
-        await fetch('/api/user-data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            walletAddress: account,
-            contracts: updated
-          })
-        });
-        console.log('✅ Contract saved to backend');
-      } catch (err) {
-        console.error('Failed to save contract to backend:', err);
-        // Don't fail the operation - localStorage is the fallback
-      }
+      setTimeout(async () => {
+        try {
+          await fetch('/api/user-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress: account,
+              contracts: updated,
+              achievements: achievements
+            })
+          });
+          console.log('✅ Contract saved to backend');
+        } catch (err) {
+          console.error('Failed to save contract to backend:', err);
+          // Don't fail the operation - localStorage is the fallback
+        }
+      }, 300);
     }
   };
 
@@ -1173,7 +1281,7 @@ function ContractDeployer() {
                   <p className="text-[var(--graphite)] text-sm">No contracts deployed yet</p>
                 </div>
               ) : (
-                <div className="divide-y-2 divide-[var(--light)]">
+                <div className={`divide-y-2 divide-[var(--light)] ${deployedContracts.length > 5 ? 'max-h-[400px] overflow-y-auto' : ''}`}>
                   {deployedContracts.map((contract, index) => {
                     const template = CONTRACT_TEMPLATES[contract.contractType as keyof typeof CONTRACT_TEMPLATES];
                     const Icon = template?.icon || FileCode2;
@@ -1243,6 +1351,90 @@ function ContractDeployer() {
             </div>
           )}
         </div>
+
+        {/* Stats & Achievements Section */}
+        <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
+              Your Stats & Achievements
+            </h3>
+          </div>
+          
+          {/* Stats Row */}
+          <div className="mb-4 pb-4 border-b-2 border-[var(--light)]">
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="text-2xl font-bold text-[var(--ink)]">
+                  {deployedContracts.length}
+                </div>
+                <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Achievements Grid */}
+          <div>
+            <h4 className="font-bold text-[var(--ink)] text-xs uppercase tracking-wider mb-3">
+              Achievements
+            </h4>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {ACHIEVEMENTS.map((achievement, index) => {
+                const Icon = achievement.icon;
+                const isUnlocked = achievements.find(a => a.id === achievement.id)?.unlocked || false;
+                return (
+                  <div
+                    key={achievement.id}
+                    className={`flex flex-col items-center p-3 border-2 animate-slide-in stagger-${Math.min(index + 1, 3)} ${
+                      isUnlocked 
+                        ? 'border-[var(--ink)] bg-[var(--paper)]' 
+                        : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
+                    }`}
+                    title={isUnlocked ? `${achievement.name}: ${achievement.description}` : `Locked: ${achievement.description}`}
+                  >
+                    <Icon 
+                      className={`w-6 h-6 mb-2 ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`} 
+                      strokeWidth={2} 
+                    />
+                    <div className={`text-xs text-center font-semibold ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                      {achievement.milestone}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {achievements.filter(a => !a.unlocked).length > 0 && (
+              <div className="text-xs text-[var(--graphite)] mt-3 text-center">
+                Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Achievement Celebration Modal */}
+        {newAchievement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 pointer-events-none">
+            <div className="bg-[var(--paper)] border-2 border-[var(--ink)] p-6 max-w-xs w-full text-center animate-fade-in">
+              {(() => {
+                try {
+                  const Icon = newAchievement.icon;
+                  if (Icon && typeof Icon === 'function') {
+                    return <Icon className="w-12 h-12 mx-auto mb-3 text-[var(--ink)]" strokeWidth={2} />;
+                  }
+                  return <div className="w-12 h-12 mx-auto mb-3 text-[var(--ink)] text-2xl">✓</div>;
+                } catch (error) {
+                  console.error('Error rendering achievement icon:', error);
+                  return <div className="w-12 h-12 mx-auto mb-3 text-[var(--ink)] text-2xl">✓</div>;
+                }
+              })()}
+              <h3 className="text-lg font-bold text-[var(--ink)] mb-1">
+                {newAchievement?.name || 'Achievement Unlocked'}
+              </h3>
+              <p className="text-sm text-[var(--graphite)]">
+                {newAchievement?.description || ''}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="mt-8 text-center">

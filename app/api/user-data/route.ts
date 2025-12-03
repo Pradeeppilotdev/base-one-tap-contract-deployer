@@ -10,6 +10,7 @@ const getUserDataPath = (walletAddress: string) =>
 
 interface UserData {
   contracts: any[];
+  achievements: any[];
   lastUpdated: number;
 }
 
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       // Return empty data if user doesn't exist yet
       return NextResponse.json({
         contracts: [],
+        achievements: [],
         lastUpdated: Date.now()
       });
     }
@@ -57,11 +59,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Save user data (contracts)
+// POST - Save user data (contracts and achievements)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { walletAddress, contracts } = body;
+    const { walletAddress, contracts, achievements } = body;
     
     if (!walletAddress) {
       return NextResponse.json(
@@ -77,15 +79,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (achievements !== undefined && !Array.isArray(achievements)) {
+      return NextResponse.json(
+        { error: 'Achievements must be an array' },
+        { status: 400 }
+      );
+    }
+
     await ensureDataDir();
     const filePath = getUserDataPath(walletAddress);
     
     // Read existing data to merge (if any)
     let existingContracts: any[] = [];
+    let existingAchievements: any[] = [];
     if (existsSync(filePath)) {
       try {
         const existingData = JSON.parse(await readFile(filePath, 'utf-8'));
         existingContracts = existingData.contracts || [];
+        existingAchievements = existingData.achievements || [];
       } catch (e) {
         // If file is corrupted, start fresh
         console.warn('Failed to read existing data, starting fresh:', e);
@@ -112,8 +123,12 @@ export async function POST(request: NextRequest) {
     // Convert back to array
     const mergedContracts = Array.from(contractMap.values());
     
+    // Merge achievements: use provided achievements or keep existing
+    const mergedAchievements = achievements !== undefined ? achievements : existingAchievements;
+    
     const userData: UserData = {
       contracts: mergedContracts,
+      achievements: mergedAchievements,
       lastUpdated: Date.now()
     };
 
