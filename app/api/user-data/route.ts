@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, readFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-
-// Simple file-based storage (can be replaced with a database later)
-const DATA_DIR = path.join(process.cwd(), 'data');
-const getUserDataPath = (walletAddress: string) => 
-  path.join(DATA_DIR, `${walletAddress.toLowerCase()}.json`);
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface UserData {
   contracts: any[];
@@ -14,12 +8,9 @@ interface UserData {
   lastUpdated: number;
 }
 
-// Ensure data directory exists
-async function ensureDataDir() {
-  if (!existsSync(DATA_DIR)) {
-    await mkdir(DATA_DIR, { recursive: true });
-  }
-}
+// Get user data document reference
+const getUserDataRef = (walletAddress: string) => 
+  doc(db, 'users', walletAddress.toLowerCase());
 
 // GET - Fetch user data by wallet address
 export async function GET(request: NextRequest) {
@@ -34,22 +25,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await ensureDataDir();
-    const filePath = getUserDataPath(walletAddress);
-    
-    if (!existsSync(filePath)) {
-      // Return empty data if user doesn't exist yet
-      return NextResponse.json({
-        contracts: [],
-        achievements: [],
-        lastUpdated: Date.now()
-      });
+    try {
+      const userDocRef = getUserDataRef(walletAddress);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        // Return empty data if user doesn't exist yet
+        return NextResponse.json({
+          contracts: [],
+          achievements: [],
+          lastUpdated: Date.now()
+        });
+      }
+      
+      const userData = userDocSnap.data() as UserData;
+      return NextResponse.json(userData);
+    } catch (firestoreError: any) {
+      console.error('Firestore error:', firestoreError);
+      return NextResponse.json(
+        { 
+          error: 'Database error',
+          details: firestoreError.message 
+        },
+        { status: 500 }
+      );
     }
-
-    const fileContent = await readFile(filePath, 'utf-8');
-    const userData: UserData = JSON.parse(fileContent);
-    
-    return NextResponse.json(userData);
   } catch (error: any) {
     console.error('Error fetching user data:', error);
     return NextResponse.json(
@@ -86,59 +86,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await ensureDataDir();
-    const filePath = getUserDataPath(walletAddress);
-    
-    // Read existing data to merge (if any)
-    let existingContracts: any[] = [];
-    let existingAchievements: any[] = [];
-    if (existsSync(filePath)) {
-      try {
-        const existingData = JSON.parse(await readFile(filePath, 'utf-8'));
+    try {
+      const userDocRef = getUserDataRef(walletAddress);
+      
+      // Read existing data from Firestore
+      const userDocSnap = await getDoc(userDocRef);
+      let existingContracts: any[] = [];
+      let existingAchievements: any[] = [];
+      
+      if (userDocSnap.exists()) {
+        const existingData = userDocSnap.data() as UserData;
         existingContracts = existingData.contracts || [];
         existingAchievements = existingData.achievements || [];
-      } catch (e) {
-        // If file is corrupted, start fresh
-        console.warn('Failed to read existing data, starting fresh:', e);
       }
-    }
-    
-    // Merge contracts: combine existing and new, remove duplicates by address
-    const contractMap = new Map<string, any>();
-    
-    // Add existing contracts first
-    existingContracts.forEach(contract => {
-      if (contract.address) {
-        contractMap.set(contract.address.toLowerCase(), contract);
-      }
-    });
-    
-    // Add/update with new contracts
-    contracts.forEach(contract => {
-      if (contract.address) {
-        contractMap.set(contract.address.toLowerCase(), contract);
-      }
-    });
-    
-    // Convert back to array
-    const mergedContracts = Array.from(contractMap.values());
-    
-    // Merge achievements: use provided achievements or keep existing
-    const mergedAchievements = achievements !== undefined ? achievements : existingAchievements;
-    
-    const userData: UserData = {
-      contracts: mergedContracts,
-      achievements: mergedAchievements,
-      lastUpdated: Date.now()
-    };
+      
+      // Merge contracts: combine existing and new, remove duplicates by address
+      const contractMap = new Map<string, any>();
+      
+      // Add existing contracts first
+      existingContracts.forEach(contract => {
+        if (contract.address) {
+          contractMap.set(contract.address.toLowerCase(), contract);
+        }
+      });
+      
+      // Add/update with new contracts
+      contracts.forEach(contract => {
+        if (contract.address) {
+          contractMap.set(contract.address.toLowerCase(), contract);
+        }
+      });
+      
+      // Convert back to array
+      const mergedContracts = Array.from(contractMap.values());
+      
+      // Merge achievements: use provided achievements or keep existing
+      const mergedAchievements = achievements !== undefined ? achievements : existingAchievements;
+      
+      const userData: UserData = {
+        contracts: mergedContracts,
+        achievements: mergedAchievements,
+        lastUpdated: Date.now()
+      };
 
-    await writeFile(filePath, JSON.stringify(userData, null, 2), 'utf-8');
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Data saved successfully',
-      contractCount: mergedContracts.length
-    });
+      // Save to Firestore (merge: true to preserve other fields if any)
+      await setDoc(userDocRef, userData, { merge: true });
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Data saved successfully',
+        contractCount: mergedContracts.length
+      });
+    } catch (firestoreError: any) {
+      console.error('Firestore error:', firestoreError);
+      return NextResponse.json(
+        { 
+          error: 'Database error',
+          details: firestoreError.message 
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
     console.error('Error saving user data:', error);
     return NextResponse.json(
@@ -147,4 +155,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
