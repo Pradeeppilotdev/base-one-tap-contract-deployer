@@ -154,6 +154,27 @@ const CONTRACT_TEMPLATES = {
 
 const STORAGE_KEY = 'base-deployer-contracts';
 const SHOW_HISTORY_KEY = 'base-deployer-show-history';
+const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
+
+// Achievement system
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  milestone: number;
+  unlocked: boolean;
+  unlockedAt?: number;
+}
+
+const ACHIEVEMENTS: Achievement[] = [
+  { id: 'first', name: 'First Deploy', description: 'Deploy your first contract', icon: Sparkles, milestone: 1, unlocked: false },
+  { id: 'five', name: 'Power User', description: 'Deploy 5 contracts', icon: Zap, milestone: 5, unlocked: false },
+  { id: 'ten', name: 'Contract Master', description: 'Deploy 10 contracts', icon: Trophy, milestone: 10, unlocked: false },
+  { id: 'twenty', name: 'Deployment Legend', description: 'Deploy 20 contracts', icon: Crown, milestone: 20, unlocked: false },
+  { id: 'fifty', name: 'Base Builder', description: 'Deploy 50 contracts', icon: Rocket, milestone: 50, unlocked: false },
+  { id: 'hundred', name: 'Contract Deity', description: 'Deploy 100 contracts', icon: Gem, milestone: 100, unlocked: false },
+];
 
 function ContractDeployer() {
   const [account, setAccount] = useState<string | null>(null);
@@ -1059,39 +1080,58 @@ function ContractDeployer() {
                   Use External Wallet
                 </button>
               </div>
-            ) : (
-              <div className="p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-[var(--ink)] rounded-full pulse-ring" />
-                    <div>
-                      <span className="font-mono text-sm font-semibold text-[var(--ink)]">
-                        {account.slice(0, 6)}...{account.slice(-4)}
-                      </span>
-                      <span className="text-xs text-[var(--graphite)] ml-2">
-                        ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
-                      </span>
+              ) : (
+                <div className="p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-3 h-3 bg-[var(--ink)] rounded-full pulse-ring flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <a
+                            href={`https://basescan.org/address/${account}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-sm font-semibold text-[var(--ink)] whitespace-nowrap hover:underline cursor-pointer"
+                            title="View on BaseScan"
+                          >
+                            {account.slice(0, 6)}...{account.slice(-4)}
+                          </a>
+                          <button
+                            onClick={() => copyToClipboard(account)}
+                            className="p-1 hover:bg-[var(--light)] transition-colors flex-shrink-0"
+                            title="Copy address"
+                          >
+                            {copiedAddress === account ? (
+                              <CheckCircle2 className="w-3 h-3 text-[var(--ink)]" strokeWidth={2} />
+                            ) : (
+                              <Copy className="w-3 h-3 text-[var(--graphite)]" strokeWidth={2} />
+                            )}
+                          </button>
+                          <span className="text-xs text-[var(--graphite)] whitespace-nowrap">
+                            ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {chainId !== '0x2105' && (
+                        <button
+                          onClick={switchToBase}
+                          className="ink-button-outline px-3 py-1.5 text-xs whitespace-nowrap"
+                        >
+                          Switch to Base
+                        </button>
+                      )}
+                      <button
+                        onClick={disconnectWallet}
+                        className="px-3 py-1.5 text-xs text-[var(--graphite)] hover:text-[var(--ink)] transition-colors whitespace-nowrap"
+                      >
+                        Disconnect
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {chainId !== '0x2105' && (
-                      <button
-                        onClick={switchToBase}
-                        className="ink-button-outline px-3 py-1.5 text-xs"
-                      >
-                        Switch to Base
-                      </button>
-                    )}
-                    <button
-                      onClick={disconnectWallet}
-                      className="px-3 py-1.5 text-xs text-[var(--graphite)] hover:text-[var(--ink)] transition-colors"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* Contract Selection */}
