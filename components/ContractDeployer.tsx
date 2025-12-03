@@ -10,7 +10,6 @@ import {
   Wallet,
   ExternalLink,
   Copy,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Zap,
@@ -155,6 +154,7 @@ const CONTRACT_TEMPLATES = {
 const STORAGE_KEY = 'base-deployer-contracts';
 const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
+const REFERRAL_KEY = 'base-deployer-referral';
 
 // Achievement system
 interface Achievement {
@@ -195,6 +195,9 @@ function ContractDeployer() {
   const [isAppAdded, setIsAppAdded] = useState(false);
   const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralPoints, setReferralPoints] = useState<number>(0);
+  const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -360,8 +363,67 @@ function ContractDeployer() {
       if (showHistoryStored !== null) {
         setShowHistory(showHistoryStored === 'true');
       }
+      
+      // Load referral code
+      const referralStored = localStorage.getItem(REFERRAL_KEY);
+      if (referralStored) {
+        setReferralCode(referralStored);
+      }
+      
+      // Check for pending referral (will be tracked in separate useEffect)
+      const pendingReferral = localStorage.getItem('pending-referral');
+      if (pendingReferral && account && farcasterUser) {
+        // Will be processed by useEffect below
+      }
     }
-  }, [account]);
+  }, [account, farcasterUser]);
+
+  // Track referral and give points
+  const trackReferral = async (referrerFid: string, newUserFid: string) => {
+    if (!account) return;
+    
+    try {
+      // Call API to track referral
+      const response = await fetch('/api/track-referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referrerFid,
+          newUserFid,
+          walletAddress: account
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Give points to new user
+        setReferralPoints(data.newUserPoints || 10);
+        setError('🎉 You got 10 referral points!');
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to track referral:', err);
+    }
+  };
+
+  // Track pending referrals when account and user are available
+  useEffect(() => {
+    if (!account || !farcasterUser) return;
+    
+    const pendingReferral = localStorage.getItem('pending-referral');
+    if (pendingReferral) {
+      try {
+        const referral = JSON.parse(pendingReferral);
+        if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
+          trackReferral(referral.referrerFid, referral.newUserFid);
+          localStorage.removeItem('pending-referral');
+        }
+      } catch (e) {
+        console.error('Failed to parse pending referral:', e);
+      }
+    }
+  }, [account, farcasterUser]);
 
   // Check and unlock achievements (only show popup for newly unlocked)
   const checkAchievements = (count: number, showPopup: boolean = true) => {
@@ -512,44 +574,102 @@ function ContractDeployer() {
     }
   };
 
-  const removeContract = async (address: string) => {
-    const updated = deployedContracts.filter(c => c.address !== address);
-    setDeployedContracts(updated);
+  // Contract source code mapping for verification
+  const CONTRACT_SOURCE_CODE: Record<string, string> = {
+    counter: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract Counter {
+    uint256 public count;
     
-    // Update localStorage immediately
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    function increment() public {
+        count++;
+    }
+}`,
+    string: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract StringStorage {
+    string public value;
+    
+    constructor(string memory _value) {
+        value = _value;
+    }
+}`,
+    calculator: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract Calculator {
+    uint256 public result;
+    
+    constructor(uint256 _initial) {
+        result = _initial;
     }
     
-    // Update backend if account is available
-    if (account) {
-      try {
-        const response = await fetch('/api/user-data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            walletAddress: account,
-            contracts: updated,
-            achievements: achievements
-          })
-        });
-        
-        if (response.ok) {
-          console.log('✅ Contract removed from backend');
-          // Reload from backend to ensure consistency
-          const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
-          if (reloadResponse.ok) {
-            const reloadData = await reloadResponse.json();
-            if (reloadData.contracts) {
-              setDeployedContracts(reloadData.contracts);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Failed to remove contract from backend:', err);
-        // Don't fail the operation - localStorage is the fallback
+    function add(uint256 a, uint256 b) public pure returns (uint256) {
+        return a + b;
+    }
+    
+    function subtract(uint256 a, uint256 b) public pure returns (uint256) {
+        return a - b;
+    }
+    
+    function multiply(uint256 a, uint256 b) public pure returns (uint256) {
+        return a * b;
+    }
+}`
+  };
+
+  // Verify contract on BaseScan (automatic with API key, fallback to manual)
+  const verifyContractOnBaseScan = async (contractAddress: string, contractType: string, constructorArgs?: string) => {
+    setVerifyingContract(contractAddress);
+    try {
+      const response = await fetch('/api/verify-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractAddress,
+          contractType,
+          sourceCode: CONTRACT_SOURCE_CODE[contractType],
+          constructorArgs
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setError('✅ Contract verification submitted! Check BaseScan in a few minutes.');
+        setTimeout(() => setError(null), 5000);
+      } else {
+        // If automatic verification fails, show manual option
+        openManualVerification(contractAddress, contractType, constructorArgs);
       }
+    } catch (err: any) {
+      console.error('Verification error:', err);
+      // If automatic verification fails, show manual option
+      openManualVerification(contractAddress, contractType, constructorArgs);
+    } finally {
+      setVerifyingContract(null);
     }
+  };
+
+  // Open manual verification page on BaseScan
+  const openManualVerification = (contractAddress: string, contractType: string, constructorArgs?: string) => {
+    const sourceCode = CONTRACT_SOURCE_CODE[contractType];
+    
+    // Copy source code to clipboard
+    navigator.clipboard.writeText(sourceCode).then(() => {
+      // Open BaseScan verification page
+      window.open(`https://basescan.org/address/${contractAddress}#code`, '_blank');
+      
+      setError('📋 Source code copied! Paste it on BaseScan verification page.');
+      setTimeout(() => setError(null), 5000);
+    }).catch(() => {
+      // If clipboard fails, just open the page
+      window.open(`https://basescan.org/address/${contractAddress}#code`, '_blank');
+      setError('Open BaseScan and paste the contract source code manually.');
+      setTimeout(() => setError(null), 5000);
+    });
   };
 
   const copyToClipboard = async (text: string) => {
@@ -570,13 +690,39 @@ function ContractDeployer() {
         
         if (context?.user) {
           setIsInFarcaster(true);
-          setFarcasterUser({
+          const user = {
             fid: context.user.fid,
             username: context.user.username,
             displayName: context.user.displayName,
             pfpUrl: context.user.pfpUrl
-          });
+          };
+          setFarcasterUser(user);
           console.log('Farcaster user:', context.user);
+          
+          // Generate referral code from FID
+          const refCode = `ref-${user.fid}`;
+          setReferralCode(refCode);
+          
+          // Save referral code to localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(REFERRAL_KEY, refCode);
+            
+            // Check for referral in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const refParam = urlParams.get('ref');
+            
+            // Store referral for later tracking (when account is available)
+            if (refParam && refParam !== refCode) {
+              const referrerFid = refParam.replace('ref-', '');
+              if (referrerFid && referrerFid !== String(user.fid)) {
+                // Store referral to track when account connects
+                localStorage.setItem('pending-referral', JSON.stringify({
+                  referrerFid,
+                  newUserFid: String(user.fid)
+                }));
+              }
+            }
+          }
         }
         
         // Check if app is already added
@@ -1435,6 +1581,25 @@ function ContractDeployer() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => {
+                                const constructorArgs = contract.inputValue 
+                                  ? contract.contractType === 'string' 
+                                    ? contract.inputValue 
+                                    : contract.inputValue
+                                  : undefined;
+                                verifyContractOnBaseScan(contract.address, contract.contractType, constructorArgs);
+                              }}
+                              disabled={verifyingContract === contract.address}
+                              className="p-2 hover:bg-[var(--light)] transition-colors disabled:opacity-50"
+                              title="Verify contract on BaseScan"
+                            >
+                              {verifyingContract === contract.address ? (
+                                <Loader2 className="w-4 h-4 text-[var(--ink)] animate-spin" strokeWidth={2} />
+                              ) : (
+                                <FileCode2 className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                              )}
+                            </button>
                             <a
                               href={`https://basescan.org/address/${contract.address}`}
                               target="_blank"
@@ -1444,13 +1609,6 @@ function ContractDeployer() {
                             >
                               <ExternalLink className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
                             </a>
-                            <button
-                              onClick={() => removeContract(contract.address)}
-                              className="p-2 hover:bg-[var(--light)] transition-colors"
-                              title="Remove from history"
-                            >
-                              <Trash2 className="w-4 h-4 text-[var(--pencil)]" strokeWidth={2} />
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -1468,17 +1626,30 @@ function ContractDeployer() {
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
               Your Stats & Achievements
             </h3>
+            {referralCode && (
+              <div className="text-xs text-[var(--graphite)]">
+                Ref: <span className="font-mono">{referralCode}</span>
+              </div>
+            )}
           </div>
           
           {/* Stats Row */}
           <div className="mb-4 pb-4 border-b-2 border-[var(--light)]">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <div>
                 <div className="text-2xl font-bold text-[var(--ink)]">
                   {deployedContracts.length}
                 </div>
                 <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
               </div>
+              {referralPoints > 0 && (
+                <div>
+                  <div className="text-2xl font-bold text-[var(--ink)]">
+                    {referralPoints}
+                  </div>
+                  <div className="text-xs text-[var(--graphite)]">Referral Points</div>
+                </div>
+              )}
             </div>
           </div>
 

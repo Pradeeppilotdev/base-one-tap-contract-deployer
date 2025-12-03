@@ -46,3 +46,6 @@ contracts-config.json
 
 # user data storage
 /data
+
+# documentation
+README_FIREBASE_SETUP.md
