@@ -258,63 +258,85 @@ function ContractDeployer() {
         });
         
         const mergedContracts = Array.from(contractMap.values());
-        setDeployedContracts(mergedContracts);
         
-        // Load achievements from localStorage if backend doesn't have them
-        if (backendAchievements.length === 0) {
+        // ALWAYS use backend as source of truth if it has data
+        // Only merge local if backend is empty (first time user)
+        let finalContracts: DeployedContract[] = [];
+        if (backendContracts.length > 0) {
+          // Backend has data - use it as source of truth, but merge any missing local contracts
+          finalContracts = mergedContracts;
+        } else if (localContracts.length > 0) {
+          // Backend is empty but local has data - use local and migrate
+          finalContracts = localContracts;
+          console.log('Backend empty, migrating localStorage to backend...');
+        } else {
+          // Both empty
+          finalContracts = [];
+        }
+        
+        setDeployedContracts(finalContracts);
+        
+        // Load achievements - backend takes priority
+        let finalAchievements: Achievement[] = [];
+        if (backendAchievements.length > 0) {
+          finalAchievements = backendAchievements;
+        } else {
+          // Load from localStorage if backend doesn't have them
           const achievementsStored = localStorage.getItem(ACHIEVEMENTS_KEY);
           if (achievementsStored) {
             try {
-              const localAchievements = JSON.parse(achievementsStored);
-              setAchievements(localAchievements);
+              finalAchievements = JSON.parse(achievementsStored);
             } catch (e) {
               console.error('Failed to parse stored achievements:', e);
+              finalAchievements = ACHIEVEMENTS;
+            }
+          } else {
+            finalAchievements = ACHIEVEMENTS;
+          }
+        }
+        setAchievements(finalAchievements);
+        
+        // Check achievements based on contract count (without popup on load)
+        checkAchievements(finalContracts.length, false);
+        
+        // ALWAYS sync to backend to ensure consistency across devices
+        // This ensures both devices have the same data
+        try {
+          const syncResponse = await fetch('/api/user-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress: account,
+              contracts: finalContracts,
+              achievements: finalAchievements
+            })
+          });
+          
+          if (syncResponse.ok) {
+            console.log('✅ Data synced to backend successfully');
+            // After successful sync, reload from backend to get the merged result
+            const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+            if (reloadResponse.ok) {
+              const reloadData = await reloadResponse.json();
+              if (reloadData.contracts && reloadData.contracts.length > 0) {
+                setDeployedContracts(reloadData.contracts);
+              }
+              if (reloadData.achievements && reloadData.achievements.length > 0) {
+                setAchievements(reloadData.achievements);
+                checkAchievements(reloadData.contracts.length, false);
+              }
             }
           }
+        } catch (err) {
+          console.error('Failed to sync data to backend:', err);
         }
         
-        // Check achievements based on contract count
-        checkAchievements(mergedContracts.length, false);
-        
-        // If localStorage has contracts but backend doesn't, migrate them
-        if (localContracts.length > 0 && backendContracts.length === 0) {
-          console.log('Migrating localStorage contracts to backend...');
-          try {
-            await fetch('/api/user-data', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                walletAddress: account,
-                contracts: mergedContracts,
-                achievements: achievements
-              })
-            });
-            console.log('✅ Contracts migrated to backend successfully');
-          } catch (err) {
-            console.error('Failed to migrate contracts to backend:', err);
-          }
-        } else if (mergedContracts.length > backendContracts.length || achievements.length > 0) {
-          // If merged has more than backend, sync to backend
-          console.log('Syncing contracts and achievements to backend...');
-          try {
-            await fetch('/api/user-data', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                walletAddress: account,
-                contracts: mergedContracts,
-                achievements: achievements
-              })
-            });
-            console.log('✅ Data synced to backend');
-          } catch (err) {
-            console.error('Failed to sync data to backend:', err);
-          }
+        // Update localStorage with final data (for offline fallback)
+        if (finalContracts.length > 0) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(finalContracts));
         }
-        
-        // Update localStorage with merged data
-        if (mergedContracts.length > 0) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedContracts));
+        if (finalAchievements.length > 0) {
+          localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(finalAchievements));
         }
       } catch (error) {
         console.error('Error loading contracts:', error);
@@ -388,7 +410,7 @@ function ContractDeployer() {
         if (account) {
           setTimeout(async () => {
             try {
-              await fetch('/api/user-data', {
+              const response = await fetch('/api/user-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -397,6 +419,18 @@ function ContractDeployer() {
                   achievements: updated
                 })
               });
+              
+              if (response.ok) {
+                console.log('✅ Achievements saved to backend');
+                // Reload from backend to ensure consistency
+                const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+                if (reloadResponse.ok) {
+                  const reloadData = await reloadResponse.json();
+                  if (reloadData.achievements) {
+                    setAchievements(reloadData.achievements);
+                  }
+                }
+              }
             } catch (err) {
               console.error('Failed to save achievements to backend:', err);
             }
@@ -429,28 +463,52 @@ function ContractDeployer() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
     
-    // Check for new achievements
+    // Check for new achievements (this will update achievements state)
     checkAchievements(updated.length);
     
-    // Save to backend if account is available
+    // Save to backend immediately (wait for it to complete)
     if (account) {
-      setTimeout(async () => {
-        try {
-          await fetch('/api/user-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              walletAddress: account,
-              contracts: updated,
-              achievements: achievements
-            })
-          });
-          console.log('✅ Contract saved to backend');
-        } catch (err) {
-          console.error('Failed to save contract to backend:', err);
-          // Don't fail the operation - localStorage is the fallback
-        }
-      }, 300);
+      try {
+        // Get current achievements state - we need to wait a bit for checkAchievements to update
+        // So we'll fetch achievements from state after a short delay
+        setTimeout(async () => {
+          try {
+            // Get the latest achievements from state
+            const currentAchievements = achievements;
+            
+            // Save to backend
+            const response = await fetch('/api/user-data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                walletAddress: account,
+                contracts: updated,
+                achievements: currentAchievements
+              })
+            });
+            
+            if (response.ok) {
+              console.log('✅ Contract saved to backend');
+              // Reload from backend to ensure we have the merged data
+              const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+              if (reloadResponse.ok) {
+                const reloadData = await reloadResponse.json();
+                if (reloadData.contracts) {
+                  setDeployedContracts(reloadData.contracts);
+                }
+                if (reloadData.achievements) {
+                  setAchievements(reloadData.achievements);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Failed to save contract to backend:', err);
+            // Don't fail the operation - localStorage is the fallback
+          }
+        }, 500);
+      } catch (err) {
+        console.error('Error in saveContract:', err);
+      }
     }
   };
 
@@ -466,15 +524,27 @@ function ContractDeployer() {
     // Update backend if account is available
     if (account) {
       try {
-        await fetch('/api/user-data', {
+        const response = await fetch('/api/user-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             walletAddress: account,
-            contracts: updated
+            contracts: updated,
+            achievements: achievements
           })
         });
-        console.log('✅ Contract removed from backend');
+        
+        if (response.ok) {
+          console.log('✅ Contract removed from backend');
+          // Reload from backend to ensure consistency
+          const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+          if (reloadResponse.ok) {
+            const reloadData = await reloadResponse.json();
+            if (reloadData.contracts) {
+              setDeployedContracts(reloadData.contracts);
+            }
+          }
+        }
       } catch (err) {
         console.error('Failed to remove contract from backend:', err);
         // Don't fail the operation - localStorage is the fallback
