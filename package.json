@@ -10,7 +10,6 @@
     "hardhat": "hardhat",
     "compile": "hardhat compile",
     "deploy:sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
-    "deploy:factory": "hardhat run scripts/deploy-factory.js --network baseMainnet",
     "get-bytecode": "hardhat run scripts/get-bytecode.js",
     "verify": "hardhat verify --network baseSepolia"
   },

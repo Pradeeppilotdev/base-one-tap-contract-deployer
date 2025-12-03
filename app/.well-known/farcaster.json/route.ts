@@ -13,7 +13,7 @@ export async function GET() {
     splashBackgroundColor: "#1a1a1a",
     webhookUrl: "https://base-one-tap-contract-deployer.vercel.app/api/webhook",
     subtitle: "1-Tap Deploy on Base",
-    description: "Just deploy pre defined contracts in a click of a button and increase your wallet strength!",
+    description: "Just deploy pre defined contracts in a click of a button and increase your wallet strength!!",
     primaryCategory: "developer-tools",
     screenshotUrls: [
       "https://base-one-tap-contract-deployer.vercel.app/screenshot.png"
@@ -49,7 +49,7 @@ export async function GET() {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'public, max-age=60, must-revalidate',
+      'Cache-Control': 'public, max-age=300',
     },
   });
 }

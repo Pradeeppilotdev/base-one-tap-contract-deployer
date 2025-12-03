@@ -43,3 +43,6 @@ next-env.d.ts
 
 # contract config
 contracts-config.json
+
+# user data storage
+/data
