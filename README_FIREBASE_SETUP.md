@@ -6,64 +6,33 @@ This guide explains how Firebase Firestore is configured for the Base Contract D
 
 Firebase Firestore is a NoSQL document database that provides real-time data synchronization and offline support. It's perfect for storing user data like contracts and achievements.
 
-## Current Configuration
+## Environment Variables Setup
 
-The app is already configured with Firebase. The configuration is stored in `lib/firebase.ts`:
+The app uses environment variables for Firebase configuration. You need to add these to Vercel:
 
-- **Project ID**: `base-contract-deployer`
-- **Database**: Firestore
-- **Collection**: `users`
-- **Document ID**: Wallet address (lowercase)
-
-## Firebase Console Setup
-
-### 1. Enable Firestore Database
+### 1. Get Firebase Config Values
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your project: `base-contract-deployer`
-3. Navigate to **Firestore Database** in the left sidebar
-4. Click **Create database**
-5. Choose **Start in production mode** (or test mode for development)
-6. Select a location (choose closest to your users)
-7. Click **Enable**
+3. Go to **Project Settings** (gear icon)
+4. Scroll down to **Your apps** section
+5. Click on your web app (or create one if needed)
+6. Copy the config values
 
-### 2. Set Up Security Rules
+### 2. Add Environment Variables to Vercel
 
-Go to **Firestore Database** → **Rules** and add:
+1. Go to your [Vercel Dashboard](https://vercel.com/dashboard)
+2. Select your project: `base-one-tap-contract-deployer`
+3. Go to **Settings** → **Environment Variables**
+4. Add these variables (all with `NEXT_PUBLIC_` prefix):
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Users collection - allow read/write for all (adjust based on your needs)
-    match /users/{walletAddress} {
-      allow read, write: if true; // Public access for now
-      
-      // For production, you might want to add authentication:
-      // allow read, write: if request.auth != null;
-    }
-  }
-}
 ```
 
-**For Production**, consider more restrictive rules:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{walletAddress} {
-      // Allow read for anyone (to view contracts)
-      allow read: if true;
-      
-      // Only allow write if the wallet address matches
-      // Note: This requires custom authentication or validation
-      allow write: if request.resource.data.contracts is array 
-                   && request.resource.data.achievements is array;
-    }
-  }
-}
 ```
+
+5. Make sure to set them for **Production**, **Preview**, and **Development** environments
+6. Click **Save**
+
 
 ### 3. (Optional) Enable Analytics
 
@@ -185,7 +154,7 @@ Perfect for small to medium apps. Paid plans scale automatically.
 - Data is stored in Firestore collection `users`
 - Each wallet address is a document ID
 - Data persists across deployments
-- No need for environment variables (config is in code)
+- Configuration is stored in environment variables (secure)
 
 ## Support
 
