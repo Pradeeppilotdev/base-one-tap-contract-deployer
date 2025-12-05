@@ -131,8 +131,9 @@ export async function GET() {
     status: 200,
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET',
     },
   });
 }
