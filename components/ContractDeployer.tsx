@@ -905,10 +905,31 @@ contract Calculator {
   };
 
   const getProvider = () => {
+    let provider: any;
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
-      return sdk.wallet.ethProvider;
+      provider = sdk.wallet.ethProvider;
+    } else {
+      provider = window.ethereum;
     }
-    return window.ethereum;
+    
+    // Wrap provider.request to intercept eth_createAccessList
+    if (provider && provider.request) {
+      const originalRequest = provider.request.bind(provider);
+      provider.request = async (args: any) => {
+        // Block eth_createAccessList for contract creation
+        if (args && args.method === 'eth_createAccessList') {
+          const params = args.params && args.params[0];
+          if (params && (!params.to || params.to === null || params.to === '')) {
+            console.log('[Provider Interceptor] Blocked eth_createAccessList for contract creation');
+            // Return empty access list
+            return { jsonrpc: '2.0', id: args.id || 1, result: [] };
+          }
+        }
+        return originalRequest(args);
+      };
+    }
+    
+    return provider;
   };
 
   const switchToBase = async () => {
