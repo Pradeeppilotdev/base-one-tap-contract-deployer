@@ -1218,11 +1218,11 @@ contract Calculator {
         ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
         : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
       
-      // Build share URL with referral code
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      // Build Farcaster miniapp URL with referral code
+      const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
       const shareUrl = referralCode 
-        ? `${baseUrl}?ref=${referralCode}`
-        : baseUrl;
+        ? `${farcasterMiniappUrl}?ref=${referralCode}`
+        : farcasterMiniappUrl;
 
       if (sdk?.actions?.composeCast) {
         await sdk.actions.composeCast({
