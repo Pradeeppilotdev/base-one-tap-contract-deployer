@@ -2,7 +2,9 @@
 
 import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
+import { Suspense } from 'react';
 import ContractDeployer from '@/components/ContractDeployer';
+import DynamicMeta from '@/components/DynamicMeta';
 
 export default function Home() {
   useEffect(() => {
@@ -11,7 +13,14 @@ export default function Home() {
     sdk.actions.ready();
   }, []);
 
-  return <ContractDeployer />;
+  return (
+    <>
+      <Suspense fallback={null}>
+        <DynamicMeta />
+      </Suspense>
+      <ContractDeployer />
+    </>
+  );
 }
 
 

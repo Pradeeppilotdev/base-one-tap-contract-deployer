@@ -1,8 +1,28 @@
 import { ImageResponse } from 'next/og';
+import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const ref = searchParams.get('ref');
+  const fid = searchParams.get('fid');
+  const username = searchParams.get('username');
+  const displayName = searchParams.get('displayName');
+  const pfpUrl = searchParams.get('pfpUrl');
+  
+  // Check referrer header for ref parameter (when shared link is opened)
+  const referer = request.headers.get('referer') || '';
+  const refererUrl = referer ? new URL(referer) : null;
+  const refFromReferer = refererUrl?.searchParams.get('ref');
+  
+  // Use ref from query params or referer
+  const finalRef = ref || refFromReferer;
+  const finalFid = fid || (finalRef ? finalRef.replace('ref-', '') : null);
+  
+  // If ref parameter exists, show referrer's info
+  const isReferralShare = finalRef && finalFid;
+  
   const image = await new ImageResponse(
     (
       <div
@@ -120,27 +140,148 @@ export async function GET() {
           </div>
         </div>
 
-        {/* Tagline */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginTop: 60,
-            gap: 16,
-            padding: '16px 32px',
-            backgroundColor: '#ffffff',
-            borderRadius: 100,
-          }}
-        >
-          <span style={{ 
-            fontSize: 24, 
-            color: '#1a1a1a', 
-            fontWeight: 700,
-            fontFamily: 'system-ui, sans-serif',
-          }}>
-            No code needed • Instant deploy • On-chain in seconds
-          </span>
-        </div>
+        {/* Referrer Info Section (if sharing with ref) */}
+        {isReferralShare ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              marginTop: 60,
+              gap: 20,
+            }}
+          >
+            {/* "Deploy based like me!!" Text */}
+            <div
+              style={{
+                fontSize: 48,
+                fontWeight: 900,
+                color: '#ffffff',
+                fontFamily: 'system-ui, sans-serif',
+                textAlign: 'center',
+                letterSpacing: '-1px',
+              }}
+            >
+              Deploy based like me!!
+            </div>
+            
+            {/* Referrer Profile Card */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 20,
+                padding: '20px 40px',
+                backgroundColor: '#2a2a2a',
+                borderRadius: 16,
+                border: '3px solid #3a3a3a',
+              }}
+            >
+              {/* Profile Picture */}
+              {pfpUrl && decodeURIComponent(pfpUrl) !== 'null' && decodeURIComponent(pfpUrl) !== '' ? (
+                <img
+                  src={decodeURIComponent(pfpUrl)}
+                  alt="Referrer"
+                  width="80"
+                  height="80"
+                  style={{
+                    borderRadius: '50%',
+                    border: '3px solid #ffffff',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '3px solid #ffffff',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 36,
+                      fontWeight: 900,
+                      color: '#1a1a1a',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}
+                  >
+                    {displayName?.[0]?.toUpperCase() || username?.[0]?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+              )}
+              
+              {/* User Info */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    fontFamily: 'system-ui, sans-serif',
+                  }}
+                >
+                  {displayName ? decodeURIComponent(displayName) : (username ? decodeURIComponent(username) : `FID ${fid}`)}
+                </div>
+                {username && decodeURIComponent(username) !== 'null' && decodeURIComponent(username) !== '' && (
+                  <div
+                    style={{
+                      fontSize: 24,
+                      color: '#a0a0a0',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}
+                  >
+                    @{decodeURIComponent(username)} • FID {fid}
+                  </div>
+                )}
+                {(!username || decodeURIComponent(username) === 'null' || decodeURIComponent(username) === '') && (
+                  <div
+                    style={{
+                      fontSize: 24,
+                      color: '#a0a0a0',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}
+                  >
+                    FID {fid}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Default Tagline (if no ref) */
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginTop: 60,
+              gap: 16,
+              padding: '16px 32px',
+              backgroundColor: '#ffffff',
+              borderRadius: 100,
+            }}
+          >
+            <span style={{ 
+              fontSize: 24, 
+              color: '#1a1a1a', 
+              fontWeight: 700,
+              fontFamily: 'system-ui, sans-serif',
+            }}>
+              No code needed • Instant deploy • On-chain in seconds
+            </span>
+          </div>
+        )}
       </div>
     ),
     {

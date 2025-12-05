@@ -1218,23 +1218,31 @@ contract Calculator {
         ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
         : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
       
-      // Build Farcaster miniapp URL with referral code
-      const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
+      // Use direct app URL with ref parameter (Farcaster miniapp URLs don't support query params)
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
       const shareUrl = referralCode 
-        ? `${farcasterMiniappUrl}?ref=${referralCode}`
-        : farcasterMiniappUrl;
+        ? `${appUrl}?ref=${referralCode}`
+        : appUrl;
+      
+      // Build dynamic OG image URL with referrer info for embed preview
+      let embedUrl = shareUrl;
+      if (referralCode && farcasterUser) {
+        const ogImageUrl = `${appUrl}/og-image.png?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`;
+        // Use the OG image URL as the embed to show personalized preview
+        embedUrl = ogImageUrl;
+      }
 
       if (sdk?.actions?.composeCast) {
         await sdk.actions.composeCast({
-          text: `${shareText}\n\n${shareUrl}`,
-          embeds: [shareUrl]
+          text: `${shareText}\n\nDeploy based like me!! 🚀\n\n${shareUrl}`,
+          embeds: [shareUrl] // Share the app URL, Farcaster will fetch OG image from page meta
         });
       } else {
         // Fallback for non-Farcaster environments
         if (navigator.share) {
           await navigator.share({
             title: '1-Tap Contract Deployer',
-            text: shareText,
+            text: `${shareText}\n\nDeploy based like me!! 🚀`,
             url: shareUrl
           });
         } else {
