@@ -27,6 +27,7 @@ import {
   Star
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
+import { encodeFunctionData, decodeEventLog } from 'viem';
 
 // Type for Farcaster user context
 interface FarcasterUser {
@@ -45,6 +46,31 @@ interface DeployedContract {
   timestamp: number;
   inputValue?: string;
 }
+
+// Factory Contract Address (Base Mainnet)
+// Deployed to Base Mainnet at: 0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3
+const FACTORY_CONTRACT_ADDRESS = '0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3';
+
+// Factory Contract ABI
+const FACTORY_ABI = [
+  {
+    "inputs": [{"internalType": "bytes", "name": "bytecode", "type": "bytes"}],
+    "name": "deployContractWithParams",
+    "outputs": [{"internalType": "address", "name": "deployedAddress", "type": "address"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "deployedAddress", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "deployer", "type": "address"},
+      {"indexed": true, "internalType": "bytes32", "name": "salt", "type": "bytes32"}
+    ],
+    "name": "ContractDeployed",
+    "type": "event"
+  }
+] as const;
 
 // REAL CONTRACT TEMPLATES - Compiled with Solidity 0.8.19 via Hardhat
 const CONTRACT_TEMPLATES = {
@@ -904,6 +930,9 @@ contract Calculator {
     }
   };
 
+  // Cache wrapped providers to avoid re-wrapping
+  const providerCache = new WeakMap();
+  
   const getProvider = () => {
     let provider: any;
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
@@ -912,21 +941,36 @@ contract Calculator {
       provider = window.ethereum;
     }
     
+    if (!provider) return null;
+    
+    // Check if already wrapped
+    if (providerCache.has(provider)) {
+      return providerCache.get(provider);
+    }
+    
     // Wrap provider.request to intercept eth_createAccessList
-    if (provider && provider.request) {
+    if (provider.request) {
       const originalRequest = provider.request.bind(provider);
-      provider.request = async (args: any) => {
-        // Block eth_createAccessList for contract creation
-        if (args && args.method === 'eth_createAccessList') {
-          const params = args.params && args.params[0];
-          if (params && (!params.to || params.to === null || params.to === '')) {
-            console.log('[Provider Interceptor] Blocked eth_createAccessList for contract creation');
-            // Return empty access list
-            return { jsonrpc: '2.0', id: args.id || 1, result: [] };
+      const wrappedProvider = {
+        ...provider,
+        request: async (args: any) => {
+          // Block ALL eth_createAccessList calls for contract creation
+          if (args && args.method === 'eth_createAccessList') {
+            const params = args.params && args.params[0];
+            // Block if 'to' is missing, null, empty string, or undefined
+            if (!params || !params.to || params.to === null || params.to === '' || params.to === undefined) {
+              console.log('[Provider Interceptor] Blocked eth_createAccessList for contract creation');
+              // Return empty access list immediately
+              return Promise.resolve({ jsonrpc: '2.0', id: args.id || 1, result: [] });
+            }
           }
+          return originalRequest(args);
         }
-        return originalRequest(args);
       };
+      
+      // Cache the wrapped provider
+      providerCache.set(provider, wrappedProvider);
+      return wrappedProvider;
     }
     
     return provider;
@@ -1137,13 +1181,14 @@ contract Calculator {
         bytecode = '0x' + bytecode;
       }
       
-      let deploymentData = bytecode;
+      let deploymentBytecode = bytecode;
       
+      // Add constructor parameters if needed
       if (template.hasInput && inputValue.trim()) {
         try {
           const encodedParams = encodeConstructorParams(template, inputValue);
           const bytecodeWithoutPrefix = bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode;
-          deploymentData = '0x' + bytecodeWithoutPrefix + encodedParams;
+          deploymentBytecode = '0x' + bytecodeWithoutPrefix + encodedParams;
         } catch (encodeError: any) {
           setError(`Failed to encode parameters: ${encodeError.message}`);
           setDeploying(false);
@@ -1151,11 +1196,23 @@ contract Calculator {
         }
       }
 
+      // Encode the factory contract call
+      const callData = encodeFunctionData({
+        abi: FACTORY_ABI,
+        functionName: 'deployContractWithParams',
+        args: [deploymentBytecode as `0x${string}`]
+      });
+
+      // Estimate gas for factory call
       let gasEstimate: string;
       try {
         const estimatedGas = await provider.request({
           method: 'eth_estimateGas',
-          params: [{ from: account as `0x${string}`, data: deploymentData as `0x${string}` }]
+          params: [{
+            from: account as `0x${string}`,
+            to: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
+            data: callData
+          }]
         });
         const gasWithBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
         gasEstimate = '0x' + gasWithBuffer.toString(16);
@@ -1166,13 +1223,13 @@ contract Calculator {
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // For contract deployment, omit 'to' field entirely (don't set it to null or empty string)
+      // Send transaction to factory contract (regular transaction, not contract creation)
       const txParams: any = {
         from: account as `0x${string}`,
-        data: deploymentData as `0x${string}`,
+        to: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
+        data: callData,
         gas: gasEstimate,
         value: '0x0'
-        // 'to' field is intentionally omitted for contract deployment
       };
       
       if (isCoinbaseWallet) {
@@ -1207,13 +1264,37 @@ contract Calculator {
 
       if (receipt) {
         const status = receipt.status;
-        const contractAddress = receipt.contractAddress;
         
         // Check for successful status (handle both hex string and number formats)
         const isSuccess = status === '0x1' || status === '0x01' || status === 1 || status === true;
         const isFailed = status === '0x0' || status === '0x00' || status === 0 || status === false;
         
         if (isSuccess) {
+          // Extract deployed contract address from ContractDeployed event logs
+          let contractAddress: string | null = null;
+          
+          try {
+            // Decode ContractDeployed event from logs
+            for (const log of receipt.logs || []) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: FACTORY_ABI,
+                  data: log.data,
+                  topics: log.topics
+                });
+                
+                if (decoded.eventName === 'ContractDeployed') {
+                  contractAddress = (decoded.args as any).deployedAddress;
+                  break;
+                }
+              } catch (e) {
+                // Not our event, continue
+              }
+            }
+          } catch (err) {
+            console.error('Error decoding event logs:', err);
+          }
+          
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
             

@@ -58,6 +58,109 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* CRITICAL: Block eth_createAccessList BEFORE any SDK loads */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Block eth_createAccessList calls that cause failures in Farcaster wallet
+              // This MUST run before any SDK or wallet code loads
+              (function() {
+                'use strict';
+                
+                // Store originals immediately
+                const originalFetch = window.fetch;
+                const originalXHROpen = XMLHttpRequest.prototype.open;
+                const originalXHRSend = XMLHttpRequest.prototype.send;
+                
+                // Intercept fetch - catch ALL eth_createAccessList calls
+                window.fetch = function(...args) {
+                  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+                  const options = args[1] || {};
+                  
+                  // Check body for eth_createAccessList
+                  let bodyStr = options.body;
+                  if (bodyStr && typeof bodyStr === 'string') {
+                    try {
+                      const body = JSON.parse(bodyStr);
+                      if (body && body.method === 'eth_createAccessList') {
+                        const params = body.params && body.params[0];
+                        // Block if 'to' is missing, null, empty string, or undefined
+                        if (!params || !params.to || params.to === null || params.to === '' || params.to === undefined) {
+                          console.log('[Fetch Interceptor] Blocked eth_createAccessList for contract creation');
+                          return Promise.resolve(new Response(JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: body.id || 1,
+                            result: []
+                          }), {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json' }
+                          }));
+                        }
+                      }
+                    } catch (e) {
+                      // Not JSON, continue
+                    }
+                  }
+                  
+                  return originalFetch.apply(this, args);
+                };
+                
+                // Intercept XMLHttpRequest
+                const xhrState = new WeakMap();
+                
+                XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                  xhrState.set(this, { method, url });
+                  return originalXHROpen.apply(this, [method, url, ...rest]);
+                };
+                
+                XMLHttpRequest.prototype.send = function(body) {
+                  const state = xhrState.get(this);
+                  if (state && state.method === 'POST' && body) {
+                    try {
+                      const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
+                      if (parsedBody && parsedBody.method === 'eth_createAccessList') {
+                        const params = parsedBody.params && parsedBody.params[0];
+                        // Block if 'to' is missing, null, empty string, or undefined
+                        if (!params || !params.to || params.to === null || params.to === '' || params.to === undefined) {
+                          console.log('[XHR Interceptor] Blocked eth_createAccessList for contract creation');
+                          
+                          // Create a proper mock response
+                          setTimeout(() => {
+                            Object.defineProperty(this, 'status', { value: 200, writable: false, configurable: true });
+                            Object.defineProperty(this, 'statusText', { value: 'OK', writable: false, configurable: true });
+                            Object.defineProperty(this, 'responseText', { 
+                              value: JSON.stringify({
+                                jsonrpc: '2.0',
+                                id: parsedBody.id || 1,
+                                result: []
+                              }),
+                              writable: false,
+                              configurable: true
+                            });
+                            Object.defineProperty(this, 'readyState', { value: 4, writable: false, configurable: true });
+                            
+                            if (this.onreadystatechange) {
+                              this.onreadystatechange();
+                            }
+                            if (this.onload) {
+                              this.onload();
+                            }
+                          }, 0);
+                          
+                          return;
+                        }
+                      }
+                    } catch (e) {
+                      // Not JSON, continue
+                    }
+                  }
+                  
+                  return originalXHRSend.apply(this, [body]);
+                };
+              })();
+            `,
+          }}
+        />
         {/* Farcaster Mini App Embed Metadata */}
         <meta name="fc:miniapp" content={JSON.stringify(miniAppEmbed)} />
         {/* Backward compatibility with fc:frame */}
@@ -84,98 +187,6 @@ export default function RootLayout({
         <meta property="og:site_name" content="Base Contract Deployer" />
       </head>
       <body className="bg-[#f5f5f0]">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Block eth_createAccessList calls that cause failures in Farcaster wallet
-              (function() {
-                const originalFetch = window.fetch;
-                const originalXHROpen = XMLHttpRequest.prototype.open;
-                const originalXHRSend = XMLHttpRequest.prototype.send;
-                
-                // Intercept fetch
-                window.fetch = function(...args) {
-                  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
-                  const options = args[1] || {};
-                  
-                  // Check if this is a POST request with eth_createAccessList
-                  if (options.method === 'POST' || (options.body && typeof options.body === 'string')) {
-                    try {
-                      const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
-                      if (body && body.method === 'eth_createAccessList') {
-                        // Check if it's a contract creation (no 'to' or 'to' is null/empty)
-                        const params = body.params && body.params[0];
-                        if (params && (!params.to || params.to === null || params.to === '')) {
-                          console.log('[Interceptor] Blocked eth_createAccessList for contract creation');
-                          // Return a mock successful response
-                          return Promise.resolve(new Response(JSON.stringify({
-                            jsonrpc: '2.0',
-                            id: body.id,
-                            result: []
-                          }), {
-                            status: 200,
-                            headers: { 'Content-Type': 'application/json' }
-                          }));
-                        }
-                      }
-                    } catch (e) {
-                      // Not JSON, continue normally
-                    }
-                  }
-                  
-                  return originalFetch.apply(this, args);
-                };
-                
-                // Intercept XMLHttpRequest
-                let xhrMethod = null;
-                let xhrUrl = null;
-                
-                XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-                  xhrMethod = method;
-                  xhrUrl = url;
-                  return originalXHROpen.apply(this, [method, url, ...rest]);
-                };
-                
-                XMLHttpRequest.prototype.send = function(body) {
-                  if (xhrMethod === 'POST' && body) {
-                    try {
-                      const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
-                      if (parsedBody && parsedBody.method === 'eth_createAccessList') {
-                        const params = parsedBody.params && parsedBody.params[0];
-                        if (params && (!params.to || params.to === null || params.to === '')) {
-                          console.log('[Interceptor] Blocked eth_createAccessList for contract creation (XHR)');
-                          // Mock the response
-                          Object.defineProperty(this, 'status', { value: 200, writable: false });
-                          Object.defineProperty(this, 'statusText', { value: 'OK', writable: false });
-                          Object.defineProperty(this, 'responseText', { 
-                            value: JSON.stringify({
-                              jsonrpc: '2.0',
-                              id: parsedBody.id,
-                              result: []
-                            }),
-                            writable: false
-                          });
-                          Object.defineProperty(this, 'readyState', { value: 4, writable: false });
-                          
-                          // Trigger onreadystatechange if it exists
-                          if (this.onreadystatechange) {
-                            this.onreadystatechange();
-                          }
-                          
-                          return;
-                        }
-                      }
-                    } catch (e) {
-                      // Not JSON, continue normally
-                    }
-                  }
-                  
-                  return originalXHRSend.apply(this, [body]);
-                };
-              })();
-            `,
-          }}
-        />
         <WagmiProvider>
           {children}
         </WagmiProvider>
