@@ -1,0 +1,158 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+
+// GET - Fetch leaderboard data
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sortBy') || 'contracts'; // 'contracts' or 'referrals'
+    const order = searchParams.get('order') || 'desc'; // 'asc' or 'desc'
+    const limitCount = parseInt(searchParams.get('limit') || '100');
+
+    try {
+      // Get all users with contracts - group by FID (not wallet address)
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const fidMap = new Map<string, any>(); // Map FID to aggregated user data
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data();
+        const fid = userData.fid;
+        
+        // Only process users with FID (Farcaster users)
+        if (!fid) continue;
+        
+        const fidKey = String(fid);
+        const contracts = userData.contracts || [];
+        const contractCount = contracts.length;
+        
+        // Initialize or update FID entry
+        if (!fidMap.has(fidKey)) {
+          fidMap.set(fidKey, {
+            fid: fid,
+            username: userData.username || '',
+            displayName: userData.displayName || '',
+            pfpUrl: userData.pfpUrl || '',
+            contractCount: 0,
+            contracts: [],
+            firstDeployedAt: null,
+            referralCount: 0,
+            referralPoints: 0
+          });
+        }
+        
+        const fidEntry = fidMap.get(fidKey);
+        
+        // Aggregate contracts across all wallets for this FID
+        fidEntry.contractCount += contractCount;
+        fidEntry.contracts.push(...contracts);
+        
+        // Update username/displayName/pfpUrl if not set or if this one is better
+        if (!fidEntry.username && userData.username) {
+          fidEntry.username = userData.username;
+        }
+        if (!fidEntry.displayName && userData.displayName) {
+          fidEntry.displayName = userData.displayName;
+        }
+        if (!fidEntry.pfpUrl && userData.pfpUrl) {
+          fidEntry.pfpUrl = userData.pfpUrl;
+        }
+        
+        // Track earliest contract deployment
+        if (contracts.length > 0) {
+          const firstContract = contracts.sort((a: any, b: any) => a.timestamp - b.timestamp)[0];
+          if (!fidEntry.firstDeployedAt || firstContract.timestamp < fidEntry.firstDeployedAt) {
+            fidEntry.firstDeployedAt = firstContract.timestamp;
+          }
+        }
+      }
+      
+      // Get referral data for each FID
+      const usersData: any[] = [];
+      for (const [fidKey, fidEntry] of fidMap.entries()) {
+        try {
+          const referralDocRef = doc(db, 'referrals', fidKey);
+          const referralDocSnap = await getDoc(referralDocRef);
+          
+          if (referralDocSnap.exists()) {
+            const referralData = referralDocSnap.data();
+            fidEntry.referralCount = referralData.referralCount || 0;
+            fidEntry.referralPoints = referralData.totalPoints || 0;
+            
+            // Prefer referral data for username/displayName/pfpUrl (more up-to-date)
+            if (referralData.username) {
+              fidEntry.username = referralData.username;
+            }
+            if (referralData.displayName) {
+              fidEntry.displayName = referralData.displayName;
+            }
+            if (referralData.pfpUrl) {
+              fidEntry.pfpUrl = referralData.pfpUrl;
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching referral data for FID', fidKey, ':', e);
+        }
+        
+        // Only include users with at least one contract or referral
+        if (fidEntry.contractCount > 0 || fidEntry.referralCount > 0) {
+          usersData.push({
+            fid: fidEntry.fid,
+            username: fidEntry.username || '',
+            displayName: fidEntry.displayName || fidEntry.username || `FID ${fidEntry.fid}`,
+            pfpUrl: fidEntry.pfpUrl || '',
+            contractCount: fidEntry.contractCount,
+            referralCount: fidEntry.referralCount,
+            referralPoints: fidEntry.referralPoints,
+            firstDeployedAt: fidEntry.firstDeployedAt
+          });
+        }
+      }
+      
+      // Sort data
+      usersData.sort((a, b) => {
+        let aValue: number;
+        let bValue: number;
+        
+        if (sortBy === 'contracts') {
+          aValue = a.contractCount;
+          bValue = b.contractCount;
+        } else {
+          aValue = a.referralCount;
+          bValue = b.referralCount;
+        }
+        
+        if (order === 'asc') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      });
+      
+      // Limit results
+      const limitedData = usersData.slice(0, limitCount);
+      
+      return NextResponse.json({
+        success: true,
+        leaderboard: limitedData,
+        total: usersData.length
+      });
+    } catch (firestoreError: any) {
+      console.error('Firestore error:', firestoreError);
+      return NextResponse.json(
+        { 
+          error: 'Database error',
+          details: firestoreError.message 
+        },
+        { status: 500 }
+      );
+    }
+  } catch (error: any) {
+    console.error('Error fetching leaderboard:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch leaderboard' },
+      { status: 500 }
+    );
+  }
+}
+

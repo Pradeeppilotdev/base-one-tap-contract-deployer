@@ -5,6 +5,11 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 interface UserData {
   contracts: any[];
   achievements: any[];
+  fid?: number;
+  username?: string;
+  displayName?: string;
+  pfpUrl?: string;
+  referralPoints?: number;
   lastUpdated: number;
 }
 
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { walletAddress, contracts, achievements } = body;
+    const { walletAddress, contracts, achievements, fid, username, displayName, pfpUrl } = body;
     
     if (!walletAddress) {
       return NextResponse.json(
@@ -93,9 +98,10 @@ export async function POST(request: NextRequest) {
       const userDocSnap = await getDoc(userDocRef);
       let existingContracts: any[] = [];
       let existingAchievements: any[] = [];
+      let existingData: UserData | null = null;
       
       if (userDocSnap.exists()) {
-        const existingData = userDocSnap.data() as UserData;
+        existingData = userDocSnap.data() as UserData;
         existingContracts = existingData.contracts || [];
         existingAchievements = existingData.achievements || [];
       }
@@ -123,11 +129,38 @@ export async function POST(request: NextRequest) {
       // Merge achievements: use provided achievements or keep existing
       const mergedAchievements = achievements !== undefined ? achievements : existingAchievements;
       
-      const userData: UserData = {
+      // Build userData object, only including fields that have values (Firestore doesn't allow undefined)
+      const userData: any = {
         contracts: mergedContracts,
         achievements: mergedAchievements,
         lastUpdated: Date.now()
       };
+      
+      // Only add optional fields if they have values
+      const finalFid = fid !== undefined ? fid : (existingData?.fid);
+      if (finalFid !== undefined) {
+        userData.fid = finalFid;
+      }
+      
+      const finalUsername = username !== undefined ? username : (existingData?.username);
+      if (finalUsername !== undefined && finalUsername !== '') {
+        userData.username = finalUsername;
+      }
+      
+      const finalDisplayName = displayName !== undefined ? displayName : (existingData?.displayName);
+      if (finalDisplayName !== undefined && finalDisplayName !== '') {
+        userData.displayName = finalDisplayName;
+      }
+      
+      const finalPfpUrl = pfpUrl !== undefined ? pfpUrl : (existingData?.pfpUrl);
+      if (finalPfpUrl !== undefined && finalPfpUrl !== '') {
+        userData.pfpUrl = finalPfpUrl;
+      }
+      
+      // Only include referralPoints if it exists and is a number
+      if (existingData?.referralPoints !== undefined && typeof existingData.referralPoints === 'number') {
+        userData.referralPoints = existingData.referralPoints;
+      }
 
       // Save to Firestore (merge: true to preserve other fields if any)
       await setDoc(userDocRef, userData, { merge: true });

@@ -198,6 +198,11 @@ function ContractDeployer() {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralPoints, setReferralPoints] = useState<number>(0);
   const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals'>('contracts');
+  const [leaderboardOrder, setLeaderboardOrder] = useState<'asc' | 'desc'>('desc');
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -311,7 +316,11 @@ function ContractDeployer() {
             body: JSON.stringify({
               walletAddress: account,
               contracts: finalContracts,
-              achievements: finalAchievements
+              achievements: finalAchievements,
+              fid: farcasterUser?.fid,
+              username: farcasterUser?.username,
+              displayName: farcasterUser?.displayName,
+              pfpUrl: farcasterUser?.pfpUrl
             })
           });
           
@@ -390,7 +399,10 @@ function ContractDeployer() {
         body: JSON.stringify({
           referrerFid,
           newUserFid,
-          walletAddress: account
+          walletAddress: account,
+          referrerUsername: farcasterUser?.username,
+          referrerDisplayName: farcasterUser?.displayName,
+          referrerPfpUrl: farcasterUser?.pfpUrl
         })
       });
       
@@ -399,11 +411,19 @@ function ContractDeployer() {
       if (response.ok && data.success) {
         // Give points to new user
         setReferralPoints(data.newUserPoints || 10);
-        setError('🎉 You got 10 referral points!');
+        const message = data.isBonus 
+          ? '🎉 You got 10 referral points! Referrer got 20 bonus points for 5th referral!'
+          : '🎉 You got 10 referral points!';
+        setError(message);
+        setTimeout(() => setError(null), 3000);
+      } else {
+        setError(data.error || 'Failed to track referral');
         setTimeout(() => setError(null), 3000);
       }
     } catch (err) {
       console.error('Failed to track referral:', err);
+      setError('Failed to track referral');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -478,7 +498,11 @@ function ContractDeployer() {
                 body: JSON.stringify({
                   walletAddress: account,
                   contracts: deployedContracts,
-                  achievements: updated
+                  achievements: updated,
+                  fid: farcasterUser?.fid,
+                  username: farcasterUser?.username,
+                  displayName: farcasterUser?.displayName,
+                  pfpUrl: farcasterUser?.pfpUrl
                 })
               });
               
@@ -542,11 +566,15 @@ function ContractDeployer() {
             const response = await fetch('/api/user-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                walletAddress: account,
-                contracts: updated,
-                achievements: currentAchievements
-              })
+                body: JSON.stringify({
+                  walletAddress: account,
+                  contracts: updated,
+                  achievements: currentAchievements,
+                  fid: farcasterUser?.fid,
+                  username: farcasterUser?.username,
+                  displayName: farcasterUser?.displayName,
+                  pfpUrl: farcasterUser?.pfpUrl
+                })
             });
             
             if (response.ok) {
@@ -677,6 +705,43 @@ contract Calculator {
     setCopiedAddress(text);
     setTimeout(() => setCopiedAddress(null), 2000);
   };
+
+  // Fetch leaderboard data
+  const fetchLeaderboard = async () => {
+    setLoadingLeaderboard(true);
+    try {
+      const response = await fetch(
+        `/api/leaderboard?sortBy=${leaderboardSortBy}&order=${leaderboardOrder}&limit=100`
+      );
+      const data = await response.json();
+      if (data.success) {
+        setLeaderboard(data.leaderboard || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch leaderboard:', err);
+      setError('Failed to load leaderboard');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoadingLeaderboard(false);
+    }
+  };
+
+  // Toggle leaderboard sort
+  const toggleLeaderboardSort = (column: 'contracts' | 'referrals') => {
+    if (leaderboardSortBy === column) {
+      setLeaderboardOrder(leaderboardOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setLeaderboardSortBy(column);
+      setLeaderboardOrder('desc');
+    }
+  };
+
+  // Load leaderboard when opened or when sort changes (independent of wallet connection)
+  useEffect(() => {
+    if (showLeaderboard) {
+      fetchLeaderboard();
+    }
+  }, [showLeaderboard, leaderboardSortBy, leaderboardOrder]);
 
   useEffect(() => {
     // Get Farcaster context (ready() is called at page level)
@@ -1138,27 +1203,44 @@ contract Calculator {
     });
   };
 
-  // Share the app via Farcaster
+  // Share the app via Farcaster with referral code
   const shareApp = async () => {
     try {
+      // Only allow sharing if user has deployed at least one contract
+      if (!deployedContracts || deployedContracts.length === 0) {
+        setError('Deploy at least one contract to share!');
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+
+      const contractCount = deployedContracts.length;
+      const shareText = contractCount === 1 
+        ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
+        : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
+      
+      // Build share URL with referral code
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const shareUrl = referralCode 
+        ? `${baseUrl}?ref=${referralCode}`
+        : baseUrl;
+
       if (sdk?.actions?.composeCast) {
-        const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
         await sdk.actions.composeCast({
-          text: `Deploy smart contracts to Base with one tap! 🚀`,
-          embeds: [appUrl]
+          text: `${shareText}\n\n${shareUrl}`,
+          embeds: [shareUrl]
         });
       } else {
         // Fallback for non-Farcaster environments
         if (navigator.share) {
           await navigator.share({
             title: '1-Tap Contract Deployer',
-            text: 'Deploy smart contracts to Base with one tap!',
-            url: window.location.href
+            text: shareText,
+            url: shareUrl
           });
         } else {
           // Copy link to clipboard
-          await navigator.clipboard.writeText(window.location.href);
-          setError('Link copied to clipboard!');
+          await navigator.clipboard.writeText(shareUrl);
+          setError('Link with referral code copied to clipboard!');
           setTimeout(() => setError(null), 2000);
         }
       }
@@ -1614,6 +1696,138 @@ contract Calculator {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Leaderboard Section */}
+        <div className="mt-6 mb-6 sketch-card">
+          <button
+            onClick={() => setShowLeaderboard(!showLeaderboard)}
+            className="w-full p-4 flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-3">
+              <Trophy className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              <span className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
+                Leaderboard
+              </span>
+            </div>
+            {showLeaderboard ? (
+              <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            )}
+          </button>
+          
+          {showLeaderboard && (
+            <div className="border-t-2 border-[var(--ink)]">
+              {loadingLeaderboard ? (
+                <div className="p-6 text-center">
+                  <Loader2 className="w-6 h-6 text-[var(--ink)] mx-auto animate-spin" strokeWidth={2} />
+                  <p className="text-[var(--graphite)] text-sm mt-2">Loading leaderboard...</p>
+                </div>
+              ) : leaderboard.length === 0 ? (
+                <div className="p-6 text-center">
+                  <Trophy className="w-8 h-8 text-[var(--shade)] mx-auto mb-3" strokeWidth={1.5} />
+                  <p className="text-[var(--graphite)] text-sm">No leaderboard data yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-[var(--ink)]">
+                        <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                          Rank
+                        </th>
+                        <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                          User
+                        </th>
+                        <th 
+                          className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider cursor-pointer hover:bg-[var(--light)]"
+                          onClick={() => toggleLeaderboardSort('contracts')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Contracts
+                            {leaderboardSortBy === 'contracts' && (
+                              leaderboardOrder === 'asc' ? (
+                                <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" strokeWidth={2} />
+                              )
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider cursor-pointer hover:bg-[var(--light)]"
+                          onClick={() => toggleLeaderboardSort('referrals')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Referrals
+                            {leaderboardSortBy === 'referrals' && (
+                              leaderboardOrder === 'asc' ? (
+                                <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" strokeWidth={2} />
+                              )
+                            )}
+                          </div>
+                        </th>
+                        <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                          First Deploy
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y-2 divide-[var(--light)]">
+                      {leaderboard.map((user, index) => (
+                        <tr key={user.fid || `user-${index}`} className="hover:bg-[var(--light)]">
+                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                            #{index + 1}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-3">
+                              {user.pfpUrl ? (
+                                <img 
+                                  src={user.pfpUrl} 
+                                  alt={user.displayName || user.username || 'User'}
+                                  className="w-8 h-8 rounded-full border-2 border-[var(--ink)] flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center flex-shrink-0">
+                                  <User className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-semibold text-[var(--ink)] truncate">
+                                  {user.displayName || user.username || `FID ${user.fid}`}
+                                </div>
+                                {user.username && (
+                                  <div className="text-xs text-[var(--graphite)] truncate">
+                                    @{user.username} • FID {user.fid}
+                                  </div>
+                                )}
+                                {!user.username && user.fid && (
+                                  <div className="text-xs text-[var(--graphite)]">
+                                    FID {user.fid}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                            {user.contractCount}
+                          </td>
+                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                            {user.referralCount}
+                          </td>
+                          <td className="p-3 text-xs text-[var(--graphite)]">
+                            {user.firstDeployedAt ? formatDate(user.firstDeployedAt) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
