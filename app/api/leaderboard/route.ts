@@ -69,7 +69,9 @@ export async function GET(request: NextRequest) {
       
       // Get referral data for each FID
       const usersData: any[] = [];
-      for (const [fidKey, fidEntry] of fidMap.entries()) {
+      const fidEntries = Array.from(fidMap.entries());
+      
+      for (const [fidKey, fidEntry] of fidEntries) {
         try {
           const referralDocRef = doc(db, 'referrals', fidKey);
           const referralDocSnap = await getDoc(referralDocRef);
@@ -91,7 +93,10 @@ export async function GET(request: NextRequest) {
             }
           }
         } catch (e) {
-          console.error('Error fetching referral data for FID', fidKey, ':', e);
+          // Silently handle permission errors - referral data is optional
+          if ((e as any).code !== 'permission-denied') {
+            console.error('Error fetching referral data for FID', fidKey, ':', e);
+          }
         }
         
         // Only include users with at least one contract or referral
