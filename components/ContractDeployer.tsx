@@ -203,6 +203,10 @@ function ContractDeployer() {
   const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals'>('contracts');
   const [leaderboardOrder, setLeaderboardOrder] = useState<'asc' | 'desc'>('desc');
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [manualReferralCode, setManualReferralCode] = useState<string>('');
+  const [validatingReferral, setValidatingReferral] = useState(false);
+  const [referralValidationError, setReferralValidationError] = useState<string | null>(null);
+  const [referralValidated, setReferralValidated] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -388,6 +392,58 @@ function ContractDeployer() {
   }, [account, farcasterUser]);
 
   // Track referral and give points
+  // Validate referral code
+  const validateReferralCode = async (code: string) => {
+    if (!code || !code.startsWith('ref-')) {
+      setReferralValidationError('Invalid referral code format. Must start with "ref-"');
+      setReferralValidated(false);
+      return false;
+    }
+
+    setValidatingReferral(true);
+    setReferralValidationError(null);
+
+    try {
+      const response = await fetch(`/api/validate-referral?code=${encodeURIComponent(code)}`);
+      const data = await response.json();
+
+      if (data.valid) {
+        // Store validated referral code in localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('pending-referral', JSON.stringify({
+            referrerFid: data.fid,
+            newUserFid: farcasterUser?.fid ? String(farcasterUser.fid) : null
+          }));
+        }
+        setReferralValidated(true);
+        setReferralValidationError(null);
+        setManualReferralCode(code);
+        return true;
+      } else {
+        setReferralValidationError(data.error || 'Invalid referral code');
+        setReferralValidated(false);
+        return false;
+      }
+    } catch (err) {
+      console.error('Failed to validate referral:', err);
+      setReferralValidationError('Failed to validate referral code. Please try again.');
+      setReferralValidated(false);
+      return false;
+    } finally {
+      setValidatingReferral(false);
+    }
+  };
+
+  // Handle manual referral code entry
+  const handleManualReferralSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualReferralCode.trim()) {
+      setReferralValidationError('Please enter a referral code');
+      return;
+    }
+    await validateReferralCode(manualReferralCode.trim());
+  };
+
   const trackReferral = async (referrerFid: string, newUserFid: string) => {
     if (!account) return;
     
@@ -416,6 +472,12 @@ function ContractDeployer() {
           : '🎉 You got 10 referral points!';
         setError(message);
         setTimeout(() => setError(null), 3000);
+        // Clear manual referral code after successful tracking
+        setManualReferralCode('');
+        setReferralValidated(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('pending-referral');
+        }
       } else {
         setError(data.error || 'Failed to track referral');
         setTimeout(() => setError(null), 3000);
@@ -427,23 +489,20 @@ function ContractDeployer() {
     }
   };
 
-  // Track pending referrals when account and user are available
+  // Handle URL ref parameter - validate and store for tracking after first contract deployment
   useEffect(() => {
-    if (!account || !farcasterUser) return;
+    if (typeof window === 'undefined' || !farcasterUser) return;
     
-    const pendingReferral = localStorage.getItem('pending-referral');
-    if (pendingReferral) {
-      try {
-        const referral = JSON.parse(pendingReferral);
-        if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
-          trackReferral(referral.referrerFid, referral.newUserFid);
-          localStorage.removeItem('pending-referral');
-        }
-      } catch (e) {
-        console.error('Failed to parse pending referral:', e);
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const refParam = urlParams.get('ref');
+    
+    if (refParam && refParam.startsWith('ref-')) {
+      // Pre-fill the manual referral input
+      setManualReferralCode(refParam);
+      // Validate the referral code automatically
+      validateReferralCode(refParam);
     }
-  }, [account, farcasterUser]);
+  }, [farcasterUser]);
 
   // Check and unlock achievements (only show popup for newly unlocked)
   const checkAchievements = (count: number, showPopup: boolean = true) => {
@@ -772,9 +831,17 @@ contract Calculator {
           if (typeof window !== 'undefined') {
             localStorage.setItem(REFERRAL_KEY, refCode);
             
-            // Check for referral in URL
+            // Check for referral in URL or from localStorage (set when opening shared link)
             const urlParams = new URLSearchParams(window.location.search);
-            const refParam = urlParams.get('ref');
+            let refParam = urlParams.get('ref');
+            
+            // Also check localStorage for ref from shared Farcaster miniapp link
+            if (!refParam && typeof window !== 'undefined') {
+              refParam = localStorage.getItem('pending-referral-url');
+              if (refParam) {
+                localStorage.removeItem('pending-referral-url');
+              }
+            }
             
             // Store referral for later tracking (when account is available)
             if (refParam && refParam !== refCode) {
@@ -1140,6 +1207,24 @@ contract Calculator {
             });
             
             setInputValue('');
+
+            // Track referral if this is the first contract deployment and there's a pending referral
+            if (deployedContracts.length === 0 && farcasterUser) {
+              const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
+              if (pendingReferral) {
+                try {
+                  const referral = JSON.parse(pendingReferral);
+                  if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
+                    // Wait a bit for the contract to be saved to backend
+                    setTimeout(() => {
+                      trackReferral(referral.referrerFid, referral.newUserFid);
+                    }, 1000);
+                  }
+                } catch (e) {
+                  console.error('Failed to parse pending referral:', e);
+                }
+              }
+            }
           } else {
             // Transaction succeeded but no contract address - likely account abstraction
             // Try to get more info from the transaction
@@ -1218,24 +1303,41 @@ contract Calculator {
         ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
         : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
       
-      // Use direct app URL with ref parameter (Farcaster miniapp URLs don't support query params)
+      // Use Farcaster miniapp URL (this is the proper way to share miniapps)
+      const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
       const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
-      const shareUrl = referralCode 
-        ? `${appUrl}?ref=${referralCode}`
-        : appUrl;
+      
+      // Store referrer info for when the app opens (so ref can be tracked)
+      if (referralCode && farcasterUser && typeof window !== 'undefined') {
+        const referrerInfo = {
+          username: farcasterUser.username || '',
+          displayName: farcasterUser.displayName || '',
+          pfpUrl: farcasterUser.pfpUrl || '',
+          fid: farcasterUser.fid
+        };
+        localStorage.setItem(`referrer-${farcasterUser.fid}`, JSON.stringify(referrerInfo));
+        // Also store ref URL for when app opens from Farcaster miniapp link
+        localStorage.setItem('pending-referral-url', referralCode);
+      }
+      
+      // Build share URL - use Farcaster miniapp URL (it will open the app properly)
+      // The ref will be passed via localStorage and handled when app opens
+      const shareUrl = farcasterMiniappUrl;
       
       // Build dynamic OG image URL with referrer info for embed preview
-      let embedUrl = shareUrl;
-      if (referralCode && farcasterUser) {
-        const ogImageUrl = `${appUrl}/og-image.png?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`;
-        // Use the OG image URL as the embed to show personalized preview
-        embedUrl = ogImageUrl;
-      }
+      const ogImageUrl = referralCode && farcasterUser
+        ? `${appUrl}/og-image.png?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
+        : `${appUrl}/og-image.png`;
 
       if (sdk?.actions?.composeCast) {
+        // Share message with ref info
+        const shareTextWithRef = referralCode 
+          ? `${shareText}\n\nDeploy based like me!! 🚀\n\nUse my referral: ${referralCode}`
+          : shareText;
+        
         await sdk.actions.composeCast({
-          text: `${shareText}\n\nDeploy based like me!! 🚀\n\n${shareUrl}`,
-          embeds: [shareUrl] // Share the app URL, Farcaster will fetch OG image from page meta
+          text: shareTextWithRef,
+          embeds: [shareUrl] // Use miniapp URL so it opens properly in Farcaster
         });
       } else {
         // Fallback for non-Farcaster environments
@@ -1841,6 +1943,112 @@ contract Calculator {
             </div>
           )}
         </div>
+
+        {/* Manual Referral Code Input Section */}
+        {!referralCode && (
+          <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
+            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
+              Enter Referral Code
+            </h3>
+            <form onSubmit={handleManualReferralSubmit} className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualReferralCode}
+                  onChange={(e) => {
+                    setManualReferralCode(e.target.value);
+                    setReferralValidationError(null);
+                    setReferralValidated(false);
+                  }}
+                  placeholder="ref-123456"
+                  className="flex-1 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ink)]"
+                  disabled={validatingReferral || referralValidated}
+                />
+                <button
+                  type="submit"
+                  disabled={validatingReferral || referralValidated || !manualReferralCode.trim()}
+                  className="px-4 py-2 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--sketch)] transition-colors"
+                >
+                  {validatingReferral ? (
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                  ) : referralValidated ? (
+                    <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                  ) : (
+                    'Validate'
+                  )}
+                </button>
+              </div>
+              {referralValidationError && (
+                <div className="flex items-center gap-2 text-xs text-red-600">
+                  <AlertCircle className="w-4 h-4" strokeWidth={2} />
+                  <span>{referralValidationError}</span>
+                </div>
+              )}
+              {referralValidated && (
+                <div className="flex items-center gap-2 text-xs text-green-600">
+                  <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                  <span>Referral code validated! Deploy your first contract to earn referral points.</span>
+                </div>
+              )}
+              <p className="text-xs text-[var(--graphite)]">
+                Enter a referral code to earn points when you deploy your first contract. The referrer must have deployed at least one contract for their code to be active.
+              </p>
+            </form>
+          </div>
+        )}
+
+        {/* Manual Referral Code Input Section */}
+        {!referralCode && (
+          <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
+            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
+              Enter Referral Code
+            </h3>
+            <form onSubmit={handleManualReferralSubmit} className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualReferralCode}
+                  onChange={(e) => {
+                    setManualReferralCode(e.target.value);
+                    setReferralValidationError(null);
+                    setReferralValidated(false);
+                  }}
+                  placeholder="ref-123456"
+                  className="flex-1 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ink)]"
+                  disabled={validatingReferral || referralValidated}
+                />
+                <button
+                  type="submit"
+                  disabled={validatingReferral || referralValidated || !manualReferralCode.trim()}
+                  className="px-4 py-2 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--sketch)] transition-colors"
+                >
+                  {validatingReferral ? (
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                  ) : referralValidated ? (
+                    <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                  ) : (
+                    'Validate'
+                  )}
+                </button>
+              </div>
+              {referralValidationError && (
+                <div className="flex items-center gap-2 text-xs text-red-600">
+                  <AlertCircle className="w-4 h-4" strokeWidth={2} />
+                  <span>{referralValidationError}</span>
+                </div>
+              )}
+              {referralValidated && (
+                <div className="flex items-center gap-2 text-xs text-green-600">
+                  <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                  <span>Referral code validated! Deploy your first contract to earn referral points.</span>
+                </div>
+              )}
+              <p className="text-xs text-[var(--graphite)]">
+                Enter a referral code to earn points when you deploy your first contract. The referrer must have deployed at least one contract for their code to be active.
+              </p>
+            </form>
+          </div>
+        )}
 
         {/* Stats & Achievements Section */}
         <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">

@@ -21,13 +21,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is already registered (has deployed at least one contract)
+    // Check if new user has deployed at least one contract (referee must deploy first)
     const userDocRef = doc(db, 'users', walletAddress.toLowerCase());
     const userDocSnap = await getDoc(userDocRef);
     
     if (!userDocSnap.exists() || !userDocSnap.data()?.contracts || userDocSnap.data()?.contracts.length === 0) {
       return NextResponse.json(
-        { error: 'Only registered users (with deployed contracts) can share referrals' },
+        { error: 'You must deploy at least one contract before referral points can be awarded' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if referrer exists and has deployed contracts (is registered)
+    const referrerDocRef = doc(db, 'referrals', referrerFid);
+    const referrerDocSnap = await getDoc(referrerDocRef);
+    
+    if (!referrerDocSnap.exists()) {
+      return NextResponse.json(
+        { error: 'Referrer does not exist or has not used the app yet' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if referrer has deployed at least one contract
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    let referrerHasContracts = false;
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      if (userData.fid === Number(referrerFid) || String(userData.fid) === referrerFid) {
+        const contracts = userData.contracts || [];
+        if (contracts.length > 0) {
+          referrerHasContracts = true;
+          break;
+        }
+      }
+    }
+    
+    if (!referrerHasContracts) {
+      return NextResponse.json(
+        { error: 'Referrer must deploy at least one contract for their referral code to be active' },
         { status: 400 }
       );
     }

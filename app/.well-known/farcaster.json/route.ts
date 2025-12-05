@@ -7,6 +7,7 @@ export async function GET() {
   const miniappConfig = {
     version: "1",
     name: "Base Contract Deployer",
+    developer: "pradeep-pilot",
     iconUrl: "https://base-one-tap-contract-deployer.vercel.app/icon.png",
     homeUrl: "https://base-one-tap-contract-deployer.vercel.app",
     splashImageUrl: "https://base-one-tap-contract-deployer.vercel.app/splash.png",
@@ -27,7 +28,7 @@ export async function GET() {
       "web3"
     ],
     tagline: "contracts to Base in one tap",
-    ogTitle: "contracts to Base in one tap",
+    ogTitle: "Base Contract Deployer | 1-Tap Deploy",
     ogDescription: "Deploy smart contracts to Base blockchain with one tap. No code needed!",
     ogImageUrl: "https://base-one-tap-contract-deployer.vercel.app/og-image.png",
     // Deprecated properties for backward compatibility
