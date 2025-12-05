@@ -2,12 +2,6 @@ import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
-export const alt = 'Base Contract Deployer';
-export const size = {
-  width: 1200,
-  height: 630,
-};
-export const contentType = 'image/png';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -293,6 +287,12 @@ export async function GET(request: NextRequest) {
     {
       width: 1200,
       height: 630,
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+      },
     }
   );
 }
