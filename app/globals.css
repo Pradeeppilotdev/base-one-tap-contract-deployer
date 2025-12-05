@@ -492,6 +492,24 @@ button {
   background: var(--sketch);
 }
 
+/* Custom horizontal scrollbar for leaderboard - small like vertical */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: var(--light);
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: var(--pencil);
+  border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--ink);
+}
+
 /* Crosshatch pattern for disabled states */
 .crosshatch {
   background: 
