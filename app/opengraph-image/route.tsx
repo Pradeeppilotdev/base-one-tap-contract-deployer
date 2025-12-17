@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              marginTop: 60,
+              marginTop: 80,
               gap: 20,
             }}
           >
@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              marginTop: 60,
+              marginTop: 80,
               gap: 16,
               padding: '16px 32px',
               backgroundColor: '#ffffff',
@@ -286,7 +286,7 @@ export async function GET(request: NextRequest) {
     ),
     {
       width: 1200,
-      height: 630,
+      height: 800, // 3:2 aspect ratio (1200:800 = 3:2)
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',

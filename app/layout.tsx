@@ -18,6 +18,7 @@ const appUrl = process.env.NEXT_PUBLIC_ROOT_URL ||
 const miniAppEmbed = {
   version: "1",
   imageUrl: `${appUrl}/opengraph-image`,
+  aspectRatio: "3:2",
   button: {
     title: "Deploy Based!",
     action: {
@@ -180,7 +181,7 @@ export default function RootLayout({
         <meta property="og:description" content="Deploy smart contracts to Base blockchain with one tap. No code needed!" />
         <meta property="og:image" content={`${appUrl}/opengraph-image`} />
         <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
+        <meta property="og:image:height" content="800" />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={appUrl} />
