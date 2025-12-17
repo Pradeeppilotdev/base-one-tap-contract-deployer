@@ -2264,60 +2264,7 @@ contract Calculator {
         </div>
 
         {/* Manual Referral Code Input Section */}
-        {!referralCode && (
-          <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
-            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
-              Enter Referral Code
-            </h3>
-            <form onSubmit={handleManualReferralSubmit} className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={manualReferralCode}
-                  onChange={(e) => {
-                    setManualReferralCode(e.target.value);
-                    setReferralValidationError(null);
-                    setReferralValidated(false);
-                  }}
-                  placeholder="ref-123456"
-                  className="flex-1 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ink)]"
-                  disabled={validatingReferral || referralValidated}
-                />
-                <button
-                  type="submit"
-                  disabled={validatingReferral || referralValidated || !manualReferralCode.trim()}
-                  className="px-4 py-2 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--sketch)] transition-colors"
-                >
-                  {validatingReferral ? (
-                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                  ) : referralValidated ? (
-                    <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
-                  ) : (
-                    'Validate'
-                  )}
-                </button>
-              </div>
-              {referralValidationError && (
-                <div className="flex items-center gap-2 text-xs text-red-600">
-                  <AlertCircle className="w-4 h-4" strokeWidth={2} />
-                  <span>{referralValidationError}</span>
-                </div>
-              )}
-              {referralValidated && (
-                <div className="flex items-center gap-2 text-xs text-green-600">
-                  <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
-                  <span>Referral code validated! Deploy your first contract to earn referral points.</span>
-                </div>
-              )}
-              <p className="text-xs text-[var(--graphite)]">
-                Enter a referral code to earn points when you deploy your first contract. The referrer must have deployed at least one contract for their code to be active.
-              </p>
-            </form>
-          </div>
-        )}
-
-        {/* Manual Referral Code Input Section */}
-        {!referralCode && (
+        {!referralValidated && (
           <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
               Enter Referral Code
