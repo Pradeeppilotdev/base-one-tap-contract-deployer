@@ -2,28 +2,31 @@ import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
+export const contentType = 'image/png';
+export const alt = 'Base Contract Deployer';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const ref = searchParams.get('ref');
-  const fid = searchParams.get('fid');
-  const username = searchParams.get('username');
-  const displayName = searchParams.get('displayName');
-  const pfpUrl = searchParams.get('pfpUrl');
-  
-  // Check referrer header for ref parameter (when shared link is opened)
-  const referer = request.headers.get('referer') || '';
-  const refererUrl = referer ? new URL(referer) : null;
-  const refFromReferer = refererUrl?.searchParams.get('ref');
-  
-  // Use ref from query params or referer
-  const finalRef = ref || refFromReferer;
-  const finalFid = fid || (finalRef ? finalRef.replace('ref-', '') : null);
-  
-  // If ref parameter exists, show referrer's info
-  const isReferralShare = finalRef && finalFid;
-  
-  return new ImageResponse(
+  try {
+    const { searchParams } = new URL(request.url);
+    const ref = searchParams.get('ref');
+    const fid = searchParams.get('fid');
+    const username = searchParams.get('username');
+    const displayName = searchParams.get('displayName');
+    const pfpUrl = searchParams.get('pfpUrl');
+    
+    // Check referrer header for ref parameter (when shared link is opened)
+    const referer = request.headers.get('referer') || '';
+    const refererUrl = referer ? new URL(referer) : null;
+    const refFromReferer = refererUrl?.searchParams.get('ref');
+    
+    // Use ref from query params or referer
+    const finalRef = ref || refFromReferer;
+    const finalFid = fid || (finalRef ? finalRef.replace('ref-', '') : null);
+    
+    // If ref parameter exists, show referrer's info
+    const isReferralShare = finalRef && finalFid;
+    
+    return new ImageResponse(
     (
       <div
         style={{
@@ -295,6 +298,16 @@ export async function GET(request: NextRequest) {
       },
     }
   );
+  } catch (error) {
+    console.error('Error generating opengraph image:', error);
+    // Return a simple error image or redirect to a static fallback
+    return new Response('Failed to generate image', { 
+      status: 500,
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+    });
+  }
 }
 
 
