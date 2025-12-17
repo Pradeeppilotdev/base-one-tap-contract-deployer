@@ -1,5 +1,5 @@
-const ROOT_URL = process.env.NEXT_PUBLIC_ROOT_URL || 
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+// Always use production domain, not deployment-specific URLs
+const ROOT_URL = process.env.NEXT_PUBLIC_ROOT_URL || 'https://base-one-tap-contract-deployer.vercel.app';
 
 export const minikitConfig = {
   accountAssociation: {
@@ -29,11 +29,11 @@ export const minikitConfig = {
     webhookUrl: `${ROOT_URL}/api/webhook`,
     primaryCategory: "developer-tools",
     tags: ["base", "contracts", "deploy", "smart-contracts", "web3", "blockchain", "ethereum", "l2", "1-tap", "no-code", "developer-tools", "defi"],
-    heroImageUrl: `${ROOT_URL}/og-image.png`,
+    heroImageUrl: `${ROOT_URL}/opengraph-image`,
     tagline: "Deploy smart contracts to Base in one tap",
     ogTitle: "Base Contract Deployer | 1-Tap Deploy",
     ogDescription: "Deploy smart contracts to Base blockchain with one tap. No code needed!",
-    ogImageUrl: `${ROOT_URL}/og-image.png`,
+    ogImageUrl: `${ROOT_URL}/opengraph-image`,
   },
 } as const;
 

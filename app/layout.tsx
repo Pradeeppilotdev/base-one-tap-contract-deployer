@@ -11,8 +11,8 @@ export const viewport: Viewport = {
 };
 
 // Dynamic metadata for Farcaster Mini Apps
-const appUrl = process.env.NEXT_PUBLIC_ROOT_URL || 
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+// Always use production domain, not deployment-specific URLs
+const appUrl = process.env.NEXT_PUBLIC_ROOT_URL || 'https://base-one-tap-contract-deployer.vercel.app';
 
 // Mini App embed metadata (for fc:miniapp meta tag)
 const miniAppEmbed = {

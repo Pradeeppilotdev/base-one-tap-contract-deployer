@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       const refererUrl = referer ? new URL(referer) : null;
       refFromReferer = refererUrl?.searchParams.get('ref');
     } catch (e) {
-      // Invalid referer URL, ignore
+      // Invalid referer URL, ignore and continue without ref from referer
     }
     
     // Use ref from query params or referer
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     // If ref parameter exists, show referrer's info
     const isReferralShare = finalRef && finalFid;
     
-    const imageResponse = new ImageResponse(
+    return new ImageResponse(
     (
       <div
         style={{
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              marginTop: 80,
+              marginTop: 60,
               gap: 20,
             }}
           >
@@ -271,7 +271,7 @@ export async function GET(request: NextRequest) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              marginTop: 80,
+              marginTop: 60,
               gap: 16,
               padding: '16px 32px',
               backgroundColor: '#ffffff',
@@ -292,22 +292,23 @@ export async function GET(request: NextRequest) {
     ),
     {
       width: 1200,
-      height: 800, // 3:2 aspect ratio (1200:800 = 3:2)
+      height: 800, // 3:2 aspect ratio (1200:800 = 3:2) - matches og:image:height in layout.tsx
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+      },
     }
   );
-
-    // ImageResponse automatically sets Content-Type to image/png
-    // Set additional headers
-    imageResponse.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
-    imageResponse.headers.set('Access-Control-Allow-Origin', '*');
-    imageResponse.headers.set('Access-Control-Allow-Methods', 'GET');
-    
-    return imageResponse;
   } catch (error) {
     console.error('Error generating opengraph image:', error);
-    // Return a proper error response
+    // Return a proper error response instead of crashing
     return new Response(
-      JSON.stringify({ error: 'Failed to generate image', message: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: 'Failed to generate image', 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      }),
       { 
         status: 500,
         headers: {
@@ -317,7 +318,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 
 
 
