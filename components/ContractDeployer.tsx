@@ -1561,8 +1561,8 @@ contract Calculator {
       
       // Build dynamic OG image URL with referrer info for embed preview
       const ogImageUrl = referralCode && farcasterUser
-        ? `${appUrl}/og-image.png?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
-        : `${appUrl}/og-image.png`;
+        ? `${appUrl}/opengraph-image?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
+        : `${appUrl}/opengraph-image`;
 
       if (sdk?.actions?.composeCast) {
         // Share message with ref info

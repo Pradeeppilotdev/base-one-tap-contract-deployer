@@ -14,8 +14,13 @@ export async function GET(request: NextRequest) {
     
     // Check referrer header for ref parameter (when shared link is opened)
     const referer = request.headers.get('referer') || '';
-    const refererUrl = referer ? new URL(referer) : null;
-    const refFromReferer = refererUrl?.searchParams.get('ref');
+    let refFromReferer = null;
+    try {
+      const refererUrl = referer ? new URL(referer) : null;
+      refFromReferer = refererUrl?.searchParams.get('ref');
+    } catch (e) {
+      // Invalid referer URL, ignore
+    }
     
     // Use ref from query params or referer
     const finalRef = ref || refFromReferer;
@@ -24,7 +29,7 @@ export async function GET(request: NextRequest) {
     // If ref parameter exists, show referrer's info
     const isReferralShare = finalRef && finalFid;
     
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
     (
       <div
         style={{
@@ -288,23 +293,28 @@ export async function GET(request: NextRequest) {
     {
       width: 1200,
       height: 800, // 3:2 aspect ratio (1200:800 = 3:2)
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-      },
     }
   );
+
+    // ImageResponse automatically sets Content-Type to image/png
+    // Set additional headers
+    imageResponse.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
+    imageResponse.headers.set('Access-Control-Allow-Origin', '*');
+    imageResponse.headers.set('Access-Control-Allow-Methods', 'GET');
+    
+    return imageResponse;
   } catch (error) {
     console.error('Error generating opengraph image:', error);
-    // Return a simple error image or redirect to a static fallback
-    return new Response('Failed to generate image', { 
-      status: 500,
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-    });
+    // Return a proper error response
+    return new Response(
+      JSON.stringify({ error: 'Failed to generate image', message: error instanceof Error ? error.message : 'Unknown error' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 }
 

@@ -19,7 +19,7 @@ export default function DynamicMeta() {
         try {
           const info = JSON.parse(referrerInfo);
           const appUrl = window.location.origin;
-          const ogImageUrl = `${appUrl}/og-image.png?ref=${ref}&fid=${fid}&username=${encodeURIComponent(info.username || '')}&displayName=${encodeURIComponent(info.displayName || '')}&pfpUrl=${encodeURIComponent(info.pfpUrl || '')}`;
+          const ogImageUrl = `${appUrl}/opengraph-image?ref=${ref}&fid=${fid}&username=${encodeURIComponent(info.username || '')}&displayName=${encodeURIComponent(info.displayName || '')}&pfpUrl=${encodeURIComponent(info.pfpUrl || '')}`;
           
           // Update OG image meta tag
           let ogImage = document.querySelector('meta[property="og:image"]');
