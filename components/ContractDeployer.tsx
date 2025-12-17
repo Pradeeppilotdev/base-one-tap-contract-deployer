@@ -1538,9 +1538,8 @@ contract Calculator {
         ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
         : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
       
-      // Use Farcaster miniapp URL (this is the proper way to share miniapps)
-      const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
-      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
+      // Always use production domain, not deployment-specific URLs
+      const appUrl = 'https://base-one-tap-contract-deployer.vercel.app';
       
       // Store referrer info for when the app opens (so ref can be tracked)
       if (referralCode && farcasterUser && typeof window !== 'undefined') {
@@ -1551,18 +1550,15 @@ contract Calculator {
           fid: farcasterUser.fid
         };
         localStorage.setItem(`referrer-${farcasterUser.fid}`, JSON.stringify(referrerInfo));
-        // Also store ref URL for when app opens from Farcaster miniapp link
+        // Also store ref URL for when app opens from shared link
         localStorage.setItem('pending-referral-url', referralCode);
       }
       
-      // Build share URL - use Farcaster miniapp URL (it will open the app properly)
-      // The ref will be passed via localStorage and handled when app opens
-      const shareUrl = farcasterMiniappUrl;
-      
-      // Build dynamic OG image URL with referrer info for embed preview
-      const ogImageUrl = referralCode && farcasterUser
-        ? `${appUrl}/opengraph-image?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
-        : `${appUrl}/opengraph-image`;
+      // Build share URL with all referrer profile parameters
+      // This ensures crawlers and other users can see the referrer's profile in the OG image
+      const shareUrl = referralCode && farcasterUser
+        ? `${appUrl}?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
+        : appUrl;
 
       if (sdk?.actions?.composeCast) {
         // Share message with ref info
@@ -1572,7 +1568,7 @@ contract Calculator {
         
         await sdk.actions.composeCast({
           text: shareTextWithRef,
-          embeds: [shareUrl] // Use miniapp URL so it opens properly in Farcaster
+          embeds: [shareUrl] // Use app URL so OG image is fetched and displayed
         });
       } else {
         // Fallback for non-Farcaster environments

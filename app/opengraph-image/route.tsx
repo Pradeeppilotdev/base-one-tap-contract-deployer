@@ -12,19 +12,35 @@ export async function GET(request: NextRequest) {
     const displayName = searchParams.get('displayName');
     const pfpUrl = searchParams.get('pfpUrl');
     
-    // Check referrer header for ref parameter (when shared link is opened)
+    // Check referrer header for parameters (when crawlers fetch OG image from shared link)
+    // Crawlers will request /opengraph-image with Referer header containing the full URL with query params
     const referer = request.headers.get('referer') || '';
     let refFromReferer = null;
+    let fidFromReferer = null;
+    let usernameFromReferer = null;
+    let displayNameFromReferer = null;
+    let pfpUrlFromReferer = null;
+    
     try {
-      const refererUrl = referer ? new URL(referer) : null;
-      refFromReferer = refererUrl?.searchParams.get('ref');
+      if (referer) {
+        const refererUrl = new URL(referer);
+        refFromReferer = refererUrl.searchParams.get('ref');
+        fidFromReferer = refererUrl.searchParams.get('fid');
+        usernameFromReferer = refererUrl.searchParams.get('username');
+        displayNameFromReferer = refererUrl.searchParams.get('displayName');
+        pfpUrlFromReferer = refererUrl.searchParams.get('pfpUrl');
+      }
     } catch (e) {
-      // Invalid referer URL, ignore and continue without ref from referer
+      // Invalid referer URL, ignore and continue without params from referer
     }
     
-    // Use ref from query params or referer
+    // Use query params (direct request) or referer params (crawler request)
+    // This ensures crawlers get all the referrer profile info from the Referer header
     const finalRef = ref || refFromReferer;
-    const finalFid = fid || (finalRef ? finalRef.replace('ref-', '') : null);
+    const finalFid = fid || fidFromReferer || (finalRef ? finalRef.replace('ref-', '') : null);
+    const finalUsername = username || usernameFromReferer;
+    const finalDisplayName = displayName || displayNameFromReferer;
+    const finalPfpUrl = pfpUrl || pfpUrlFromReferer;
     
     // If ref parameter exists, show referrer's info
     const isReferralShare = finalRef && finalFid;
@@ -184,9 +200,9 @@ export async function GET(request: NextRequest) {
               }}
             >
               {/* Profile Picture */}
-              {pfpUrl && decodeURIComponent(pfpUrl) !== 'null' && decodeURIComponent(pfpUrl) !== '' ? (
+              {finalPfpUrl && decodeURIComponent(finalPfpUrl) !== 'null' && decodeURIComponent(finalPfpUrl) !== '' ? (
                 <img
-                  src={decodeURIComponent(pfpUrl)}
+                  src={decodeURIComponent(finalPfpUrl)}
                   alt="Referrer"
                   width="80"
                   height="80"
@@ -217,7 +233,7 @@ export async function GET(request: NextRequest) {
                       fontFamily: 'system-ui, sans-serif',
                     }}
                   >
-                    {displayName ? decodeURIComponent(displayName)[0]?.toUpperCase() : (username && decodeURIComponent(username) !== 'null' ? decodeURIComponent(username)[0]?.toUpperCase() : finalFid?.[0] || 'U')}
+                    {finalDisplayName ? decodeURIComponent(finalDisplayName)[0]?.toUpperCase() : (finalUsername && decodeURIComponent(finalUsername) !== 'null' ? decodeURIComponent(finalUsername)[0]?.toUpperCase() : finalFid?.[0] || 'U')}
                   </span>
                 </div>
               )}
@@ -238,9 +254,9 @@ export async function GET(request: NextRequest) {
                     fontFamily: 'system-ui, sans-serif',
                   }}
                 >
-                  {displayName && decodeURIComponent(displayName) !== 'null' ? decodeURIComponent(displayName) : (username && decodeURIComponent(username) !== 'null' && decodeURIComponent(username) !== '' ? decodeURIComponent(username) : `FID ${finalFid}`)}
+                  {finalDisplayName && decodeURIComponent(finalDisplayName) !== 'null' ? decodeURIComponent(finalDisplayName) : (finalUsername && decodeURIComponent(finalUsername) !== 'null' && decodeURIComponent(finalUsername) !== '' ? decodeURIComponent(finalUsername) : `FID ${finalFid}`)}
                 </div>
-                {username && decodeURIComponent(username) !== 'null' && decodeURIComponent(username) !== '' && (
+                {finalUsername && decodeURIComponent(finalUsername) !== 'null' && decodeURIComponent(finalUsername) !== '' && (
                   <div
                     style={{
                       fontSize: 24,
@@ -248,10 +264,10 @@ export async function GET(request: NextRequest) {
                       fontFamily: 'system-ui, sans-serif',
                     }}
                   >
-                    @{decodeURIComponent(username)} • FID {finalFid}
+                    @{decodeURIComponent(finalUsername)} • FID {finalFid}
                   </div>
                 )}
-                {(!username || decodeURIComponent(username) === 'null' || decodeURIComponent(username) === '') && (
+                {(!finalUsername || decodeURIComponent(finalUsername) === 'null' || decodeURIComponent(finalUsername) === '') && (
                   <div
                     style={{
                       fontSize: 24,
