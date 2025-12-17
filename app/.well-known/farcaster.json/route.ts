@@ -31,6 +31,8 @@ export async function GET() {
     ogTitle: "Base Contract Deployer | 1-Tap Deploy",
     ogDescription: "Deploy smart contracts to Base blockchain with one tap. No code needed!",
     ogImageUrl: "https://base-one-tap-contract-deployer.vercel.app/og-image.png",
+    // Required chains: Base Mainnet (eip155:8453) and Base Sepolia (eip155:84532)
+    requiredChains: ["eip155:8453", "eip155:84532"],
     // Deprecated properties for backward compatibility
     imageUrl: "https://base-one-tap-contract-deployer.vercel.app/og-image.png",
     buttonTitle: "Deploy Based!",

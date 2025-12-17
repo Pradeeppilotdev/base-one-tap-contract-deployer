@@ -47,9 +47,35 @@ interface DeployedContract {
   inputValue?: string;
 }
 
-// Factory Contract Address (Base Mainnet)
-// Deployed to Base Mainnet at: 0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3
-const FACTORY_CONTRACT_ADDRESS = '0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3';
+// Factory Contract Addresses
+// Base Mainnet: 0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3
+// Base Sepolia: 0x21E3Bf30a9cf163407cC25197E1152C80490a02E
+const FACTORY_CONTRACT_ADDRESSES = {
+  mainnet: '0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3',
+  testnet: '0x21E3Bf30a9cf163407cC25197E1152C80490a02E',
+} as const;
+
+// Network configuration
+const NETWORKS = {
+  mainnet: {
+    name: 'Base Mainnet',
+    chainId: '0x2105', // 8453
+    chainIdNumber: 8453,
+    rpcUrl: 'https://mainnet.base.org',
+    blockExplorer: 'https://basescan.org',
+    factoryAddress: FACTORY_CONTRACT_ADDRESSES.mainnet,
+  },
+  testnet: {
+    name: 'Base Sepolia',
+    chainId: '0x14a34', // 84532
+    chainIdNumber: 84532,
+    rpcUrl: 'https://sepolia.base.org',
+    blockExplorer: 'https://sepolia.basescan.org',
+    factoryAddress: FACTORY_CONTRACT_ADDRESSES.testnet,
+  },
+} as const;
+
+type NetworkType = keyof typeof NETWORKS;
 
 // Factory Contract ABI
 const FACTORY_ABI = [
@@ -181,6 +207,7 @@ const STORAGE_KEY = 'base-deployer-contracts';
 const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
 const REFERRAL_KEY = 'base-deployer-referral';
+const NETWORK_KEY = 'base-deployer-network';
 
 // Achievement system
 interface Achievement {
@@ -206,6 +233,14 @@ function ContractDeployer() {
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [selectedContract, setSelectedContract] = useState<keyof typeof CONTRACT_TEMPLATES>('string');
+  const [network, setNetwork] = useState<NetworkType>(() => {
+    // Load network preference from localStorage, default to mainnet
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(NETWORK_KEY);
+      return (stored === 'testnet' ? 'testnet' : 'mainnet') as NetworkType;
+    }
+    return 'mainnet';
+  });
   const [deploying, setDeploying] = useState(false);
   const [deployedAddress, setDeployedAddress] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -769,17 +804,18 @@ contract Calculator {
   // Open manual verification page on BaseScan
   const openManualVerification = (contractAddress: string, contractType: string, constructorArgs?: string) => {
     const sourceCode = CONTRACT_SOURCE_CODE[contractType];
+    const currentNetwork = getCurrentNetwork();
     
     // Copy source code to clipboard
     navigator.clipboard.writeText(sourceCode).then(() => {
       // Open BaseScan verification page
-      window.open(`https://basescan.org/address/${contractAddress}#code`, '_blank');
+      window.open(`${currentNetwork.blockExplorer}/address/${contractAddress}#code`, '_blank');
       
       setError('📋 Source code copied! Paste it on BaseScan verification page.');
       setTimeout(() => setError(null), 5000);
     }).catch(() => {
       // If clipboard fails, just open the page
-      window.open(`https://basescan.org/address/${contractAddress}#code`, '_blank');
+      window.open(`${currentNetwork.blockExplorer}/address/${contractAddress}#code`, '_blank');
       setError('Open BaseScan and paste the contract source code manually.');
       setTimeout(() => setError(null), 5000);
     });
@@ -832,6 +868,34 @@ contract Calculator {
     // Get Farcaster context (ready() is called at page level)
     const initSDK = async () => {
       setSdkReady(true);
+      
+      // Check for supported chains and capabilities
+      try {
+        const chains = await sdk.getChains();
+        const capabilities = await sdk.getCapabilities();
+        
+        console.log('Supported chains:', chains);
+        console.log('Supported capabilities:', capabilities);
+        
+        // Check if Base Sepolia (eip155:84532) is supported
+        const supportsBaseSepolia = chains.includes('eip155:84532');
+        const supportsBaseMainnet = chains.includes('eip155:8453');
+        
+        console.log('Base Sepolia supported:', supportsBaseSepolia);
+        console.log('Base Mainnet supported:', supportsBaseMainnet);
+        
+        if (!supportsBaseSepolia && !supportsBaseMainnet) {
+          console.warn('⚠️ Neither Base Mainnet nor Base Sepolia are supported by this host');
+        } else if (!supportsBaseSepolia) {
+          console.warn('⚠️ Base Sepolia testnet is not supported by this host. Only Base Mainnet is available.');
+        }
+        
+        // Check for wallet capabilities
+        const supportsWallet = capabilities.includes('wallet.getEthereumProvider');
+        console.log('Wallet provider supported:', supportsWallet);
+      } catch (chainError) {
+        console.log('Chain detection error (may not be in Farcaster):', chainError);
+      }
       
       // Try to get user context from Farcaster
       try {
@@ -933,6 +997,64 @@ contract Calculator {
   // Cache wrapped providers to avoid re-wrapping
   const providerCache = new WeakMap();
   
+  // Get current network configuration
+  const getCurrentNetwork = () => NETWORKS[network];
+
+  // Save network preference to localStorage
+  const saveNetworkPreference = (newNetwork: NetworkType) => {
+    setNetwork(newNetwork);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(NETWORK_KEY, newNetwork);
+    }
+  };
+
+  // Switch network
+  const switchNetwork = async (newNetwork: NetworkType) => {
+    if (network === newNetwork) return;
+    
+    saveNetworkPreference(newNetwork);
+    const targetNetwork = NETWORKS[newNetwork];
+    
+    if (!account) {
+      // If not connected, just update the preference
+      return;
+    }
+
+    const provider = getProvider();
+    if (!provider) return;
+
+    try {
+      await provider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: targetNetwork.chainId }],
+      });
+      setChainId(targetNetwork.chainId);
+    } catch (switchError: any) {
+      if (switchError.code === 4902) {
+        // Chain not added, add it
+        try {
+          await provider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: targetNetwork.chainId,
+              chainName: targetNetwork.name,
+              nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+              rpcUrls: [targetNetwork.rpcUrl],
+              blockExplorerUrls: [targetNetwork.blockExplorer]
+            }]
+          });
+          setChainId(targetNetwork.chainId);
+        } catch (addError) {
+          setError(`Failed to add ${targetNetwork.name}`);
+          setTimeout(() => setError(null), 3000);
+        }
+      } else {
+        setError(`Failed to switch to ${targetNetwork.name}`);
+        setTimeout(() => setError(null), 3000);
+      }
+    }
+  };
+
   const getProvider = () => {
     let provider: any;
     if (walletType === 'farcaster' && sdk?.wallet?.ethProvider) {
@@ -976,17 +1098,17 @@ contract Calculator {
     return provider;
   };
 
-  const switchToBase = async () => {
+  const switchToCurrentNetwork = async () => {
+    const currentNetwork = getCurrentNetwork();
     const provider = getProvider();
     if (!provider) return false;
-    const BASE_MAINNET_CHAIN_ID = '0x2105';
     
     try {
       await provider.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: BASE_MAINNET_CHAIN_ID }],
+        params: [{ chainId: currentNetwork.chainId }],
       });
-      setChainId(BASE_MAINNET_CHAIN_ID);
+      setChainId(currentNetwork.chainId);
       return true;
     } catch (switchError: any) {
       if (switchError.code === 4902) {
@@ -995,17 +1117,17 @@ contract Calculator {
           await provider.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: BASE_MAINNET_CHAIN_ID,
-              chainName: 'Base',
+              chainId: currentNetwork.chainId,
+              chainName: currentNetwork.name,
               nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['https://mainnet.base.org'],
-              blockExplorerUrls: ['https://basescan.org']
+              rpcUrls: [currentNetwork.rpcUrl],
+              blockExplorerUrls: [currentNetwork.blockExplorer]
             }]
           });
-          setChainId(BASE_MAINNET_CHAIN_ID);
+          setChainId(currentNetwork.chainId);
           return true;
         } catch (addError) {
-          throw new Error('Failed to add Base network');
+          throw new Error(`Failed to add ${currentNetwork.name}`);
         }
       }
       throw switchError;
@@ -1037,26 +1159,27 @@ contract Calculator {
         const chain = await ethProvider.request({ method: 'eth_chainId' });
         setChainId(chain);
         
-        if (chain !== '0x2105') {
+        const currentNetwork = getCurrentNetwork();
+        if (chain !== currentNetwork.chainId) {
           try {
             await ethProvider.request({
               method: 'wallet_switchEthereumChain',
-              params: [{ chainId: '0x2105' }],
+              params: [{ chainId: currentNetwork.chainId }],
             });
-            setChainId('0x2105');
+            setChainId(currentNetwork.chainId);
           } catch (switchErr: any) {
             if (switchErr.code === 4902) {
               await ethProvider.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
-                  chainId: '0x2105',
-                  chainName: 'Base',
+                  chainId: currentNetwork.chainId,
+                  chainName: currentNetwork.name,
                   nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
-                  rpcUrls: ['https://mainnet.base.org'],
-                  blockExplorerUrls: ['https://basescan.org']
+                  rpcUrls: [currentNetwork.rpcUrl],
+                  blockExplorerUrls: [currentNetwork.blockExplorer]
                 }]
               });
-              setChainId('0x2105');
+              setChainId(currentNetwork.chainId);
             }
           }
         }
@@ -1088,8 +1211,9 @@ contract Calculator {
         window.ethereum.on('chainChanged', handleChainChanged);
       }
       
-      if (chain !== '0x2105') {
-        await switchToBase();
+      const currentNetwork = getCurrentNetwork();
+      if (chain !== currentNetwork.chainId) {
+        await switchToCurrentNetwork();
       }
     } catch (err: any) {
       setError(err.message);
@@ -1109,7 +1233,8 @@ contract Calculator {
 
   // Use public RPC to fetch receipt - more reliable than wallet provider
   const fetchReceiptFromRPC = async (txHash: string): Promise<any> => {
-    const response = await fetch('https://mainnet.base.org', {
+    const currentNetwork = getCurrentNetwork();
+    const response = await fetch(currentNetwork.rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1153,15 +1278,17 @@ contract Calculator {
       return;
     }
 
-    if (chainId !== '0x2105') {
+    const currentNetwork = getCurrentNetwork();
+    if (chainId !== currentNetwork.chainId) {
       try {
-        await switchToBase();
+        await switchToCurrentNetwork();
       } catch (err) {
-        setError('Please switch to Base Mainnet');
+        setError(`Please switch to ${currentNetwork.name}`);
         return;
       }
     }
 
+    // Factory contract is deployed on both Base Mainnet and Base Sepolia
     const template = CONTRACT_TEMPLATES[selectedContract];
     
     if (template.hasInput && !inputValue.trim()) {
@@ -1204,13 +1331,14 @@ contract Calculator {
       });
 
       // Estimate gas for factory call
+      const factoryAddress = currentNetwork.factoryAddress;
       let gasEstimate: string;
       try {
         const estimatedGas = await provider.request({
           method: 'eth_estimateGas',
           params: [{
             from: account as `0x${string}`,
-            to: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
+            to: factoryAddress as `0x${string}`,
             data: callData
           }]
         });
@@ -1226,7 +1354,7 @@ contract Calculator {
       // Send transaction to factory contract (regular transaction, not contract creation)
       const txParams: any = {
         from: account as `0x${string}`,
-        to: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
+        to: factoryAddress as `0x${string}`,
         data: callData,
         gas: gasEstimate,
         value: '0x0'
@@ -1331,7 +1459,8 @@ contract Calculator {
             // Transaction succeeded but no contract address - likely account abstraction
             // Try to get more info from the transaction
             try {
-              const txResponse = await fetch('https://mainnet.base.org', {
+              const currentNetwork = getCurrentNetwork();
+              const txResponse = await fetch(currentNetwork.rpcUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1345,30 +1474,34 @@ contract Calculator {
               const tx = txData.result;
               
               if (tx && tx.to === null) {
-                setError(`Transaction succeeded but contract address not in receipt. Check BaseScan: https://basescan.org/tx/${hash}`);
+                setError(`Transaction succeeded but contract address not in receipt. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
               } else {
                 const bundlerAddress = '0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789';
                 if (tx?.to?.toLowerCase() === bundlerAddress.toLowerCase()) {
                   setError(
                     `Account Abstraction Detected: Transaction routed to bundler. ` +
                     `Disable account abstraction in wallet settings or use MetaMask. ` +
-                    `Check BaseScan: https://basescan.org/tx/${hash}`
+                    `Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`
                   );
                 } else {
-                  setError(`Transaction sent to ${tx?.to}, not contract creation. Check BaseScan: https://basescan.org/tx/${hash}`);
+                  setError(`Transaction sent to ${tx?.to}, not contract creation. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
                 }
               }
             } catch (txErr) {
-              setError(`Contract address not found. Check BaseScan: https://basescan.org/tx/${hash}`);
+              const currentNetwork = getCurrentNetwork();
+              setError(`Contract address not found. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
             }
           }
         } else if (isFailed) {
-          setError(`Transaction failed. Check BaseScan: https://basescan.org/tx/${hash}`);
+          const currentNetwork = getCurrentNetwork();
+          setError(`Transaction failed. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
         } else {
-          setError(`Unknown status (${status}). Check BaseScan: https://basescan.org/tx/${hash}`);
+          const currentNetwork = getCurrentNetwork();
+          setError(`Unknown status (${status}). Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
         }
       } else {
-        setError(`Transaction still pending after timeout. Check BaseScan: https://basescan.org/tx/${hash}`);
+        const currentNetwork = getCurrentNetwork();
+        setError(`Transaction still pending after timeout. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
       }
     } catch (err: any) {
       if (err.code === 4001 || err.message?.includes('User rejected')) {
@@ -1544,15 +1677,99 @@ contract Calculator {
         {/* Main Card */}
         <div className="sketch-card p-6 mb-6">
           
-          {/* Mainnet Notice */}
-          <div className="flex items-start gap-3 p-4 mb-6 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
-            <AlertTriangle className="w-5 h-5 text-[var(--ink)] flex-shrink-0 mt-0.5" strokeWidth={2} />
-            <div>
-              <p className="font-bold text-[var(--ink)] text-sm tracking-wide uppercase">Mainnet Deployment</p>
-              <p className="text-[var(--graphite)] text-sm mt-1">
-                Deploys to Base mainnet. Real ETH required for gas.
-              </p>
+          {/* Network Selection */}
+          <div className="mb-6">
+            <p className="block text-sm font-bold text-[var(--ink)] mb-3 uppercase tracking-wider">
+              Network
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => switchNetwork('mainnet')}
+                className={`
+                  p-4 text-left transition-all border-2
+                  ${network === 'mainnet'
+                    ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]'
+                    : 'border-[var(--pencil)] bg-[var(--paper)] hover:border-[var(--ink)]'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`
+                    w-3 h-3 rounded-full border-2 flex-shrink-0
+                    ${network === 'mainnet'
+                      ? 'border-[var(--paper)] bg-[var(--paper)]'
+                      : 'border-[var(--ink)] bg-transparent'
+                    }
+                  `}>
+                    {network === 'mainnet' && (
+                      <div className="w-full h-full rounded-full bg-[var(--ink)]" />
+                    )}
+                  </div>
+                  <div>
+                    <p className={`font-bold text-sm ${network === 'mainnet' ? 'text-[var(--paper)]' : 'text-[var(--ink)]'}`}>
+                      Base Mainnet
+                    </p>
+                    <p className={`text-xs ${network === 'mainnet' ? 'text-[var(--light)]' : 'text-[var(--graphite)]'}`}>
+                      Production
+                    </p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => switchNetwork('testnet')}
+                className={`
+                  p-4 text-left transition-all border-2
+                  ${network === 'testnet'
+                    ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]'
+                    : 'border-[var(--pencil)] bg-[var(--paper)] hover:border-[var(--ink)]'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`
+                    w-3 h-3 rounded-full border-2 flex-shrink-0
+                    ${network === 'testnet'
+                      ? 'border-[var(--paper)] bg-[var(--paper)]'
+                      : 'border-[var(--ink)] bg-transparent'
+                    }
+                  `}>
+                    {network === 'testnet' && (
+                      <div className="w-full h-full rounded-full bg-[var(--ink)]" />
+                    )}
+                  </div>
+                  <div>
+                    <p className={`font-bold text-sm ${network === 'testnet' ? 'text-[var(--paper)]' : 'text-[var(--ink)]'}`}>
+                      Base Sepolia
+                    </p>
+                    <p className={`text-xs ${network === 'testnet' ? 'text-[var(--light)]' : 'text-[var(--graphite)]'}`}>
+                      Testnet
+                    </p>
+                  </div>
+                </div>
+              </button>
             </div>
+            {network === 'mainnet' && (
+              <div className="flex items-start gap-3 p-4 mt-3 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
+                <AlertTriangle className="w-5 h-5 text-[var(--ink)] flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div>
+                  <p className="font-bold text-[var(--ink)] text-sm tracking-wide uppercase">Mainnet Deployment</p>
+                  <p className="text-[var(--graphite)] text-sm mt-1">
+                    Deploys to Base mainnet. Real ETH required for gas.
+                  </p>
+                </div>
+              </div>
+            )}
+            {network === 'testnet' && (
+              <div className="flex items-start gap-3 p-4 mt-3 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
+                <AlertCircle className="w-5 h-5 text-[var(--ink)] flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div>
+                  <p className="font-bold text-[var(--ink)] text-sm tracking-wide uppercase">Testnet Deployment</p>
+                  <p className="text-[var(--graphite)] text-sm mt-1">
+                    Deploys to Base Sepolia testnet. Test ETH required for gas.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Coinbase Wallet Notice */}
@@ -1598,7 +1815,7 @@ contract Calculator {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <a
-                            href={`https://basescan.org/address/${account}`}
+                            href={`${getCurrentNetwork().blockExplorer}/address/${account}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-mono text-sm font-semibold text-[var(--ink)] whitespace-nowrap hover:underline cursor-pointer"
@@ -1624,12 +1841,12 @@ contract Calculator {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {chainId !== '0x2105' && (
+                      {chainId !== getCurrentNetwork().chainId && (
                         <button
-                          onClick={switchToBase}
+                          onClick={switchToCurrentNetwork}
                           className="ink-button-outline px-3 py-1.5 text-xs whitespace-nowrap"
                         >
-                          Switch to Base
+                          Switch to {getCurrentNetwork().name}
                         </button>
                       )}
                       <button
@@ -1721,7 +1938,7 @@ contract Calculator {
           {/* Deploy Button */}
           <button
             onClick={deployContract}
-            disabled={!account || deploying || chainId !== '0x2105'}
+            disabled={!account || deploying || chainId !== getCurrentNetwork().chainId}
             className="ink-button w-full py-4 px-6 text-lg"
           >
             {deploying ? (
@@ -1730,8 +1947,8 @@ contract Calculator {
                 <span className="loading-dot"></span>
                 <span className="loading-dot"></span>
               </span>
-            ) : chainId !== '0x2105' ? (
-              'Switch to Base'
+            ) : chainId !== getCurrentNetwork().chainId ? (
+              `Switch to ${getCurrentNetwork().name}`
             ) : (
               'Deploy Contract'
             )}
@@ -1752,7 +1969,7 @@ contract Calculator {
             <div className="mt-4 p-4 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
               <p className="font-bold text-[var(--ink)] text-sm uppercase tracking-wide mb-2">Transaction Submitted</p>
               <a
-                href={`https://basescan.org/tx/${txHash}`}
+                href={`${getCurrentNetwork().blockExplorer}/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="sketch-link text-sm inline-flex items-center gap-2"
@@ -1787,7 +2004,7 @@ contract Calculator {
                 </button>
               </div>
               <a
-                href={`https://basescan.org/address/${deployedAddress}`}
+                href={`${getCurrentNetwork().blockExplorer}/address/${deployedAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="sketch-link text-sm inline-flex items-center gap-2 mt-3"
@@ -1895,7 +2112,7 @@ contract Calculator {
                               )}
                             </button>
                             <a
-                              href={`https://basescan.org/address/${contract.address}`}
+                              href={`${getCurrentNetwork().blockExplorer}/address/${contract.address}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-2 hover:bg-[var(--light)] transition-colors"
@@ -2252,7 +2469,7 @@ contract Calculator {
         {/* Footer */}
         <footer className="mt-8 text-center">
           <p className="text-[var(--shade)] text-sm font-medium tracking-wide">
-            Base Mainnet / Chain ID: 8453
+            {getCurrentNetwork().name} / Chain ID: {getCurrentNetwork().chainIdNumber}
           </p>
           <p className="text-[var(--shade)] text-xs mt-1">
             Compiled with Solidity 0.8.19
