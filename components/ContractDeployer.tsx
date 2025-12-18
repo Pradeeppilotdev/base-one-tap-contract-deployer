@@ -318,6 +318,33 @@ function ContractDeployer() {
             setReferredBy(data.referredBy);
             // If user has already been referred, mark as validated to hide the section
             setReferralValidated(true);
+            // Clear any pending referral since user is already referred
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('pending-referral');
+            }
+          } else {
+            // User hasn't been referred yet, check if there's a pending referral and contracts exist
+            // If user has contracts but referral wasn't tracked, try to track it now
+            if (typeof window !== 'undefined' && backendContracts.length > 0) {
+              const pendingReferral = localStorage.getItem('pending-referral');
+              if (pendingReferral && farcasterUser) {
+                try {
+                  const referral = JSON.parse(pendingReferral);
+                  if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
+                    console.log('User has contracts but referral not tracked, attempting to track now...');
+                    // Wait a bit then try to track
+                    setTimeout(async () => {
+                      const result = await trackReferral(referral.referrerFid, referral.newUserFid);
+                      if (result) {
+                        console.log('Pending referral tracked successfully on page load');
+                      }
+                    }, 2000);
+                  }
+                } catch (e) {
+                  console.error('Failed to parse pending referral:', e);
+                }
+              }
+            }
           }
         }
 
@@ -531,10 +558,14 @@ function ContractDeployer() {
     await validateReferralCode(manualReferralCode.trim());
   };
 
-  const trackReferral = async (referrerFid: string, newUserFid: string) => {
-    if (!account) return;
+  const trackReferral = async (referrerFid: string, newUserFid: string): Promise<boolean> => {
+    if (!account) {
+      console.error('No account, cannot track referral');
+      return false;
+    }
     
     try {
+      console.log('Calling track-referral API with:', { referrerFid, newUserFid, walletAddress: account });
       // Call API to track referral
       const response = await fetch('/api/track-referral', {
         method: 'POST',
@@ -550,6 +581,7 @@ function ContractDeployer() {
       });
       
       const data = await response.json();
+      console.log('Track referral response:', { status: response.status, data });
       
       if (response.ok && data.success) {
         // Give points to new user
@@ -585,15 +617,20 @@ function ContractDeployer() {
         if (showProfileModal && farcasterUser) {
           fetchUserReferralInfo();
         }
+        return true;
       } else {
         console.error('Failed to track referral:', data);
-        setError(data.error || 'Failed to track referral');
-        setTimeout(() => setError(null), 3000);
+        const errorMsg = data.error || 'Failed to track referral';
+        setError(errorMsg);
+        setTimeout(() => setError(null), 5000);
+        return false;
       }
     } catch (err) {
       console.error('Failed to track referral:', err);
-      setError('Failed to track referral');
-      setTimeout(() => setError(null), 3000);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to track referral';
+      setError(errorMsg);
+      setTimeout(() => setError(null), 5000);
+      return false;
     }
   };
 
@@ -1530,22 +1567,47 @@ contract Calculator {
             
             setInputValue('');
 
-            // Track referral if this is the first contract deployment and there's a pending referral
-            // Only track if user hasn't already been referred
-            if (isFirstDeployment && !referredBy && farcasterUser && pendingReferral) {
+            // Track referral if there's a pending referral and user hasn't been referred yet
+            // Check backend to see if user was already referred (not just local state)
+            if (farcasterUser && pendingReferral && !referredBy) {
               try {
                 const referral = JSON.parse(pendingReferral);
                 if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
-                  console.log('Tracking referral:', referral);
-                  // Wait a bit for the contract to be saved to backend
-                  setTimeout(async () => {
-                    try {
-                      await trackReferral(referral.referrerFid, referral.newUserFid);
-                      console.log('Referral tracked successfully');
-                    } catch (err) {
-                      console.error('Error tracking referral:', err);
+                  console.log('Pending referral found, checking if already tracked...');
+                  
+                  // Check backend to see if user was already referred
+                  const userDataCheck = await fetch(`/api/user-data?wallet=${account}`);
+                  if (userDataCheck.ok) {
+                    const userData = await userDataCheck.json();
+                    if (userData.referredBy) {
+                      console.log('User already referred, clearing pending referral');
+                      setReferredBy(userData.referredBy);
+                      setReferralValidated(true);
+                      if (typeof window !== 'undefined') {
+                        localStorage.removeItem('pending-referral');
+                      }
+                    } else {
+                      // User hasn't been referred yet, track it now
+                      console.log('Tracking referral:', referral);
+                      // Wait a bit for the contract to be saved to backend
+                      setTimeout(async () => {
+                        try {
+                          const result = await trackReferral(referral.referrerFid, referral.newUserFid);
+                          if (result) {
+                            console.log('Referral tracked successfully');
+                          } else {
+                            console.error('Referral tracking returned false');
+                          }
+                        } catch (err) {
+                          console.error('Error tracking referral:', err);
+                          setError('Failed to track referral. Please try again or contact support.');
+                          setTimeout(() => setError(null), 5000);
+                        }
+                      }, 3000); // Increased timeout to ensure contract is saved
                     }
-                  }, 2000); // Increased timeout to ensure contract is saved
+                  }
+                } else {
+                  console.log('Referral FID mismatch or invalid referral data');
                 }
               } catch (e) {
                 console.error('Failed to parse pending referral:', e);
