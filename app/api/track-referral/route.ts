@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         lastUpdated: Date.now()
       }, { merge: true });
       
-      // Track new user's referral info
+      // Track new user's referral info in users collection
       let newUserData: any = {};
       if (userDocSnap.exists()) {
         newUserData = userDocSnap.data();
@@ -166,6 +166,44 @@ export async function POST(request: NextRequest) {
         referralPoints: (newUserData.referralPoints || 0) + 10, // Points for using referral
         lastUpdated: Date.now()
       }, { merge: true });
+      
+      // Ensure new user's referral document exists with THEIR profile info (not referrer's)
+      // This is important for the leaderboard to show correct profile info
+      const newUserReferralDocRef = doc(db, 'referrals', newUserFid);
+      const newUserReferralDocSnap = await getDoc(newUserReferralDocRef);
+      
+      if (!newUserReferralDocSnap.exists()) {
+        // Create referral document for new user with THEIR profile info
+        await setDoc(newUserReferralDocRef, {
+          fid: newUserFid,
+          username: newUserProfile.username || '',
+          displayName: newUserProfile.displayName || '',
+          pfpUrl: newUserProfile.pfpUrl || '',
+          hasDeployedContract: true,
+          referralCount: 0,
+          totalPoints: 0,
+          monthlyReferrals: {},
+          referredUsers: [],
+          lastUpdated: Date.now()
+        });
+      } else {
+        // Update existing referral document - only update profile info if missing, preserve referral stats
+        const existingNewUserReferralData = newUserReferralDocSnap.data();
+        await setDoc(newUserReferralDocRef, {
+          fid: newUserFid,
+          // Only update profile info if it's missing or empty, don't overwrite existing
+          username: existingNewUserReferralData.username || newUserProfile.username || '',
+          displayName: existingNewUserReferralData.displayName || newUserProfile.displayName || '',
+          pfpUrl: existingNewUserReferralData.pfpUrl || newUserProfile.pfpUrl || '',
+          hasDeployedContract: true,
+          // Preserve existing referral stats
+          referralCount: existingNewUserReferralData.referralCount || 0,
+          totalPoints: existingNewUserReferralData.totalPoints || 0,
+          monthlyReferrals: existingNewUserReferralData.monthlyReferrals || {},
+          referredUsers: existingNewUserReferralData.referredUsers || [],
+          lastUpdated: Date.now()
+        }, { merge: true });
+      }
       
       return NextResponse.json({
         success: true,
