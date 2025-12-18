@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
               hasDeployedContract = true;
               // Update the referral document with the flag for future queries
               try {
-                await updateDoc(referralDocRef, { hasDeployedContract: true });
+                await setDoc(referralDocRef, { hasDeployedContract: true }, { merge: true });
               } catch (updateError) {
                 // Ignore update errors - it's just an optimization
                 console.warn('Failed to update referral flag:', updateError);
