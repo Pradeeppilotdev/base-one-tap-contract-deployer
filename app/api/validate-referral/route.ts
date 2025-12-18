@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 
 // GET - Validate referral code
 export async function GET(request: NextRequest) {
@@ -28,16 +28,67 @@ export async function GET(request: NextRequest) {
     try {
       // Check if referrer exists in referrals collection
       const referralDocRef = doc(db, 'referrals', fid);
-      const referralDocSnap = await getDoc(referralDocRef);
+      let referralDocSnap = await getDoc(referralDocRef);
       
+      // If referral document doesn't exist, check if user has deployed contracts
+      // If they have, create the referral document
       if (!referralDocSnap.exists()) {
-        return NextResponse.json(
-          { 
-            valid: false,
-            error: 'This referral code does not exist or the user has not used the app yet'
-          },
-          { status: 200 }
-        );
+        // Check users collection to see if this FID has deployed contracts
+        try {
+          const usersSnapshot = await getDocs(collection(db, 'users'));
+          let userData: any = null;
+          let hasDeployedContract = false;
+          
+          for (const userDoc of usersSnapshot.docs) {
+            const data = userDoc.data();
+            if (data.fid === Number(fid) || String(data.fid) === fid) {
+              userData = data;
+              const contracts = data.contracts || [];
+              if (contracts.length > 0) {
+                hasDeployedContract = true;
+                break;
+              }
+            }
+          }
+          
+          // If user has deployed contracts, create the referral document
+          if (hasDeployedContract && userData) {
+            await setDoc(referralDocRef, {
+              fid: fid,
+              username: userData.username || '',
+              displayName: userData.displayName || '',
+              pfpUrl: userData.pfpUrl || '',
+              hasDeployedContract: true,
+              referralCount: 0,
+              totalPoints: 0,
+              monthlyReferrals: {},
+              referredUsers: [],
+              lastUpdated: Date.now()
+            }, { merge: true });
+            
+            // Re-fetch the document
+            referralDocSnap = await getDoc(referralDocRef);
+          } else {
+            // User hasn't deployed contracts yet
+            return NextResponse.json(
+              { 
+                valid: false,
+                error: 'This referral code does not exist or the user has not used the app yet'
+              },
+              { status: 200 }
+            );
+          }
+        } catch (checkError: any) {
+          // If we can't check users collection, return error
+          console.error('Error checking users collection:', checkError);
+          return NextResponse.json(
+            { 
+              valid: false,
+              error: 'Unable to verify referral code. Please try again.'
+            },
+            { status: 500 }
+          );
+        }
       }
 
       const referralData = referralDocSnap.data();

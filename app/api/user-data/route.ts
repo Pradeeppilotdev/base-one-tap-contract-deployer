@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface UserData {
   contracts: any[];
@@ -165,15 +165,27 @@ export async function POST(request: NextRequest) {
       // Save to Firestore (merge: true to preserve other fields if any)
       await setDoc(userDocRef, userData, { merge: true });
       
-      // If this is the first contract deployment and user has FID, update referral document
+      // If this is the first contract deployment and user has FID, create/update referral document
       const isFirstDeployment = existingContracts.length === 0 && mergedContracts.length > 0;
       if (isFirstDeployment && finalFid !== undefined) {
         try {
           const referralDocRef = doc(db, 'referrals', String(finalFid));
-          await updateDoc(referralDocRef, { hasDeployedContract: true });
+          // Use setDoc with merge to create if doesn't exist, or update if it does
+          await setDoc(referralDocRef, {
+            fid: String(finalFid),
+            username: finalUsername || '',
+            displayName: finalDisplayName || '',
+            pfpUrl: finalPfpUrl || '',
+            hasDeployedContract: true,
+            referralCount: 0,
+            totalPoints: 0,
+            monthlyReferrals: {},
+            referredUsers: [],
+            lastUpdated: Date.now()
+          }, { merge: true });
         } catch (referralUpdateError) {
-          // Ignore errors - referral document might not exist yet, which is fine
-          console.warn('Failed to update referral hasDeployedContract flag:', referralUpdateError);
+          // Log error but don't fail the main operation
+          console.error('Failed to create/update referral document:', referralUpdateError);
         }
       }
       
