@@ -2215,15 +2215,24 @@ contract Calculator {
                             >
                               <ExternalLink className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
                             </a>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Profile Modal */}
-      {showProfileModal && farcasterUser && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowProfileModal(false)}
-        >
+        {/* Profile Modal */}
+        {showProfileModal && farcasterUser && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+            onClick={() => setShowProfileModal(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+          >
           <div 
             className="bg-[var(--paper)] border-4 border-[var(--ink)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto sketch-card"
             onClick={(e) => e.stopPropagation()}
@@ -2375,17 +2384,9 @@ contract Calculator {
             )}
           </div>
         </div>
-      )}
-    </div>
-  );
-})}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        )}
 
-        {/* Leaderboard Section */}
+      {/* Leaderboard Section */}
         <div className="mt-6 mb-6 sketch-card">
           <button
             onClick={() => setShowLeaderboard(!showLeaderboard)}
