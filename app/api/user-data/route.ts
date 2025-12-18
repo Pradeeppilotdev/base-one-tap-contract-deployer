@@ -10,6 +10,7 @@ interface UserData {
   displayName?: string;
   pfpUrl?: string;
   referralPoints?: number;
+  referredBy?: string; // FID of the user who referred this user
   lastUpdated: number;
 }
 
@@ -160,6 +161,11 @@ export async function POST(request: NextRequest) {
       // Only include referralPoints if it exists and is a number
       if (existingData?.referralPoints !== undefined && typeof existingData.referralPoints === 'number') {
         userData.referralPoints = existingData.referralPoints;
+      }
+      
+      // Preserve referredBy if it exists (set by track-referral API)
+      if (existingData?.referredBy) {
+        userData.referredBy = existingData.referredBy;
       }
 
       // Save to Firestore (merge: true to preserve other fields if any)

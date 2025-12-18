@@ -258,6 +258,7 @@ function ContractDeployer() {
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralPoints, setReferralPoints] = useState<number>(0);
+  const [referredBy, setReferredBy] = useState<string | null>(null); // FID of user who referred this user
   const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -299,6 +300,16 @@ function ContractDeployer() {
           // Load achievements from backend if available
           if (backendAchievements.length > 0) {
             setAchievements(backendAchievements);
+          }
+          
+          // Load referral data from backend
+          if (data.referralPoints !== undefined) {
+            setReferralPoints(data.referralPoints);
+          }
+          if (data.referredBy) {
+            setReferredBy(data.referredBy);
+            // If user has already been referred, mark as validated to hide the section
+            setReferralValidated(true);
           }
         }
 
@@ -455,6 +466,13 @@ function ContractDeployer() {
   // Track referral and give points
   // Validate referral code
   const validateReferralCode = async (code: string) => {
+    // Don't allow if user has already been referred
+    if (referredBy) {
+      setReferralValidationError('You have already used a referral code.');
+      setReferralValidated(false);
+      return false;
+    }
+    
     if (!code || !code.startsWith('ref-')) {
       setReferralValidationError('Invalid referral code format. Must start with "ref-"');
       setReferralValidated(false);
@@ -528,6 +546,9 @@ function ContractDeployer() {
       if (response.ok && data.success) {
         // Give points to new user
         setReferralPoints(data.newUserPoints || 10);
+        // Mark that user has been referred
+        setReferredBy(referrerFid);
+        setReferralValidated(true); // Hide referral code section
         const message = data.isBonus 
           ? '🎉 You got 10 referral points! Referrer got 20 bonus points for 5th referral!'
           : '🎉 You got 10 referral points!';
@@ -535,11 +556,24 @@ function ContractDeployer() {
         setTimeout(() => setError(null), 3000);
         // Clear manual referral code after successful tracking
         setManualReferralCode('');
-        setReferralValidated(false);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('pending-referral');
         }
+        // Reload user data to get updated referral info
+        if (account) {
+          const userDataResponse = await fetch(`/api/user-data?wallet=${account}`);
+          if (userDataResponse.ok) {
+            const userData = await userDataResponse.json();
+            if (userData.referralPoints !== undefined) {
+              setReferralPoints(userData.referralPoints);
+            }
+            if (userData.referredBy) {
+              setReferredBy(userData.referredBy);
+            }
+          }
+        }
       } else {
+        console.error('Failed to track referral:', data);
         setError(data.error || 'Failed to track referral');
         setTimeout(() => setError(null), 3000);
       }
@@ -1426,6 +1460,10 @@ contract Calculator {
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
             
+            // Check if this is the first contract deployment BEFORE saving
+            const isFirstDeployment = deployedContracts.length === 0;
+            const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
+            
             // Save to history (localStorage + backend)
             await saveContract({
               address: contractAddress,
@@ -1439,20 +1477,18 @@ contract Calculator {
             setInputValue('');
 
             // Track referral if this is the first contract deployment and there's a pending referral
-            if (deployedContracts.length === 0 && farcasterUser) {
-              const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
-              if (pendingReferral) {
-                try {
-                  const referral = JSON.parse(pendingReferral);
-                  if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
-                    // Wait a bit for the contract to be saved to backend
-                    setTimeout(() => {
-                      trackReferral(referral.referrerFid, referral.newUserFid);
-                    }, 1000);
-                  }
-                } catch (e) {
-                  console.error('Failed to parse pending referral:', e);
+            // Only track if user hasn't already been referred
+            if (isFirstDeployment && !referredBy && farcasterUser && pendingReferral) {
+              try {
+                const referral = JSON.parse(pendingReferral);
+                if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
+                  // Wait a bit for the contract to be saved to backend
+                  setTimeout(() => {
+                    trackReferral(referral.referrerFid, referral.newUserFid);
+                  }, 2000); // Increased timeout to ensure contract is saved
                 }
+              } catch (e) {
+                console.error('Failed to parse pending referral:', e);
               }
             }
           } else {
@@ -2260,7 +2296,8 @@ contract Calculator {
         </div>
 
         {/* Manual Referral Code Input Section */}
-        {!referralValidated && (
+        {/* Only show if user hasn't already used a referral code */}
+        {!referralValidated && !referredBy && (
           <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
               Enter Referral Code
