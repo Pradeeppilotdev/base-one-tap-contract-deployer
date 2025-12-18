@@ -91,6 +91,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Ensure the document exists after potential creation
+      if (!referralDocSnap.exists()) {
+        return NextResponse.json(
+          { 
+            valid: false,
+            error: 'This referral code does not exist or the user has not used the app yet'
+          },
+          { status: 200 }
+        );
+      }
+
       const referralData = referralDocSnap.data();
       
       // Check if referrer has deployed at least one contract (is registered)
