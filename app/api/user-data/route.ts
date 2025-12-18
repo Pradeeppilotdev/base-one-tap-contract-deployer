@@ -170,19 +170,36 @@ export async function POST(request: NextRequest) {
       if (isFirstDeployment && finalFid !== undefined) {
         try {
           const referralDocRef = doc(db, 'referrals', String(finalFid));
-          // Use setDoc with merge to create if doesn't exist, or update if it does
-          await setDoc(referralDocRef, {
-            fid: String(finalFid),
-            username: finalUsername || '',
-            displayName: finalDisplayName || '',
-            pfpUrl: finalPfpUrl || '',
-            hasDeployedContract: true,
-            referralCount: 0,
-            totalPoints: 0,
-            monthlyReferrals: {},
-            referredUsers: [],
-            lastUpdated: Date.now()
-          }, { merge: true });
+          const referralDocSnap = await getDoc(referralDocRef);
+          
+          // Only set default values if document doesn't exist
+          // If it exists, preserve existing referralCount and totalPoints
+          if (!referralDocSnap.exists()) {
+            // Create new document with default values
+            await setDoc(referralDocRef, {
+              fid: String(finalFid),
+              username: finalUsername || '',
+              displayName: finalDisplayName || '',
+              pfpUrl: finalPfpUrl || '',
+              hasDeployedContract: true,
+              referralCount: 0,
+              totalPoints: 0,
+              monthlyReferrals: {},
+              referredUsers: [],
+              lastUpdated: Date.now()
+            });
+          } else {
+            // Update existing document - only update hasDeployedContract and profile info
+            // Don't overwrite referralCount, totalPoints, monthlyReferrals, or referredUsers
+            await setDoc(referralDocRef, {
+              fid: String(finalFid),
+              username: finalUsername || '',
+              displayName: finalDisplayName || '',
+              pfpUrl: finalPfpUrl || '',
+              hasDeployedContract: true,
+              lastUpdated: Date.now()
+            }, { merge: true });
+          }
         } catch (referralUpdateError) {
           // Log error but don't fail the main operation
           console.error('Failed to create/update referral document:', referralUpdateError);
