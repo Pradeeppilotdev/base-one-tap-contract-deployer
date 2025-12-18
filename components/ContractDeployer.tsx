@@ -269,6 +269,14 @@ function ContractDeployer() {
   const [validatingReferral, setValidatingReferral] = useState(false);
   const [referralValidationError, setReferralValidationError] = useState<string | null>(null);
   const [referralValidated, setReferralValidated] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [userReferralInfo, setUserReferralInfo] = useState<{
+    referralCode: string;
+    referralCount: number;
+    totalPoints: number;
+    referredUsers: any[];
+  } | null>(null);
+  const [loadingReferralInfo, setLoadingReferralInfo] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -572,6 +580,11 @@ function ContractDeployer() {
             }
           }
         }
+        
+        // Refresh referral info if profile modal is open
+        if (showProfileModal && farcasterUser) {
+          fetchUserReferralInfo();
+        }
       } else {
         console.error('Failed to track referral:', data);
         setError(data.error || 'Failed to track referral');
@@ -581,6 +594,47 @@ function ContractDeployer() {
       console.error('Failed to track referral:', err);
       setError('Failed to track referral');
       setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // Fetch user referral info
+  const fetchUserReferralInfo = async () => {
+    if (!farcasterUser) return;
+    
+    setLoadingReferralInfo(true);
+    try {
+      const response = await fetch(`/api/user-referral-info?fid=${farcasterUser.fid}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUserReferralInfo(data);
+      } else {
+        console.error('Failed to fetch referral info');
+      }
+    } catch (err) {
+      console.error('Error fetching referral info:', err);
+    } finally {
+      setLoadingReferralInfo(false);
+    }
+  };
+
+  // Handle profile click
+  const handleProfileClick = () => {
+    if (!farcasterUser) return;
+    setShowProfileModal(true);
+    if (!userReferralInfo) {
+      fetchUserReferralInfo();
+    }
+  };
+
+  // Copy referral code to clipboard
+  const copyReferralCode = async () => {
+    if (!userReferralInfo) return;
+    try {
+      await navigator.clipboard.writeText(userReferralInfo.referralCode);
+      setError('Referral code copied to clipboard!');
+      setTimeout(() => setError(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -1482,9 +1536,15 @@ contract Calculator {
               try {
                 const referral = JSON.parse(pendingReferral);
                 if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
+                  console.log('Tracking referral:', referral);
                   // Wait a bit for the contract to be saved to backend
-                  setTimeout(() => {
-                    trackReferral(referral.referrerFid, referral.newUserFid);
+                  setTimeout(async () => {
+                    try {
+                      await trackReferral(referral.referrerFid, referral.newUserFid);
+                      console.log('Referral tracked successfully');
+                    } catch (err) {
+                      console.error('Error tracking referral:', err);
+                    }
                   }, 2000); // Increased timeout to ensure contract is saved
                 }
               } catch (e) {
@@ -1669,7 +1729,10 @@ contract Calculator {
 
           {/* Right side - User Profile */}
           {farcasterUser && (
-            <div className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
+            <button
+              onClick={handleProfileClick}
+              className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors cursor-pointer"
+            >
               {farcasterUser.pfpUrl ? (
                 <img 
                   src={farcasterUser.pfpUrl} 
@@ -1689,7 +1752,7 @@ contract Calculator {
                   @{farcasterUser.username || `fid:${farcasterUser.fid}`}
                 </p>
               </div>
-            </div>
+            </button>
           )}
         </div>
 
@@ -2152,11 +2215,170 @@ contract Calculator {
                             >
                               <ExternalLink className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
                             </a>
+        </div>
+      </div>
+
+      {/* Profile Modal */}
+      {showProfileModal && farcasterUser && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowProfileModal(false)}
+        >
+          <div 
+            className="bg-[var(--paper)] border-4 border-[var(--ink)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto sketch-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-[var(--ink)] uppercase tracking-wider">
+                Your Profile
+              </h2>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="text-[var(--ink)] hover:text-[var(--graphite)] transition-colors"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+
+            {/* User Info */}
+            <div className="flex items-center gap-4 mb-6 pb-6 border-b-2 border-[var(--light)]">
+              {farcasterUser.pfpUrl ? (
+                <img 
+                  src={farcasterUser.pfpUrl} 
+                  alt={farcasterUser.displayName || farcasterUser.username || 'User'}
+                  className="w-16 h-16 rounded-full border-2 border-[var(--ink)]"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
+                  <User className="w-8 h-8 text-[var(--ink)]" strokeWidth={2} />
+                </div>
+              )}
+              <div>
+                <p className="text-lg font-bold text-[var(--ink)]">
+                  {farcasterUser.displayName || farcasterUser.username || 'User'}
+                </p>
+                <p className="text-sm text-[var(--graphite)]">
+                  @{farcasterUser.username || `fid:${farcasterUser.fid}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Referral Code Section */}
+            <div className="mb-6 pb-6 border-b-2 border-[var(--light)]">
+              <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
+                Your Referral Code
+              </h3>
+              {loadingReferralInfo ? (
+                <div className="flex items-center gap-2 text-[var(--graphite)]">
+                  <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                  <span>Loading...</span>
+                </div>
+              ) : userReferralInfo ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-3 border-2 border-[var(--ink)] bg-[var(--light)]">
+                    <code className="flex-1 text-sm font-mono text-[var(--ink)]">
+                      {userReferralInfo.referralCode}
+                    </code>
+                    <button
+                      onClick={copyReferralCode}
+                      className="px-3 py-1 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] hover:bg-[var(--sketch)] transition-colors flex items-center gap-2"
+                      title="Copy referral code"
+                    >
+                      <Copy className="w-4 h-4" strokeWidth={2} />
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-xs text-[var(--graphite)]">
+                    Share this code with others to earn referral points when they deploy their first contract!
+                  </p>
+                </div>
+              ) : (
+                <div className="text-sm text-[var(--graphite)]">
+                  <code className="font-mono">ref-{farcasterUser.fid}</code>
+                </div>
+              )}
+            </div>
+
+            {/* Referral Stats */}
+            {userReferralInfo && (
+              <div className="mb-6 pb-6 border-b-2 border-[var(--light)]">
+                <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
+                  Referral Stats
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 border-2 border-[var(--ink)] bg-[var(--light)]">
+                    <div className="text-2xl font-bold text-[var(--ink)]">
+                      {userReferralInfo.referralCount}
+                    </div>
+                    <div className="text-xs text-[var(--graphite)]">Total Referrals</div>
+                  </div>
+                  <div className="p-3 border-2 border-[var(--ink)] bg-[var(--light)]">
+                    <div className="text-2xl font-bold text-[var(--ink)]">
+                      {userReferralInfo.totalPoints}
+                    </div>
+                    <div className="text-xs text-[var(--graphite)]">Total Points</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Referred Users List */}
+            {userReferralInfo && userReferralInfo.referredUsers && userReferralInfo.referredUsers.length > 0 && (
+              <div>
+                <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
+                  Users You Referred ({userReferralInfo.referredUsers.length})
+                </h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {userReferralInfo.referredUsers.map((referredUser: any, index: number) => {
+                    const userFid = typeof referredUser === 'string' ? referredUser : referredUser.fid;
+                    const username = typeof referredUser === 'string' ? '' : (referredUser.username || '');
+                    const displayName = typeof referredUser === 'string' ? '' : (referredUser.displayName || '');
+                    const pfpUrl = typeof referredUser === 'string' ? '' : (referredUser.pfpUrl || '');
+                    
+                    return (
+                      <div
+                        key={userFid || index}
+                        className="flex items-center gap-3 p-3 border-2 border-[var(--light)] bg-[var(--paper)]"
+                      >
+                        {pfpUrl ? (
+                          <img 
+                            src={pfpUrl} 
+                            alt={displayName || username || `FID ${userFid}`}
+                            className="w-10 h-10 rounded-full border border-[var(--ink)]"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full border border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
+                            <User className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
                           </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-[var(--ink)]">
+                            {displayName || username || `FID ${userFid}`}
+                          </p>
+                          {username && (
+                            <p className="text-xs text-[var(--graphite)]">
+                              @{username}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {userReferralInfo && (!userReferralInfo.referredUsers || userReferralInfo.referredUsers.length === 0) && (
+              <div className="text-center py-6 text-[var(--graphite)]">
+                <p className="text-sm">No referrals yet. Share your referral code to get started!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+})}
                 </div>
               )}
             </div>

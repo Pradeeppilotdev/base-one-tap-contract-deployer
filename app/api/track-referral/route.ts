@@ -87,16 +87,37 @@ export async function POST(request: NextRequest) {
         referrerData = referrerDocSnap.data();
       }
       
-      // Check if this user was already referred by someone
-      if (referrerData.referredUsers && referrerData.referredUsers.includes(newUserFid)) {
+      // Get new user's profile info from user document
+      let newUserProfile: any = {
+        fid: newUserFid,
+        username: '',
+        displayName: '',
+        pfpUrl: '',
+        walletAddress: walletAddress.toLowerCase()
+      };
+      
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        newUserProfile.username = userData.username || '';
+        newUserProfile.displayName = userData.displayName || '';
+        newUserProfile.pfpUrl = userData.pfpUrl || '';
+      }
+      
+      // Check if this user was already referred by someone (check by FID)
+      const existingReferredUsers = referrerData.referredUsers || [];
+      const alreadyReferred = existingReferredUsers.some((u: any) => 
+        (typeof u === 'string' ? u === newUserFid : u.fid === newUserFid)
+      );
+      
+      if (alreadyReferred) {
         return NextResponse.json(
           { error: 'User already referred' },
           { status: 400 }
         );
       }
       
-      // Add new user to referred list
-      const updatedReferredUsers = [...(referrerData.referredUsers || []), newUserFid];
+      // Add new user to referred list with full profile info
+      const updatedReferredUsers = [...existingReferredUsers, newUserProfile];
       
       // Calculate new referral count
       const newReferralCount = (referrerData.referralCount || 0) + 1;
@@ -119,8 +140,9 @@ export async function POST(request: NextRequest) {
       monthlyReferrals[currentMonth].points += pointsToAdd;
       
       // Update referrer's stats
+      // Use merge: true to preserve other fields, but explicitly set the fields we're updating
       await setDoc(referrerDocRef, {
-        ...referrerData,
+        fid: referrerFid,
         username: referrerUsername || referrerData.username || '',
         displayName: referrerDisplayName || referrerData.displayName || '',
         pfpUrl: referrerPfpUrl || referrerData.pfpUrl || '',
@@ -128,6 +150,7 @@ export async function POST(request: NextRequest) {
         totalPoints: (referrerData.totalPoints || 0) + pointsToAdd,
         monthlyReferrals: monthlyReferrals,
         referredUsers: updatedReferredUsers,
+        hasDeployedContract: referrerData.hasDeployedContract !== undefined ? referrerData.hasDeployedContract : true,
         lastUpdated: Date.now()
       }, { merge: true });
       
