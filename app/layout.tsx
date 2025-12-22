@@ -49,6 +49,9 @@ export const metadata: Metadata = {
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
     images: ['/opengraph-image'],
   },
+  other: {
+    'base:app_id': '6948def9d19763ca26ddc950',
+  },
 };
 
 export default function RootLayout({
