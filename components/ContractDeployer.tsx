@@ -1952,7 +1952,7 @@ contract Calculator {
                   className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
                 >
                   <Wallet className="w-5 h-5" strokeWidth={2} />
-                  Connect Farcaster Wallet
+                  Connect miniapp Wallet
                 </button>
                 
                 {/* Secondary: External Wallet */}
