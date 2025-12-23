@@ -11,7 +11,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   
   useEffect(() => {
-    // Call ready() immediately per Farcaster docs
+    // Call ready() immediately per Mini App docs
     // https://miniapps.farcaster.xyz/docs/guides/loading
     sdk.actions.ready();
     

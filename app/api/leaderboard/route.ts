@@ -81,16 +81,14 @@ export async function GET(request: NextRequest) {
             fidEntry.referralCount = referralData.referralCount || 0;
             fidEntry.referralPoints = referralData.totalPoints || 0;
             
-            // Only use referral data for profile info if user data is missing
-            // User data from users collection is the source of truth for profile info
-            // Referral document is only for referral stats
-            if (!fidEntry.username && referralData.username) {
+            // Prefer referral data for username/displayName/pfpUrl (more up-to-date)
+            if (referralData.username) {
               fidEntry.username = referralData.username;
             }
-            if (!fidEntry.displayName && referralData.displayName) {
+            if (referralData.displayName) {
               fidEntry.displayName = referralData.displayName;
             }
-            if (!fidEntry.pfpUrl && referralData.pfpUrl) {
+            if (referralData.pfpUrl) {
               fidEntry.pfpUrl = referralData.pfpUrl;
             }
           }

@@ -4,48 +4,26 @@ import { NextRequest } from 'next/server';
 export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const ref = searchParams.get('ref');
-    const fid = searchParams.get('fid');
-    const username = searchParams.get('username');
-    const displayName = searchParams.get('displayName');
-    const pfpUrl = searchParams.get('pfpUrl');
-    
-    // Check referrer header for parameters (when crawlers fetch OG image from shared link)
-    // Crawlers will request /opengraph-image with Referer header containing the full URL with query params
-    const referer = request.headers.get('referer') || '';
-    let refFromReferer = null;
-    let fidFromReferer = null;
-    let usernameFromReferer = null;
-    let displayNameFromReferer = null;
-    let pfpUrlFromReferer = null;
-    
-    try {
-      if (referer) {
-        const refererUrl = new URL(referer);
-        refFromReferer = refererUrl.searchParams.get('ref');
-        fidFromReferer = refererUrl.searchParams.get('fid');
-        usernameFromReferer = refererUrl.searchParams.get('username');
-        displayNameFromReferer = refererUrl.searchParams.get('displayName');
-        pfpUrlFromReferer = refererUrl.searchParams.get('pfpUrl');
-      }
-    } catch (e) {
-      // Invalid referer URL, ignore and continue without params from referer
-    }
-    
-    // Use query params (direct request) or referer params (crawler request)
-    // This ensures crawlers get all the referrer profile info from the Referer header
-    const finalRef = ref || refFromReferer;
-    const finalFid = fid || fidFromReferer || (finalRef ? finalRef.replace('ref-', '') : null);
-    const finalUsername = username || usernameFromReferer;
-    const finalDisplayName = displayName || displayNameFromReferer;
-    const finalPfpUrl = pfpUrl || pfpUrlFromReferer;
-    
-    // If ref parameter exists, show referrer's info
-    const isReferralShare = finalRef && finalFid;
-    
-    return new ImageResponse(
+  const { searchParams } = new URL(request.url);
+  const ref = searchParams.get('ref');
+  const fid = searchParams.get('fid');
+  const username = searchParams.get('username');
+  const displayName = searchParams.get('displayName');
+  const pfpUrl = searchParams.get('pfpUrl');
+  
+  // Check referrer header for ref parameter (when shared link is opened)
+  const referer = request.headers.get('referer') || '';
+  const refererUrl = referer ? new URL(referer) : null;
+  const refFromReferer = refererUrl?.searchParams.get('ref');
+  
+  // Use ref from query params or referer
+  const finalRef = ref || refFromReferer;
+  const finalFid = fid || (finalRef ? finalRef.replace('ref-', '') : null);
+  
+  // If ref parameter exists, show referrer's info
+  const isReferralShare = finalRef && finalFid;
+  
+  return new ImageResponse(
     (
       <div
         style={{
@@ -200,9 +178,9 @@ export async function GET(request: NextRequest) {
               }}
             >
               {/* Profile Picture */}
-              {finalPfpUrl && decodeURIComponent(finalPfpUrl) !== 'null' && decodeURIComponent(finalPfpUrl) !== '' ? (
+              {pfpUrl && decodeURIComponent(pfpUrl) !== 'null' && decodeURIComponent(pfpUrl) !== '' ? (
                 <img
-                  src={decodeURIComponent(finalPfpUrl)}
+                  src={decodeURIComponent(pfpUrl)}
                   alt="Referrer"
                   width="80"
                   height="80"
@@ -233,7 +211,7 @@ export async function GET(request: NextRequest) {
                       fontFamily: 'system-ui, sans-serif',
                     }}
                   >
-                    {finalDisplayName ? decodeURIComponent(finalDisplayName)[0]?.toUpperCase() : (finalUsername && decodeURIComponent(finalUsername) !== 'null' ? decodeURIComponent(finalUsername)[0]?.toUpperCase() : finalFid?.[0] || 'U')}
+                    {displayName ? decodeURIComponent(displayName)[0]?.toUpperCase() : (username && decodeURIComponent(username) !== 'null' ? decodeURIComponent(username)[0]?.toUpperCase() : finalFid?.[0] || 'U')}
                   </span>
                 </div>
               )}
@@ -254,9 +232,9 @@ export async function GET(request: NextRequest) {
                     fontFamily: 'system-ui, sans-serif',
                   }}
                 >
-                  {finalDisplayName && decodeURIComponent(finalDisplayName) !== 'null' ? decodeURIComponent(finalDisplayName) : (finalUsername && decodeURIComponent(finalUsername) !== 'null' && decodeURIComponent(finalUsername) !== '' ? decodeURIComponent(finalUsername) : `FID ${finalFid}`)}
+                  {displayName && decodeURIComponent(displayName) !== 'null' ? decodeURIComponent(displayName) : (username && decodeURIComponent(username) !== 'null' && decodeURIComponent(username) !== '' ? decodeURIComponent(username) : `FID ${finalFid}`)}
                 </div>
-                {finalUsername && decodeURIComponent(finalUsername) !== 'null' && decodeURIComponent(finalUsername) !== '' && (
+                {username && decodeURIComponent(username) !== 'null' && decodeURIComponent(username) !== '' && (
                   <div
                     style={{
                       fontSize: 24,
@@ -264,10 +242,10 @@ export async function GET(request: NextRequest) {
                       fontFamily: 'system-ui, sans-serif',
                     }}
                   >
-                    @{decodeURIComponent(finalUsername)} • FID {finalFid}
+                    @{decodeURIComponent(username)} • FID {finalFid}
                   </div>
                 )}
-                {(!finalUsername || decodeURIComponent(finalUsername) === 'null' || decodeURIComponent(finalUsername) === '') && (
+                {(!username || decodeURIComponent(username) === 'null' || decodeURIComponent(username) === '') && (
                   <div
                     style={{
                       fontSize: 24,
@@ -308,7 +286,7 @@ export async function GET(request: NextRequest) {
     ),
     {
       width: 1200,
-      height: 800, // 3:2 aspect ratio (1200:800 = 3:2) - matches og:image:height in layout.tsx
+      height: 630,
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
@@ -317,23 +295,8 @@ export async function GET(request: NextRequest) {
       },
     }
   );
-  } catch (error) {
-    console.error('Error generating opengraph image:', error);
-    // Return a proper error response instead of crashing
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to generate image', 
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      }),
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-  }
 }
+
 
 
 

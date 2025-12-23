@@ -258,7 +258,6 @@ function ContractDeployer() {
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralPoints, setReferralPoints] = useState<number>(0);
-  const [referredBy, setReferredBy] = useState<string | null>(null); // FID of user who referred this user
   const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -269,14 +268,6 @@ function ContractDeployer() {
   const [validatingReferral, setValidatingReferral] = useState(false);
   const [referralValidationError, setReferralValidationError] = useState<string | null>(null);
   const [referralValidated, setReferralValidated] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [userReferralInfo, setUserReferralInfo] = useState<{
-    referralCode: string;
-    referralCount: number;
-    totalPoints: number;
-    referredUsers: any[];
-  } | null>(null);
-  const [loadingReferralInfo, setLoadingReferralInfo] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -308,43 +299,6 @@ function ContractDeployer() {
           // Load achievements from backend if available
           if (backendAchievements.length > 0) {
             setAchievements(backendAchievements);
-          }
-          
-          // Load referral data from backend
-          if (data.referralPoints !== undefined) {
-            setReferralPoints(data.referralPoints);
-          }
-          if (data.referredBy) {
-            setReferredBy(data.referredBy);
-            // If user has already been referred, mark as validated to hide the section
-            setReferralValidated(true);
-            // Clear any pending referral since user is already referred
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('pending-referral');
-            }
-          } else {
-            // User hasn't been referred yet, check if there's a pending referral and contracts exist
-            // If user has contracts but referral wasn't tracked, try to track it now
-            if (typeof window !== 'undefined' && backendContracts.length > 0) {
-              const pendingReferral = localStorage.getItem('pending-referral');
-              if (pendingReferral && farcasterUser) {
-                try {
-                  const referral = JSON.parse(pendingReferral);
-                  if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
-                    console.log('User has contracts but referral not tracked, attempting to track now...');
-                    // Wait a bit then try to track
-                    setTimeout(async () => {
-                      const result = await trackReferral(referral.referrerFid, referral.newUserFid);
-                      if (result) {
-                        console.log('Pending referral tracked successfully on page load');
-                      }
-                    }, 2000);
-                  }
-                } catch (e) {
-                  console.error('Failed to parse pending referral:', e);
-                }
-              }
-            }
           }
         }
 
@@ -501,13 +455,6 @@ function ContractDeployer() {
   // Track referral and give points
   // Validate referral code
   const validateReferralCode = async (code: string) => {
-    // Don't allow if user has already been referred
-    if (referredBy) {
-      setReferralValidationError('You have already used a referral code.');
-      setReferralValidated(false);
-      return false;
-    }
-    
     if (!code || !code.startsWith('ref-')) {
       setReferralValidationError('Invalid referral code format. Must start with "ref-"');
       setReferralValidated(false);
@@ -558,14 +505,10 @@ function ContractDeployer() {
     await validateReferralCode(manualReferralCode.trim());
   };
 
-  const trackReferral = async (referrerFid: string, newUserFid: string): Promise<boolean> => {
-    if (!account) {
-      console.error('No account, cannot track referral');
-      return false;
-    }
+  const trackReferral = async (referrerFid: string, newUserFid: string) => {
+    if (!account) return;
     
     try {
-      console.log('Calling track-referral API with:', { referrerFid, newUserFid, walletAddress: account });
       // Call API to track referral
       const response = await fetch('/api/track-referral', {
         method: 'POST',
@@ -581,14 +524,10 @@ function ContractDeployer() {
       });
       
       const data = await response.json();
-      console.log('Track referral response:', { status: response.status, data });
       
       if (response.ok && data.success) {
         // Give points to new user
         setReferralPoints(data.newUserPoints || 10);
-        // Mark that user has been referred
-        setReferredBy(referrerFid);
-        setReferralValidated(true); // Hide referral code section
         const message = data.isBonus 
           ? '🎉 You got 10 referral points! Referrer got 20 bonus points for 5th referral!'
           : '🎉 You got 10 referral points!';
@@ -596,82 +535,18 @@ function ContractDeployer() {
         setTimeout(() => setError(null), 3000);
         // Clear manual referral code after successful tracking
         setManualReferralCode('');
+        setReferralValidated(false);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('pending-referral');
         }
-        // Reload user data to get updated referral info
-        if (account) {
-          const userDataResponse = await fetch(`/api/user-data?wallet=${account}`);
-          if (userDataResponse.ok) {
-            const userData = await userDataResponse.json();
-            if (userData.referralPoints !== undefined) {
-              setReferralPoints(userData.referralPoints);
-            }
-            if (userData.referredBy) {
-              setReferredBy(userData.referredBy);
-            }
-          }
-        }
-        
-        // Refresh referral info if profile modal is open
-        if (showProfileModal && farcasterUser) {
-          fetchUserReferralInfo();
-        }
-        return true;
       } else {
-        console.error('Failed to track referral:', data);
-        const errorMsg = data.error || 'Failed to track referral';
-        setError(errorMsg);
-        setTimeout(() => setError(null), 5000);
-        return false;
+        setError(data.error || 'Failed to track referral');
+        setTimeout(() => setError(null), 3000);
       }
     } catch (err) {
       console.error('Failed to track referral:', err);
-      const errorMsg = err instanceof Error ? err.message : 'Failed to track referral';
-      setError(errorMsg);
-      setTimeout(() => setError(null), 5000);
-      return false;
-    }
-  };
-
-  // Fetch user referral info
-  const fetchUserReferralInfo = async () => {
-    if (!farcasterUser) return;
-    
-    setLoadingReferralInfo(true);
-    try {
-      const response = await fetch(`/api/user-referral-info?fid=${farcasterUser.fid}`);
-      if (response.ok) {
-        const data = await response.json();
-        setUserReferralInfo(data);
-      } else {
-        console.error('Failed to fetch referral info');
-      }
-    } catch (err) {
-      console.error('Error fetching referral info:', err);
-    } finally {
-      setLoadingReferralInfo(false);
-    }
-  };
-
-  // Handle profile click
-  const handleProfileClick = () => {
-    if (!farcasterUser) return;
-    setShowProfileModal(true);
-    if (!userReferralInfo) {
-      fetchUserReferralInfo();
-    }
-  };
-
-  // Copy referral code to clipboard
-  const copyReferralCode = async () => {
-    if (!userReferralInfo) return;
-    try {
-      await navigator.clipboard.writeText(userReferralInfo.referralCode);
-      setError('Referral code copied to clipboard!');
-      setTimeout(() => setError(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+      setError('Failed to track referral');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -785,7 +660,9 @@ function ContractDeployer() {
   };
 
   // Save deployed contracts to localStorage and backend
-  const saveContract = async (contract: DeployedContract) => {
+  // deployerAddress: The actual address from the transaction (account abstraction address)
+  //                  If not provided, falls back to the connected account
+  const saveContract = async (contract: DeployedContract, deployerAddress?: string | null) => {
     const updated = [contract, ...deployedContracts];
     setDeployedContracts(updated);
     
@@ -797,8 +674,13 @@ function ContractDeployer() {
     // Check for new achievements (this will update achievements state)
     checkAchievements(updated.length);
     
+    // Use the deployer address from transaction (account abstraction) or fallback to connected account
+    // With Base's account abstraction, the transaction's 'from' address is the user's account abstraction address
+    // which is tied to their FID, ensuring proper tracking in the leaderboard
+    const walletAddressToUse = deployerAddress || account;
+    
     // Save to backend immediately (wait for it to complete)
-    if (account) {
+    if (walletAddressToUse) {
       try {
         // Get current achievements state - we need to wait a bit for checkAchievements to update
         // So we'll fetch achievements from state after a short delay
@@ -807,12 +689,12 @@ function ContractDeployer() {
             // Get the latest achievements from state
             const currentAchievements = achievements;
             
-            // Save to backend
+            // Save to backend using the actual deployer address (account abstraction address)
             const response = await fetch('/api/user-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  walletAddress: account,
+                  walletAddress: walletAddressToUse,
                   contracts: updated,
                   achievements: currentAchievements,
                   fid: farcasterUser?.fid,
@@ -823,9 +705,9 @@ function ContractDeployer() {
             });
             
             if (response.ok) {
-              console.log('✅ Contract saved to backend');
+              console.log('✅ Contract saved to backend with deployer address:', walletAddressToUse);
               // Reload from backend to ensure we have the merged data
-              const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+              const reloadResponse = await fetch(`/api/user-data?wallet=${walletAddressToUse}`);
               if (reloadResponse.ok) {
                 const reloadData = await reloadResponse.json();
                 if (reloadData.contracts) {
@@ -1264,15 +1146,15 @@ contract Calculator {
       setError(null);
       
       if (!sdk || !sdk.wallet) {
-        setError('Farcaster wallet not available');
+        setError('Mini App wallet not available');
         return;
       }
 
-      // Connect using Farcaster's ethProvider
+      // Connect using Mini App's ethProvider
       const ethProvider = sdk.wallet.ethProvider;
       
       if (!ethProvider) {
-        setError('Farcaster wallet provider not available');
+        setError('Mini App wallet provider not available');
         return;
       }
 
@@ -1310,8 +1192,8 @@ contract Calculator {
         }
       }
     } catch (err: any) {
-      console.error('Farcaster wallet error:', err);
-      setError(err.message || 'Failed to connect Farcaster wallet');
+      console.error('Mini App wallet error:', err);
+      setError(err.message || 'Failed to connect Mini App wallet');
     }
   };
 
@@ -1551,11 +1433,33 @@ contract Calculator {
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
             
-            // Check if this is the first contract deployment BEFORE saving
-            const isFirstDeployment = deployedContracts.length === 0;
-            const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
+            // Extract the actual deployer address from the transaction
+            // With account abstraction, this will be the user's account abstraction address
+            // which is tied to their FID, not the connected wallet address
+            // Transaction receipts don't have 'from', so we need to fetch the transaction
+            let actualDeployerAddress = account?.toLowerCase();
+            try {
+              const currentNetwork = getCurrentNetwork();
+              const txResponse = await fetch(currentNetwork.rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'eth_getTransactionByHash',
+                  params: [hash],
+                  id: 1
+                })
+              });
+              const txData = await txResponse.json();
+              if (txData.result?.from) {
+                actualDeployerAddress = txData.result.from.toLowerCase();
+              }
+            } catch (txErr) {
+              console.warn('Could not fetch transaction to get deployer address, using account:', txErr);
+            }
             
             // Save to history (localStorage + backend)
+            // Use the actual deployer address from the transaction (account abstraction address)
             await saveContract({
               address: contractAddress,
               contractType: selectedContract,
@@ -1563,54 +1467,25 @@ contract Calculator {
               txHash: hash,
               timestamp: Date.now(),
               inputValue: inputValue || undefined
-            });
+            }, actualDeployerAddress || undefined);
             
             setInputValue('');
 
-            // Track referral if there's a pending referral and user hasn't been referred yet
-            // Check backend to see if user was already referred (not just local state)
-            if (farcasterUser && pendingReferral && !referredBy) {
-              try {
-                const referral = JSON.parse(pendingReferral);
-                if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
-                  console.log('Pending referral found, checking if already tracked...');
-                  
-                  // Check backend to see if user was already referred
-                  const userDataCheck = await fetch(`/api/user-data?wallet=${account}`);
-                  if (userDataCheck.ok) {
-                    const userData = await userDataCheck.json();
-                    if (userData.referredBy) {
-                      console.log('User already referred, clearing pending referral');
-                      setReferredBy(userData.referredBy);
-                      setReferralValidated(true);
-                      if (typeof window !== 'undefined') {
-                        localStorage.removeItem('pending-referral');
-                      }
-                    } else {
-                      // User hasn't been referred yet, track it now
-                      console.log('Tracking referral:', referral);
-                      // Wait a bit for the contract to be saved to backend
-                      setTimeout(async () => {
-                        try {
-                          const result = await trackReferral(referral.referrerFid, referral.newUserFid);
-                          if (result) {
-                            console.log('Referral tracked successfully');
-                          } else {
-                            console.error('Referral tracking returned false');
-                          }
-                        } catch (err) {
-                          console.error('Error tracking referral:', err);
-                          setError('Failed to track referral. Please try again or contact support.');
-                          setTimeout(() => setError(null), 5000);
-                        }
-                      }, 3000); // Increased timeout to ensure contract is saved
-                    }
+            // Track referral if this is the first contract deployment and there's a pending referral
+            if (deployedContracts.length === 0 && farcasterUser) {
+              const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
+              if (pendingReferral) {
+                try {
+                  const referral = JSON.parse(pendingReferral);
+                  if (referral.referrerFid && referral.newUserFid === String(farcasterUser.fid)) {
+                    // Wait a bit for the contract to be saved to backend
+                    setTimeout(() => {
+                      trackReferral(referral.referrerFid, referral.newUserFid);
+                    }, 1000);
                   }
-                } else {
-                  console.log('Referral FID mismatch or invalid referral data');
+                } catch (e) {
+                  console.error('Failed to parse pending referral:', e);
                 }
-              } catch (e) {
-                console.error('Failed to parse pending referral:', e);
               }
             }
           } else {
@@ -1681,7 +1556,7 @@ contract Calculator {
     });
   };
 
-  // Share the app via Farcaster with referral code
+  // Share the app via Mini App with referral code
   const shareApp = async () => {
     try {
       // Only allow sharing if user has deployed at least one contract
@@ -1696,8 +1571,9 @@ contract Calculator {
         ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
         : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
       
-      // Always use production domain, not deployment-specific URLs
-      const appUrl = 'https://base-one-tap-contract-deployer.vercel.app';
+      // Use Base miniapp URL (this is the proper way to share miniapps)
+      const baseMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
       
       // Store referrer info for when the app opens (so ref can be tracked)
       if (referralCode && farcasterUser && typeof window !== 'undefined') {
@@ -1708,15 +1584,18 @@ contract Calculator {
           fid: farcasterUser.fid
         };
         localStorage.setItem(`referrer-${farcasterUser.fid}`, JSON.stringify(referrerInfo));
-        // Also store ref URL for when app opens from shared link
+        // Also store ref URL for when app opens from Base miniapp link
         localStorage.setItem('pending-referral-url', referralCode);
       }
       
-      // Build share URL with all referrer profile parameters
-      // This ensures crawlers and other users can see the referrer's profile in the OG image
-      const shareUrl = referralCode && farcasterUser
-        ? `${appUrl}?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
-        : appUrl;
+      // Build share URL - use Base miniapp URL (it will open the app properly)
+      // The ref will be passed via localStorage and handled when app opens
+      const shareUrl = baseMiniappUrl;
+      
+      // Build dynamic OG image URL with referrer info for embed preview
+      const ogImageUrl = referralCode && farcasterUser
+        ? `${appUrl}/og-image.png?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
+        : `${appUrl}/og-image.png`;
 
       if (sdk?.actions?.composeCast) {
         // Share message with ref info
@@ -1726,10 +1605,10 @@ contract Calculator {
         
         await sdk.actions.composeCast({
           text: shareTextWithRef,
-          embeds: [shareUrl] // Use app URL so OG image is fetched and displayed
+          embeds: [shareUrl] // Use miniapp URL so it opens properly in Base App
         });
       } else {
-        // Fallback for non-Farcaster environments
+        // Fallback for non-Mini App environments
         if (navigator.share) {
           await navigator.share({
             title: '1-Tap Contract Deployer',
@@ -1748,7 +1627,7 @@ contract Calculator {
     }
   };
 
-  // Add app to user's Farcaster client
+  // Add app to user's Mini App client
   const addApp = async () => {
     try {
       if (sdk?.actions?.addMiniApp) {
@@ -1791,10 +1670,7 @@ contract Calculator {
 
           {/* Right side - User Profile */}
           {farcasterUser && (
-            <button
-              onClick={handleProfileClick}
-              className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors cursor-pointer"
-            >
+            <div className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
               {farcasterUser.pfpUrl ? (
                 <img 
                   src={farcasterUser.pfpUrl} 
@@ -1814,7 +1690,7 @@ contract Calculator {
                   @{farcasterUser.username || `fid:${farcasterUser.fid}`}
                 </p>
               </div>
-            </button>
+            </div>
           )}
         </div>
 
@@ -1946,13 +1822,13 @@ contract Calculator {
           <div className="mb-6">
             {!account ? (
               <div className="space-y-3">
-                {/* Primary: Farcaster Wallet */}
+                {/* Primary: Mini App Wallet */}
                 <button
                   onClick={connectFarcasterWallet}
                   className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
                 >
                   <Wallet className="w-5 h-5" strokeWidth={2} />
-                  Connect miniapp Wallet
+                  Connect Mini App Wallet
                 </button>
                 
                 {/* Secondary: External Wallet */}
@@ -1992,7 +1868,7 @@ contract Calculator {
                             )}
                           </button>
                           <span className="text-xs text-[var(--graphite)] whitespace-nowrap">
-                            ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
+                            ({walletType === 'farcaster' ? 'Mini App' : 'External'})
                           </span>
                         </div>
                       </div>
@@ -2288,167 +2164,7 @@ contract Calculator {
           )}
         </div>
 
-        {/* Profile Modal */}
-        {showProfileModal && farcasterUser && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-            onClick={() => setShowProfileModal(false)}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-          >
-          <div 
-            className="bg-[var(--paper)] border-4 border-[var(--ink)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto sketch-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-[var(--ink)] uppercase tracking-wider">
-                Your Profile
-              </h2>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="text-[var(--ink)] hover:text-[var(--graphite)] transition-colors"
-              >
-                <span className="text-2xl">&times;</span>
-              </button>
-            </div>
-
-            {/* User Info */}
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b-2 border-[var(--light)]">
-              {farcasterUser.pfpUrl ? (
-                <img 
-                  src={farcasterUser.pfpUrl} 
-                  alt={farcasterUser.displayName || farcasterUser.username || 'User'}
-                  className="w-16 h-16 rounded-full border-2 border-[var(--ink)]"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
-                  <User className="w-8 h-8 text-[var(--ink)]" strokeWidth={2} />
-                </div>
-              )}
-              <div>
-                <p className="text-lg font-bold text-[var(--ink)]">
-                  {farcasterUser.displayName || farcasterUser.username || 'User'}
-                </p>
-                <p className="text-sm text-[var(--graphite)]">
-                  @{farcasterUser.username || `fid:${farcasterUser.fid}`}
-                </p>
-              </div>
-            </div>
-
-            {/* Referral Code Section */}
-            <div className="mb-6 pb-6 border-b-2 border-[var(--light)]">
-              <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
-                Your Referral Code
-              </h3>
-              {loadingReferralInfo ? (
-                <div className="flex items-center gap-2 text-[var(--graphite)]">
-                  <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                  <span>Loading...</span>
-                </div>
-              ) : userReferralInfo ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 p-3 border-2 border-[var(--ink)] bg-[var(--light)]">
-                    <code className="flex-1 text-sm font-mono text-[var(--ink)]">
-                      {userReferralInfo.referralCode}
-                    </code>
-                    <button
-                      onClick={copyReferralCode}
-                      className="px-3 py-1 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] hover:bg-[var(--sketch)] transition-colors flex items-center gap-2"
-                      title="Copy referral code"
-                    >
-                      <Copy className="w-4 h-4" strokeWidth={2} />
-                      Copy
-                    </button>
-                  </div>
-                  <p className="text-xs text-[var(--graphite)]">
-                    Share this code with others to earn referral points when they deploy their first contract!
-                  </p>
-                </div>
-              ) : (
-                <div className="text-sm text-[var(--graphite)]">
-                  <code className="font-mono">ref-{farcasterUser.fid}</code>
-                </div>
-              )}
-            </div>
-
-            {/* Referral Stats */}
-            {userReferralInfo && (
-              <div className="mb-6 pb-6 border-b-2 border-[var(--light)]">
-                <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
-                  Referral Stats
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 border-2 border-[var(--ink)] bg-[var(--light)]">
-                    <div className="text-2xl font-bold text-[var(--ink)]">
-                      {userReferralInfo.referralCount}
-                    </div>
-                    <div className="text-xs text-[var(--graphite)]">Total Referrals</div>
-                  </div>
-                  <div className="p-3 border-2 border-[var(--ink)] bg-[var(--light)]">
-                    <div className="text-2xl font-bold text-[var(--ink)]">
-                      {userReferralInfo.totalPoints}
-                    </div>
-                    <div className="text-xs text-[var(--graphite)]">Total Points</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Referred Users List */}
-            {userReferralInfo && userReferralInfo.referredUsers && userReferralInfo.referredUsers.length > 0 && (
-              <div>
-                <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
-                  Users You Referred ({userReferralInfo.referredUsers.length})
-                </h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {userReferralInfo.referredUsers.map((referredUser: any, index: number) => {
-                    const userFid = typeof referredUser === 'string' ? referredUser : referredUser.fid;
-                    const username = typeof referredUser === 'string' ? '' : (referredUser.username || '');
-                    const displayName = typeof referredUser === 'string' ? '' : (referredUser.displayName || '');
-                    const pfpUrl = typeof referredUser === 'string' ? '' : (referredUser.pfpUrl || '');
-                    
-                    return (
-                      <div
-                        key={userFid || index}
-                        className="flex items-center gap-3 p-3 border-2 border-[var(--light)] bg-[var(--paper)]"
-                      >
-                        {pfpUrl ? (
-                          <img 
-                            src={pfpUrl} 
-                            alt={displayName || username || `FID ${userFid}`}
-                            className="w-10 h-10 rounded-full border border-[var(--ink)]"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full border border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
-                            <User className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-[var(--ink)]">
-                            {displayName || username || `FID ${userFid}`}
-                          </p>
-                          {username && (
-                            <p className="text-xs text-[var(--graphite)]">
-                              @{username}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {userReferralInfo && (!userReferralInfo.referredUsers || userReferralInfo.referredUsers.length === 0) && (
-              <div className="text-center py-6 text-[var(--graphite)]">
-                <p className="text-sm">No referrals yet. Share your referral code to get started!</p>
-              </div>
-            )}
-          </div>
-        </div>
-        )}
-
-      {/* Leaderboard Section */}
+        {/* Leaderboard Section */}
         <div className="mt-6 mb-6 sketch-card">
           <button
             onClick={() => setShowLeaderboard(!showLeaderboard)}
@@ -2581,8 +2297,7 @@ contract Calculator {
         </div>
 
         {/* Manual Referral Code Input Section */}
-        {/* Only show if user hasn't already used a referral code */}
-        {!referralValidated && !referredBy && (
+        {!referralValidated && (
           <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
               Enter Referral Code

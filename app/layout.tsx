@@ -10,15 +10,14 @@ export const viewport: Viewport = {
   themeColor: '#1a1a1a',
 };
 
-// Dynamic metadata for Farcaster Mini Apps
-// Always use production domain, not deployment-specific URLs
-const appUrl = process.env.NEXT_PUBLIC_ROOT_URL || 'https://base-one-tap-contract-deployer.vercel.app';
+// Dynamic metadata for Base Mini Apps
+const appUrl = process.env.NEXT_PUBLIC_ROOT_URL || 
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
 // Mini App embed metadata (for fc:miniapp meta tag)
 const miniAppEmbed = {
   version: "1",
   imageUrl: `${appUrl}/opengraph-image`,
-  aspectRatio: "3:2",
   button: {
     title: "Deploy Based!",
     action: {
@@ -165,7 +164,7 @@ export default function RootLayout({
             `,
           }}
         />
-        {/* Farcaster Mini App Embed Metadata */}
+        {/* Base Mini App Embed Metadata */}
         <meta name="fc:miniapp" content={JSON.stringify(miniAppEmbed)} />
         {/* Backward compatibility with fc:frame */}
         <meta name="fc:frame" content={JSON.stringify({
@@ -184,7 +183,7 @@ export default function RootLayout({
         <meta property="og:description" content="Deploy smart contracts to Base blockchain with one tap. No code needed!" />
         <meta property="og:image" content={`${appUrl}/opengraph-image`} />
         <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="800" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={appUrl} />
