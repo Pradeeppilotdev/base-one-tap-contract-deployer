@@ -10,7 +10,7 @@ export const viewport: Viewport = {
   themeColor: '#1a1a1a',
 };
 
-// Dynamic metadata for Base Mini Apps
+// Dynamic metadata for Farcaster Mini Apps
 const appUrl = process.env.NEXT_PUBLIC_ROOT_URL || 
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
@@ -47,9 +47,6 @@ export const metadata: Metadata = {
     title: 'Base Contract Deployer | 1-Tap Deploy',
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
     images: ['/opengraph-image'],
-  },
-  other: {
-    'base:app_id': '6948def9d19763ca26ddc950',
   },
 };
 
@@ -164,7 +161,7 @@ export default function RootLayout({
             `,
           }}
         />
-        {/* Base Mini App Embed Metadata */}
+        {/* Farcaster Mini App Embed Metadata */}
         <meta name="fc:miniapp" content={JSON.stringify(miniAppEmbed)} />
         {/* Backward compatibility with fc:frame */}
         <meta name="fc:frame" content={JSON.stringify({

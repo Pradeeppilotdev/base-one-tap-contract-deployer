@@ -675,7 +675,7 @@ function ContractDeployer() {
     checkAchievements(updated.length);
     
     // Use the deployer address from transaction (account abstraction) or fallback to connected account
-    // With Base's account abstraction, the transaction's 'from' address is the user's account abstraction address
+    // With Farcaster's account abstraction, the transaction's 'from' address is the user's account abstraction address
     // which is tied to their FID, ensuring proper tracking in the leaderboard
     const walletAddressToUse = deployerAddress || account;
     
@@ -1146,15 +1146,15 @@ contract Calculator {
       setError(null);
       
       if (!sdk || !sdk.wallet) {
-        setError('Mini App wallet not available');
+        setError('Farcaster wallet not available');
         return;
       }
 
-      // Connect using Mini App's ethProvider
+      // Connect using Farcaster's ethProvider
       const ethProvider = sdk.wallet.ethProvider;
       
       if (!ethProvider) {
-        setError('Mini App wallet provider not available');
+        setError('Farcaster wallet provider not available');
         return;
       }
 
@@ -1192,8 +1192,8 @@ contract Calculator {
         }
       }
     } catch (err: any) {
-      console.error('Mini App wallet error:', err);
-      setError(err.message || 'Failed to connect Mini App wallet');
+      console.error('Farcaster wallet error:', err);
+      setError(err.message || 'Failed to connect Farcaster wallet');
     }
   };
 
@@ -1434,7 +1434,7 @@ contract Calculator {
             setDeployedAddress(contractAddress);
             
             // Extract the actual deployer address from the transaction
-            // With account abstraction, this will be the user's account abstraction address
+            // With Farcaster's account abstraction, this will be the user's account abstraction address
             // which is tied to their FID, not the connected wallet address
             // Transaction receipts don't have 'from', so we need to fetch the transaction
             let actualDeployerAddress = account?.toLowerCase();
@@ -1556,7 +1556,7 @@ contract Calculator {
     });
   };
 
-  // Share the app via Mini App with referral code
+  // Share the app via Farcaster with referral code
   const shareApp = async () => {
     try {
       // Only allow sharing if user has deployed at least one contract
@@ -1571,8 +1571,8 @@ contract Calculator {
         ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
         : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
       
-      // Use Base miniapp URL (this is the proper way to share miniapps)
-      const baseMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
+      // Use Farcaster miniapp URL (this is the proper way to share miniapps)
+      const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
       const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
       
       // Store referrer info for when the app opens (so ref can be tracked)
@@ -1584,13 +1584,13 @@ contract Calculator {
           fid: farcasterUser.fid
         };
         localStorage.setItem(`referrer-${farcasterUser.fid}`, JSON.stringify(referrerInfo));
-        // Also store ref URL for when app opens from Base miniapp link
+        // Also store ref URL for when app opens from Farcaster miniapp link
         localStorage.setItem('pending-referral-url', referralCode);
       }
       
-      // Build share URL - use Base miniapp URL (it will open the app properly)
+      // Build share URL - use Farcaster miniapp URL (it will open the app properly)
       // The ref will be passed via localStorage and handled when app opens
-      const shareUrl = baseMiniappUrl;
+      const shareUrl = farcasterMiniappUrl;
       
       // Build dynamic OG image URL with referrer info for embed preview
       const ogImageUrl = referralCode && farcasterUser
@@ -1605,10 +1605,10 @@ contract Calculator {
         
         await sdk.actions.composeCast({
           text: shareTextWithRef,
-          embeds: [shareUrl] // Use miniapp URL so it opens properly in Base App
+          embeds: [shareUrl] // Use miniapp URL so it opens properly in Farcaster
         });
       } else {
-        // Fallback for non-Mini App environments
+        // Fallback for non-Farcaster environments
         if (navigator.share) {
           await navigator.share({
             title: '1-Tap Contract Deployer',
@@ -1627,7 +1627,7 @@ contract Calculator {
     }
   };
 
-  // Add app to user's Mini App client
+  // Add app to user's Farcaster client
   const addApp = async () => {
     try {
       if (sdk?.actions?.addMiniApp) {
@@ -1822,13 +1822,13 @@ contract Calculator {
           <div className="mb-6">
             {!account ? (
               <div className="space-y-3">
-                {/* Primary: Mini App Wallet */}
+                {/* Primary: Farcaster Wallet */}
                 <button
                   onClick={connectFarcasterWallet}
                   className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
                 >
                   <Wallet className="w-5 h-5" strokeWidth={2} />
-                  Connect Mini App Wallet
+                  Connect Farcaster Wallet
                 </button>
                 
                 {/* Secondary: External Wallet */}
@@ -1868,7 +1868,7 @@ contract Calculator {
                             )}
                           </button>
                           <span className="text-xs text-[var(--graphite)] whitespace-nowrap">
-                            ({walletType === 'farcaster' ? 'Mini App' : 'External'})
+                            ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
                           </span>
                         </div>
                       </div>
