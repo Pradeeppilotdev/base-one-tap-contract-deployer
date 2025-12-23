@@ -24,7 +24,8 @@ import {
   Crown,
   Rocket,
   Gem,
-  Star
+  Star,
+  X
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { encodeFunctionData, decodeEventLog } from 'viem';
@@ -268,6 +269,10 @@ function ContractDeployer() {
   const [validatingReferral, setValidatingReferral] = useState(false);
   const [referralValidationError, setReferralValidationError] = useState<string | null>(null);
   const [referralValidated, setReferralValidated] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [userReferralInfo, setUserReferralInfo] = useState<any>(null);
+  const [loadingReferralInfo, setLoadingReferralInfo] = useState(false);
+  const [referredBy, setReferredBy] = useState<string | null>(null);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -395,6 +400,11 @@ function ContractDeployer() {
             const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
             if (reloadResponse.ok) {
               const reloadData = await reloadResponse.json();
+              // Check if user has been referred
+              if (reloadData.referredBy) {
+                setReferredBy(reloadData.referredBy);
+                setReferralValidated(true);
+              }
               if (reloadData.contracts && reloadData.contracts.length > 0) {
                 setDeployedContracts(reloadData.contracts);
               }
@@ -528,6 +538,7 @@ function ContractDeployer() {
       if (response.ok && data.success) {
         // Give points to new user
         setReferralPoints(data.newUserPoints || 10);
+        setReferredBy(referrerFid);
         const message = data.isBonus 
           ? '🎉 You got 10 referral points! Referrer got 20 bonus points for 5th referral!'
           : '🎉 You got 10 referral points!';
@@ -535,7 +546,7 @@ function ContractDeployer() {
         setTimeout(() => setError(null), 3000);
         // Clear manual referral code after successful tracking
         setManualReferralCode('');
-        setReferralValidated(false);
+        setReferralValidated(true);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('pending-referral');
         }
@@ -547,6 +558,41 @@ function ContractDeployer() {
       console.error('Failed to track referral:', err);
       setError('Failed to track referral');
       setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // Handle profile click - fetch and show referral info
+  const handleProfileClick = async () => {
+    if (!farcasterUser?.fid) return;
+    
+    setLoadingReferralInfo(true);
+    setShowProfileModal(true);
+    
+    try {
+      const response = await fetch(`/api/user-referral-info?fid=${farcasterUser.fid}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUserReferralInfo(data);
+      } else {
+        // If endpoint doesn't exist, create default data
+        setUserReferralInfo({
+          referralCode: `ref-${farcasterUser.fid}`,
+          referralCount: 0,
+          totalPoints: 0,
+          referredUsers: []
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch referral info:', err);
+      // Set default data on error
+      setUserReferralInfo({
+        referralCode: `ref-${farcasterUser.fid}`,
+        referralCount: 0,
+        totalPoints: 0,
+        referredUsers: []
+      });
+    } finally {
+      setLoadingReferralInfo(false);
     }
   };
 
@@ -1472,7 +1518,8 @@ contract Calculator {
             setInputValue('');
 
             // Track referral if this is the first contract deployment and there's a pending referral
-            if (deployedContracts.length === 0 && farcasterUser) {
+            // Only track if user hasn't already been referred
+            if (deployedContracts.length === 0 && farcasterUser && !referredBy) {
               const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
               if (pendingReferral) {
                 try {
@@ -1481,7 +1528,7 @@ contract Calculator {
                     // Wait a bit for the contract to be saved to backend
                     setTimeout(() => {
                       trackReferral(referral.referrerFid, referral.newUserFid);
-                    }, 1000);
+                    }, 2000);
                   }
                 } catch (e) {
                   console.error('Failed to parse pending referral:', e);
@@ -1670,7 +1717,10 @@ contract Calculator {
 
           {/* Right side - User Profile */}
           {farcasterUser && (
-            <div className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
+            <button
+              onClick={handleProfileClick}
+              className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors cursor-pointer"
+            >
               {farcasterUser.pfpUrl ? (
                 <img 
                   src={farcasterUser.pfpUrl} 
@@ -1690,7 +1740,7 @@ contract Calculator {
                   @{farcasterUser.username || `fid:${farcasterUser.fid}`}
                 </p>
               </div>
-            </div>
+            </button>
           )}
         </div>
 
@@ -2296,8 +2346,158 @@ contract Calculator {
           )}
         </div>
 
+        {/* Profile Modal */}
+        {showProfileModal && farcasterUser && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowProfileModal(false)}
+          >
+            <div 
+              className="bg-[var(--paper)] border-2 border-[var(--ink)] max-w-md w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-[var(--ink)]">Your Profile</h2>
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="p-2 hover:bg-[var(--light)] transition-colors"
+                  >
+                    <X className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                  </button>
+                </div>
+
+                {/* User Info */}
+                <div className="flex items-center gap-4 mb-6 pb-6 border-b-2 border-[var(--ink)]">
+                  {farcasterUser.pfpUrl ? (
+                    <img 
+                      src={farcasterUser.pfpUrl} 
+                      alt={farcasterUser.displayName || farcasterUser.username || 'User'}
+                      className="w-16 h-16 rounded-full border-2 border-[var(--ink)]"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
+                      <User className="w-8 h-8 text-[var(--ink)]" strokeWidth={2} />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-lg font-bold text-[var(--ink)]">
+                      {farcasterUser.displayName || farcasterUser.username || 'User'}
+                    </p>
+                    <p className="text-sm text-[var(--graphite)]">
+                      @{farcasterUser.username || `fid:${farcasterUser.fid}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Referral Code */}
+                {loadingReferralInfo ? (
+                  <div className="text-center py-8 text-[var(--graphite)]">Loading...</div>
+                ) : userReferralInfo ? (
+                  <>
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-[var(--ink)] mb-2">
+                        Your Referral Code
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={userReferralInfo.referralCode || `ref-${farcasterUser.fid}`}
+                          readOnly
+                          className="flex-1 px-4 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] font-mono"
+                        />
+                        <button
+                          onClick={() => {
+                            const code = userReferralInfo.referralCode || `ref-${farcasterUser.fid}`;
+                            navigator.clipboard.writeText(code);
+                            setError('Referral code copied!');
+                            setTimeout(() => setError(null), 2000);
+                          }}
+                          className="px-4 py-2 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] hover:bg-[var(--graphite)] transition-colors"
+                        >
+                          <Copy className="w-4 h-4" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Referral Stats */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="p-4 border-2 border-[var(--ink)] bg-[var(--light)]">
+                        <p className="text-xs text-[var(--graphite)] mb-1">Referrals</p>
+                        <p className="text-2xl font-bold text-[var(--ink)]">
+                          {userReferralInfo.referralCount || 0}
+                        </p>
+                      </div>
+                      <div className="p-4 border-2 border-[var(--ink)] bg-[var(--light)]">
+                        <p className="text-xs text-[var(--graphite)] mb-1">Points</p>
+                        <p className="text-2xl font-bold text-[var(--ink)]">
+                          {userReferralInfo.totalPoints || 0}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Referred Users List */}
+                    {userReferralInfo.referredUsers && userReferralInfo.referredUsers.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-[var(--ink)] mb-3">
+                          Referred Users ({userReferralInfo.referredUsers.length})
+                        </h3>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {userReferralInfo.referredUsers.map((referredUser: any, index: number) => {
+                            const user = typeof referredUser === 'string' 
+                              ? { fid: referredUser }
+                              : referredUser;
+                            return (
+                              <div 
+                                key={index}
+                                className="flex items-center gap-3 p-3 border border-[var(--pencil)] bg-[var(--light)]"
+                              >
+                                {user.pfpUrl ? (
+                                  <img 
+                                    src={user.pfpUrl} 
+                                    alt={user.displayName || user.username || 'User'}
+                                    className="w-10 h-10 rounded-full border border-[var(--ink)]"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full border border-[var(--ink)] bg-[var(--paper)] flex items-center justify-center">
+                                    <User className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-[var(--ink)] truncate">
+                                    {user.displayName || user.username || `FID ${user.fid}`}
+                                  </p>
+                                  {user.username && (
+                                    <p className="text-xs text-[var(--graphite)] truncate">
+                                      @{user.username} • FID {user.fid}
+                                    </p>
+                                  )}
+                                  {!user.username && (
+                                    <p className="text-xs text-[var(--graphite)]">
+                                      FID {user.fid}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-[var(--graphite)]">
+                    Failed to load referral info
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Manual Referral Code Input Section */}
-        {!referralValidated && (
+        {!referralValidated && !referredBy && (
           <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
               Enter Referral Code
