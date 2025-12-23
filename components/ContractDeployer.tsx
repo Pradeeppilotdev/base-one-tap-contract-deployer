@@ -1822,13 +1822,13 @@ contract Calculator {
           <div className="mb-6">
             {!account ? (
               <div className="space-y-3">
-                {/* Primary: Farcaster Wallet */}
+                {/* Primary: Mini App Wallet */}
                 <button
                   onClick={connectFarcasterWallet}
                   className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
                 >
                   <Wallet className="w-5 h-5" strokeWidth={2} />
-                  Connect Farcaster Wallet
+                  Connect Mini App Wallet
                 </button>
                 
                 {/* Secondary: External Wallet */}
@@ -1868,7 +1868,7 @@ contract Calculator {
                             )}
                           </button>
                           <span className="text-xs text-[var(--graphite)] whitespace-nowrap">
-                            ({walletType === 'farcaster' ? 'Farcaster' : 'External'})
+                            ({walletType === 'farcaster' ? 'Mini App' : 'External'})
                           </span>
                         </div>
                       </div>
