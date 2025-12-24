@@ -305,6 +305,17 @@ function ContractDeployer() {
           if (backendAchievements.length > 0) {
             setAchievements(backendAchievements);
           }
+          
+          // Load referral points from backend
+          if (data.referralPoints !== undefined) {
+            setReferralPoints(data.referralPoints);
+          }
+          
+          // Check if user has been referred
+          if (data.referredBy) {
+            setReferredBy(data.referredBy);
+            setReferralValidated(true);
+          }
         }
 
         // Load from localStorage
@@ -405,11 +416,17 @@ function ContractDeployer() {
                 setReferredBy(reloadData.referredBy);
                 setReferralValidated(true);
               }
-              if (reloadData.contracts && reloadData.contracts.length > 0) {
-                setDeployedContracts(reloadData.contracts);
+              // Load referral points from backend
+              if (reloadData.referralPoints !== undefined) {
+                setReferralPoints(reloadData.referralPoints);
               }
-              if (reloadData.achievements && reloadData.achievements.length > 0) {
-                setAchievements(reloadData.achievements);
+              // Load contracts from backend (always update, even if empty array)
+              if (reloadData.contracts !== undefined) {
+                setDeployedContracts(reloadData.contracts);
+                // Update achievements based on contract count
+                if (reloadData.achievements && reloadData.achievements.length > 0) {
+                  setAchievements(reloadData.achievements);
+                }
                 checkAchievements(reloadData.contracts.length, false);
               }
             }
@@ -761,6 +778,10 @@ function ContractDeployer() {
                 }
                 if (reloadData.achievements) {
                   setAchievements(reloadData.achievements);
+                }
+                // Reload referral points after saving contract
+                if (reloadData.referralPoints !== undefined) {
+                  setReferralPoints(reloadData.referralPoints);
                 }
               }
             }
@@ -2571,7 +2592,7 @@ contract Calculator {
                 </div>
                 <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
               </div>
-              {referralPoints > 0 && (
+              {(referralPoints > 0 || referredBy) && (
                 <div>
                   <div className="text-2xl font-bold text-[var(--ink)]">
                     {referralPoints}
