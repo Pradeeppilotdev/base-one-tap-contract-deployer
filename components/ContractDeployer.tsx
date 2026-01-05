@@ -28,7 +28,8 @@ import {
   X
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { encodeFunctionData, decodeEventLog } from 'viem';
+import { encodeFunctionData, decodeEventLog, createPublicClient, http } from 'viem';
+import { base, baseSepolia } from 'viem/chains';
 
 // Type for Farcaster user context
 interface FarcasterUser {
@@ -97,6 +98,31 @@ const FACTORY_ABI = [
     "name": "ContractDeployed",
     "type": "event"
   }
+] as const;
+
+// Click Counter Contract ABI
+const CLICK_COUNTER_ABI = [
+  {
+    inputs: [],
+    name: 'click',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'clickCount',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getClickCount',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
 ] as const;
 
 // REAL CONTRACT TEMPLATES - Compiled with Solidity 0.8.19 via Hardhat
@@ -273,6 +299,9 @@ function ContractDeployer() {
   const [userReferralInfo, setUserReferralInfo] = useState<any>(null);
   const [loadingReferralInfo, setLoadingReferralInfo] = useState(false);
   const [referredBy, setReferredBy] = useState<string | null>(null);
+  const [clickCounterAddress, setClickCounterAddress] = useState<string>('');
+  const [clickCount, setClickCount] = useState<number>(0);
+  const [clicking, setClicking] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -627,6 +656,161 @@ function ContractDeployer() {
       validateReferralCode(refParam);
     }
   }, [farcasterUser]);
+
+  // Load click counter address from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('click-counter-address');
+      if (stored) {
+        setClickCounterAddress(stored);
+      }
+    }
+  }, []);
+
+  // Fetch click count from contract
+  const fetchClickCount = async () => {
+    if (!clickCounterAddress || !account) return;
+    
+    try {
+      const currentNetwork = getCurrentNetwork();
+      const chain = network === 'mainnet' ? base : baseSepolia;
+      
+      const publicClient = createPublicClient({
+        chain,
+        transport: http(currentNetwork.rpcUrl),
+      });
+      
+      const count = await publicClient.readContract({
+        address: clickCounterAddress as `0x${string}`,
+        abi: CLICK_COUNTER_ABI,
+        functionName: 'getClickCount',
+      });
+      
+      setClickCount(Number(count));
+    } catch (err) {
+      console.error('Failed to fetch click count:', err);
+    }
+  };
+
+  // Fetch click count when address or account changes
+  useEffect(() => {
+    if (clickCounterAddress && account) {
+      fetchClickCount();
+    }
+  }, [clickCounterAddress, account, network]);
+
+  // Handle click counter button click
+  const handleClickCounter = async () => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!clickCounterAddress) {
+      setError('Please set the click counter contract address first');
+      return;
+    }
+
+    try {
+      setClicking(true);
+      setError(null);
+
+      const currentNetwork = getCurrentNetwork();
+      
+      // Encode the click() function call
+      const data = encodeFunctionData({
+        abi: CLICK_COUNTER_ABI,
+        functionName: 'click',
+      });
+
+      // Get provider
+      let provider: any;
+      if (walletType === 'farcaster' && sdk?.wallet) {
+        provider = sdk.wallet;
+      } else if (typeof window !== 'undefined' && window.ethereum) {
+        provider = window.ethereum;
+      } else {
+        throw new Error('No wallet provider available');
+      }
+
+      // Send transaction
+      const txParams = {
+        from: account,
+        to: clickCounterAddress,
+        data: data,
+        value: '0x0',
+      };
+
+      const hash = await provider.request({
+        method: 'eth_sendTransaction',
+        params: [txParams],
+      });
+
+      // Wait for transaction receipt
+      let receipt = null;
+      let attempts = 0;
+      const maxAttempts = 30;
+
+      while (!receipt && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          const currentNetwork = getCurrentNetwork();
+          const receiptResponse = await fetch(currentNetwork.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_getTransactionReceipt',
+              params: [hash],
+              id: 1,
+            }),
+          });
+          const receiptData = await receiptResponse.json();
+          if (receiptData.result) {
+            receipt = receiptData.result;
+          }
+        } catch (err) {
+          console.error('Error fetching receipt:', err);
+        }
+        attempts++;
+      }
+
+      if (receipt) {
+        const status = receipt.status;
+        const isSuccess = status === '0x1' || status === '0x01' || status === 1 || status === true;
+        
+        if (isSuccess) {
+          // Refresh click count
+          await fetchClickCount();
+          setError('✅ Click recorded on-chain!');
+          setTimeout(() => setError(null), 3000);
+        } else {
+          setError('Transaction failed');
+        }
+      } else {
+        setError('Transaction sent but receipt not found');
+      }
+    } catch (err: any) {
+      console.error('Failed to click:', err);
+      setError(err.message || 'Failed to record click');
+    } finally {
+      setClicking(false);
+    }
+  };
+
+  // Set click counter address
+  const setClickCounterAddressHandler = () => {
+    const address = prompt('Enter the Click Counter contract address:');
+    if (address && address.startsWith('0x') && address.length === 42) {
+      setClickCounterAddress(address);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('click-counter-address', address);
+      }
+      fetchClickCount();
+    } else if (address) {
+      setError('Invalid address format');
+    }
+  };
 
   // Check and unlock achievements (only show popup for newly unlocked)
   const checkAchievements = (count: number, showPopup: boolean = true) => {
@@ -1910,6 +2094,47 @@ contract Calculator {
                   <ExternalLink className="w-4 h-4" strokeWidth={2} />
                   Use External Wallet
                 </button>
+
+                {/* Click Counter Button */}
+                {account && (
+                  <div className="mt-3 pt-3 border-t-2 border-[var(--light)]">
+                    {!clickCounterAddress ? (
+                      <button
+                        onClick={setClickCounterAddressHandler}
+                        className="ink-button-outline w-full py-2 px-4 flex items-center justify-center gap-2 text-xs"
+                      >
+                        <Zap className="w-3 h-3" strokeWidth={2} />
+                        Set Click Counter Address
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleClickCounter}
+                        disabled={clicking}
+                        className="ink-button w-full py-3 px-6 flex items-center justify-center gap-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {clicking ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                            Clicking...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4" strokeWidth={2} />
+                            Click Counter: {clickCount}
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {clickCounterAddress && (
+                      <button
+                        onClick={setClickCounterAddressHandler}
+                        className="mt-2 text-xs text-[var(--graphite)] hover:text-[var(--ink)] transition-colors w-full"
+                      >
+                        Change Address
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               ) : (
                 <div className="p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
