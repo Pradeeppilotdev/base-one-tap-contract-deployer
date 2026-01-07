@@ -771,7 +771,7 @@ function ContractDeployer() {
         if (isSuccess) {
           // Refresh click count
           await fetchClickCount();
-          setError('✅ Click recorded on-chain!');
+          setError('Clicked on-chain!');
           setTimeout(() => setError(null), 3000);
         } else {
           setError('Transaction failed');
