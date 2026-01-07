@@ -716,13 +716,9 @@ function ContractDeployer() {
         functionName: 'click',
       });
 
-      // Get provider
-      let provider: any;
-      if (walletType === 'farcaster' && sdk?.wallet) {
-        provider = sdk.wallet;
-      } else if (typeof window !== 'undefined' && window.ethereum) {
-        provider = window.ethereum;
-      } else {
+      // Get provider using the same method as deployContract
+      const provider = getProvider();
+      if (!provider) {
         throw new Error('No wallet provider available');
       }
 
