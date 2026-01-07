@@ -299,7 +299,7 @@ function ContractDeployer() {
   const [userReferralInfo, setUserReferralInfo] = useState<any>(null);
   const [loadingReferralInfo, setLoadingReferralInfo] = useState(false);
   const [referredBy, setReferredBy] = useState<string | null>(null);
-  const [clickCounterAddress, setClickCounterAddress] = useState<string>('');
+  const [clickCounterAddress] = useState<string>('0x7a252981ac15884a637ab322Dea2707078640AAE');
   const [clickCount, setClickCount] = useState<number>(0);
   const [clicking, setClicking] = useState(false);
 
@@ -657,19 +657,9 @@ function ContractDeployer() {
     }
   }, [farcasterUser]);
 
-  // Load click counter address from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('click-counter-address');
-      if (stored) {
-        setClickCounterAddress(stored);
-      }
-    }
-  }, []);
-
   // Fetch click count from contract
   const fetchClickCount = async () => {
-    if (!clickCounterAddress || !account) return;
+    if (!clickCounterAddress) return;
     
     try {
       const currentNetwork = getCurrentNetwork();
@@ -692,12 +682,15 @@ function ContractDeployer() {
     }
   };
 
-  // Fetch click count when address or account changes
+  // Fetch click count when address or network changes
   useEffect(() => {
-    if (clickCounterAddress && account) {
+    if (clickCounterAddress) {
       fetchClickCount();
+      // Refresh count every 10 seconds
+      const interval = setInterval(fetchClickCount, 10000);
+      return () => clearInterval(interval);
     }
-  }, [clickCounterAddress, account, network]);
+  }, [clickCounterAddress, network]);
 
   // Handle click counter button click
   const handleClickCounter = async () => {
@@ -798,19 +791,6 @@ function ContractDeployer() {
     }
   };
 
-  // Set click counter address
-  const setClickCounterAddressHandler = () => {
-    const address = prompt('Enter the Click Counter contract address:');
-    if (address && address.startsWith('0x') && address.length === 42) {
-      setClickCounterAddress(address);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('click-counter-address', address);
-      }
-      fetchClickCount();
-    } else if (address) {
-      setError('Invalid address format');
-    }
-  };
 
   // Check and unlock achievements (only show popup for newly unlocked)
   const checkAchievements = (count: number, showPopup: boolean = true) => {
@@ -2094,47 +2074,6 @@ contract Calculator {
                   <ExternalLink className="w-4 h-4" strokeWidth={2} />
                   Use External Wallet
                 </button>
-
-                {/* Click Counter Button */}
-                {account && (
-                  <div className="mt-3 pt-3 border-t-2 border-[var(--light)]">
-                    {!clickCounterAddress ? (
-                      <button
-                        onClick={setClickCounterAddressHandler}
-                        className="ink-button-outline w-full py-2 px-4 flex items-center justify-center gap-2 text-xs"
-                      >
-                        <Zap className="w-3 h-3" strokeWidth={2} />
-                        Set Click Counter Address
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleClickCounter}
-                        disabled={clicking}
-                        className="ink-button w-full py-3 px-6 flex items-center justify-center gap-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {clicking ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                            Clicking...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-4 h-4" strokeWidth={2} />
-                            Click Counter: {clickCount}
-                          </>
-                        )}
-                      </button>
-                    )}
-                    {clickCounterAddress && (
-                      <button
-                        onClick={setClickCounterAddressHandler}
-                        className="mt-2 text-xs text-[var(--graphite)] hover:text-[var(--ink)] transition-colors w-full"
-                      >
-                        Change Address
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
               ) : (
                 <div className="p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
@@ -2188,6 +2127,32 @@ contract Calculator {
                   </div>
                 </div>
               )}
+          </div>
+
+          {/* Click Counter Button - Always Visible */}
+          <div className="mb-6">
+            <button
+              onClick={handleClickCounter}
+              disabled={clicking || !account}
+              className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {clicking ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} />
+                  Clicking...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-5 h-5" strokeWidth={2} />
+                  Click Counter: {clickCount}
+                </>
+              )}
+            </button>
+            {!account && (
+              <p className="text-xs text-[var(--graphite)] text-center mt-2">
+                Connect wallet to click
+              </p>
+            )}
           </div>
 
           {/* Contract Selection */}
