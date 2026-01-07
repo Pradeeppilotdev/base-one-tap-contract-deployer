@@ -123,6 +123,20 @@ const CLICK_COUNTER_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [{ internalType: 'address', name: 'user', type: 'address' }],
+    name: 'getUserClickCount',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'getMyClickCount',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
 ] as const;
 
 // REAL CONTRACT TEMPLATES - Compiled with Solidity 0.8.19 via Hardhat
@@ -299,7 +313,7 @@ function ContractDeployer() {
   const [userReferralInfo, setUserReferralInfo] = useState<any>(null);
   const [loadingReferralInfo, setLoadingReferralInfo] = useState(false);
   const [referredBy, setReferredBy] = useState<string | null>(null);
-  const [clickCounterAddress] = useState<string>('0x7a252981ac15884a637ab322Dea2707078640AAE');
+  const [clickCounterAddress] = useState<string>('0x2ed1C622E90955599837EE828B0b42DC0Dc1Cc60');
   const [clickCount, setClickCount] = useState<number>(0);
   const [clicking, setClicking] = useState(false);
 
@@ -657,7 +671,7 @@ function ContractDeployer() {
     }
   }, [farcasterUser]);
 
-  // Fetch click count from contract
+  // Fetch user's personal click count from contract
   const fetchClickCount = async () => {
     if (!clickCounterAddress) return;
     
@@ -670,19 +684,27 @@ function ContractDeployer() {
         transport: http(currentNetwork.rpcUrl),
       });
       
-      const count = await publicClient.readContract({
-        address: clickCounterAddress as `0x${string}`,
-        abi: CLICK_COUNTER_ABI,
-        functionName: 'getClickCount',
-      });
-      
-      setClickCount(Number(count));
+      // If user is connected, fetch their personal count
+      if (account) {
+        const userCount = await publicClient.readContract({
+          address: clickCounterAddress as `0x${string}`,
+          abi: CLICK_COUNTER_ABI,
+          functionName: 'getUserClickCount',
+          args: [account as `0x${string}`],
+        });
+        setClickCount(Number(userCount));
+      } else {
+        // If not connected, set to 0
+        setClickCount(0);
+      }
     } catch (err) {
       console.error('Failed to fetch click count:', err);
+      // On error, set to 0
+      setClickCount(0);
     }
   };
 
-  // Fetch click count when address or network changes
+  // Fetch click count when address, account, or network changes
   useEffect(() => {
     if (clickCounterAddress) {
       fetchClickCount();
@@ -690,7 +712,7 @@ function ContractDeployer() {
       const interval = setInterval(fetchClickCount, 10000);
       return () => clearInterval(interval);
     }
-  }, [clickCounterAddress, network]);
+  }, [clickCounterAddress, account, network]);
 
   // Handle click counter button click
   const handleClickCounter = async () => {
@@ -2140,7 +2162,7 @@ contract Calculator {
               ) : (
                 <>
                   <Zap className="w-5 h-5" strokeWidth={2} />
-                  Click Counter: {clickCount}
+                  Your Clicks: {clickCount}
                 </>
               )}
             </button>
