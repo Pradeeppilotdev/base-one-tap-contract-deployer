@@ -297,6 +297,7 @@ function ContractDeployer() {
   const [isAppAdded, setIsAppAdded] = useState(false);
   const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
+  const [achievementClosing, setAchievementClosing] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralPoints, setReferralPoints] = useState<number>(0);
   const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
@@ -836,10 +837,16 @@ function ContractDeployer() {
             // Use setTimeout to ensure state is updated
             setTimeout(() => {
               setNewAchievement(newlyUnlocked);
-              // Auto-hide after 1.5 seconds with fade out
+              setAchievementClosing(false);
+              // Auto-hide after 2.5 seconds with fade out
               setTimeout(() => {
-                setNewAchievement(null);
-              }, 1500);
+                setAchievementClosing(true);
+                // Remove after fade-out animation completes (300ms)
+                setTimeout(() => {
+                  setNewAchievement(null);
+                  setAchievementClosing(false);
+                }, 300);
+              }, 2500);
             }, 100);
           }
         }
@@ -2851,29 +2858,60 @@ contract Calculator {
 
         {/* Achievement Celebration Modal */}
         {newAchievement && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 pointer-events-none">
-            <div className="bg-[var(--paper)] border-2 border-[var(--ink)] p-6 max-w-xs w-full text-center animate-fade-in">
-              {(() => {
-                try {
-                  const Icon = newAchievement.icon;
-                  if (Icon && typeof Icon === 'function') {
-                    return <Icon className="w-12 h-12 mx-auto mb-3 text-[var(--ink)]" strokeWidth={2} />;
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className={`absolute inset-0 bg-black/40 ${achievementClosing ? 'animate-backdrop-out' : 'animate-backdrop-in'}`}></div>
+            <div className={`relative bg-[var(--paper)] border-4 border-[var(--ink)] rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center ${achievementClosing ? 'animate-achievement-pop-out' : 'animate-achievement-pop-in'}`}>
+              {/* Decorative corner accent */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[var(--ink)] rounded-tl-2xl"></div>
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[var(--ink)] rounded-tr-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[var(--ink)] rounded-bl-2xl"></div>
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[var(--ink)] rounded-br-2xl"></div>
+              
+              {/* Badge icon with glow effect */}
+              <div className="relative mb-4">
+                <div className="absolute inset-0 bg-[var(--ink)] opacity-10 blur-xl rounded-full scale-150"></div>
+                {(() => {
+                  try {
+                    const Icon = newAchievement.icon;
+                    if (Icon && typeof Icon === 'function') {
+                      return (
+                        <div className="relative inline-flex items-center justify-center w-20 h-20 bg-[var(--ink)] rounded-full border-4 border-[var(--paper)] shadow-lg">
+                          <Icon className="w-10 h-10 text-[var(--paper)]" strokeWidth={2.5} />
+                        </div>
+                      );
+                    }
+                    return <div className="w-20 h-20 mx-auto text-[var(--ink)] text-4xl flex items-center justify-center">✓</div>;
+                  } catch (error) {
+                    console.error('Error rendering achievement icon:', error);
+                    return <div className="w-20 h-20 mx-auto text-[var(--ink)] text-4xl flex items-center justify-center">✓</div>;
                   }
-                  return <div className="w-12 h-12 mx-auto mb-3 text-[var(--ink)] text-2xl">✓</div>;
-                } catch (error) {
-                  console.error('Error rendering achievement icon:', error);
-                  return <div className="w-12 h-12 mx-auto mb-3 text-[var(--ink)] text-2xl">✓</div>;
-                }
-              })()}
-              <h3 className="text-lg font-bold text-[var(--ink)] mb-1">
-                {newAchievement?.name || 'Achievement Unlocked'}
-              </h3>
-              <p className="text-sm text-[var(--graphite)]">
-                {newAchievement?.description || ''}
-              </p>
+                })()}
+              </div>
+              
+              {/* Achievement text */}
+              <div className="mb-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--shade)] mb-2">
+                  🎉 Achievement Unlocked! 🎉
+                </div>
+                <h3 className="text-2xl font-black text-[var(--ink)] mb-2 google-sans-title">
+                  {newAchievement?.name || 'Achievement Unlocked'}
+                </h3>
+                <p className="text-base text-[var(--graphite)] font-medium">
+                  {newAchievement?.description || ''}
+                </p>
+              </div>
+              
+              {/* Milestone badge */}
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[var(--highlight)] border-2 border-[var(--ink)] rounded-full">
+                <Sparkles className="w-4 h-4 text-[var(--ink)]" strokeWidth={2.5} />
+                <span className="text-sm font-bold text-[var(--ink)]">
+                  {newAchievement?.milestone} Contracts Deployed
+                </span>
+              </div>
             </div>
           </div>
         )}
+
 
         {/* Footer */}
         <footer className="mt-8 text-center">
