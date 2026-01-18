@@ -10,6 +10,7 @@ interface UserData {
   displayName?: string;
   pfpUrl?: string;
   referralPoints?: number;
+  clicks?: number;
   lastUpdated: number;
 }
 
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { walletAddress, contracts, achievements, fid, username, displayName, pfpUrl } = body;
+    const { walletAddress, contracts, achievements, fid, username, displayName, pfpUrl, clicks } = body;
     
     if (!walletAddress) {
       return NextResponse.json(
@@ -160,6 +161,13 @@ export async function POST(request: NextRequest) {
       // Only include referralPoints if it exists and is a number
       if (existingData?.referralPoints !== undefined && typeof existingData.referralPoints === 'number') {
         userData.referralPoints = existingData.referralPoints;
+      }
+
+      // Handle clicks - add new clicks to existing clicks
+      const existingClicks = existingData?.clicks || 0;
+      const newClicks = typeof clicks === 'number' ? clicks : 0;
+      if (newClicks > 0 || existingClicks > 0) {
+        userData.clicks = Math.max(newClicks, existingClicks);
       }
 
       // Save to Firestore (merge: true to preserve other fields if any)

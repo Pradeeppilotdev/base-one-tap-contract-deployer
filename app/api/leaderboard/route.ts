@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         const fidKey = String(fid);
         const contracts = userData.contracts || [];
         const contractCount = contracts.length;
+        const clicks = userData.clicks || 0;
         
         // Initialize or update FID entry
         if (!fidMap.has(fidKey)) {
@@ -37,7 +38,8 @@ export async function GET(request: NextRequest) {
             contracts: [],
             firstDeployedAt: null,
             referralCount: 0,
-            referralPoints: 0
+            referralPoints: 0,
+            clicks: 0
           });
         }
         
@@ -46,6 +48,7 @@ export async function GET(request: NextRequest) {
         // Aggregate contracts across all wallets for this FID
         fidEntry.contractCount += contractCount;
         fidEntry.contracts.push(...contracts);
+        fidEntry.clicks += clicks;
         
         // Update username/displayName/pfpUrl if not set or if this one is better
         if (!fidEntry.username && userData.username) {
@@ -112,6 +115,7 @@ export async function GET(request: NextRequest) {
             contractCount: fidEntry.contractCount,
             referralCount: fidEntry.referralCount,
             referralPoints: fidEntry.referralPoints,
+            clicks: fidEntry.clicks,
             firstDeployedAt: fidEntry.firstDeployedAt
           });
         }

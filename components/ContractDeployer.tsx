@@ -317,6 +317,7 @@ function ContractDeployer() {
   const [clickCounterAddress] = useState<string>('0x2ed1C622E90955599837EE828B0b42DC0Dc1Cc60');
   const [clickCount, setClickCount] = useState<number>(0);
   const [clicking, setClicking] = useState(false);
+  const [userClicks, setUserClicks] = useState<number>(0);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -794,17 +795,42 @@ function ContractDeployer() {
         if (isSuccess) {
           // Refresh click count
           await fetchClickCount();
-          setError('Clicked on-chain!');
-          setTimeout(() => setError(null), 3000);
+          setUserClicks(prev => prev + 1);
+          
+          // Save clicks to backend if account exists
+          if (account) {
+            try {
+              await fetch('/api/user-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  walletAddress: account,
+                  clicks: userClicks + 1,
+                  fid: farcasterUser?.fid,
+                  username: farcasterUser?.username,
+                  displayName: farcasterUser?.displayName,
+                  pfpUrl: farcasterUser?.pfpUrl
+                })
+              });
+            } catch (err) {
+              console.error('Failed to save clicks to backend:', err);
+            }
+          }
+          
+          setError('✅ Clicked on-chain!');
+          setTimeout(() => setError(null), 1000);
         } else {
-          setError('Transaction failed');
+          setError('❌ Transaction failed');
+          setTimeout(() => setError(null), 1000);
         }
       } else {
-        setError('Transaction sent but receipt not found');
+        setError('⏳ Transaction sent but receipt not found');
+        setTimeout(() => setError(null), 1000);
       }
     } catch (err: any) {
       console.error('Failed to click:', err);
       setError(err.message || 'Failed to record click');
+      setTimeout(() => setError(null), 1000);
     } finally {
       setClicking(false);
     }
@@ -1784,21 +1810,25 @@ contract Calculator {
           }
         } else if (isFailed) {
           const currentNetwork = getCurrentNetwork();
-          setError(`Transaction failed. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          setError(`❌ Transaction failed. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          setTimeout(() => setError(null), 1000);
         } else {
           const currentNetwork = getCurrentNetwork();
-          setError(`Unknown status (${status}). Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          setError(`⚠️ Unknown status. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          setTimeout(() => setError(null), 1000);
         }
       } else {
         const currentNetwork = getCurrentNetwork();
-        setError(`Transaction still pending after timeout. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+        setError(`⏳ Transaction pending. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+        setTimeout(() => setError(null), 1000);
       }
     } catch (err: any) {
       if (err.code === 4001 || err.message?.includes('User rejected')) {
-        setError('Transaction cancelled');
+        setError('❌ Transaction cancelled');
       } else {
         setError(err.message || 'Deployment failed');
       }
+      setTimeout(() => setError(null), 1000);
     } finally {
       setDeploying(false);
     }
@@ -2523,6 +2553,9 @@ contract Calculator {
                           </div>
                         </th>
                         <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                          Clicks
+                        </th>
+                        <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
                           First Deploy
                         </th>
                       </tr>
@@ -2568,6 +2601,9 @@ contract Calculator {
                           </td>
                           <td className="p-3 text-sm font-bold text-[var(--ink)]">
                             {user.referralCount}
+                          </td>
+                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                            {user.clicks || 0}
                           </td>
                           <td className="p-3 text-xs text-[var(--graphite)]">
                             {user.firstDeployedAt ? formatDate(user.firstDeployedAt) : '-'}
