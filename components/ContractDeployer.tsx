@@ -795,7 +795,8 @@ function ContractDeployer() {
         if (isSuccess) {
           // Refresh click count
           await fetchClickCount();
-          setUserClicks(prev => prev + 1);
+          const updatedClicks = userClicks + 1;
+          setUserClicks(updatedClicks);
           
           // Save clicks to backend if account exists
           if (account) {
@@ -805,7 +806,7 @@ function ContractDeployer() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   walletAddress: account,
-                  clicks: userClicks + 1,
+                  clicks: updatedClicks,
                   fid: farcasterUser?.fid,
                   username: farcasterUser?.username,
                   displayName: farcasterUser?.displayName,
