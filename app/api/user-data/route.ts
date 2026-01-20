@@ -163,13 +163,13 @@ export async function POST(request: NextRequest) {
         userData.referralPoints = existingData.referralPoints;
       }
 
-      // Handle clicks - increment clicks properly
-      const existingClicks = existingData?.clicks || 0;
-      const clickIncrement = typeof clicks === 'number' ? clicks : 0;
-      if (clickIncrement > 0 || existingClicks > 0) {
-        // If we receive a clicks value greater than existing, add 1 (single click increment)
-        // Otherwise use the new value
-        userData.clicks = clickIncrement > existingClicks ? clickIncrement : existingClicks + 1;
+      // Handle clicks - preserve or update based on whether clicks was explicitly sent
+      if (clicks !== undefined && typeof clicks === 'number') {
+        // Clicks value was explicitly provided - use it as the new total
+        userData.clicks = clicks;
+      } else if (existingData?.clicks !== undefined) {
+        // Clicks not provided but exists in DB - preserve existing value
+        userData.clicks = existingData.clicks;
       }
 
       // Save to Firestore (merge: true to preserve other fields if any)

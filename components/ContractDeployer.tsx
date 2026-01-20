@@ -356,6 +356,11 @@ function ContractDeployer() {
             setReferralPoints(data.referralPoints);
           }
           
+          // Load clicks from backend
+          if (data.clicks !== undefined) {
+            setUserClicks(data.clicks);
+          }
+          
           // Check if user has been referred
           if (data.referredBy) {
             setReferredBy(data.referredBy);
@@ -464,6 +469,10 @@ function ContractDeployer() {
               // Load referral points from backend
               if (reloadData.referralPoints !== undefined) {
                 setReferralPoints(reloadData.referralPoints);
+              }
+              // Load clicks from backend
+              if (reloadData.clicks !== undefined) {
+                setUserClicks(reloadData.clicks);
               }
               // Load contracts from backend (always update, even if empty array)
               if (reloadData.contracts !== undefined) {
