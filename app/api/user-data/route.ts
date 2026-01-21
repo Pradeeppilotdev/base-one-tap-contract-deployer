@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Save user data (contracts and achievements)
+// POST - Save user data (contracts, achievements, or clicks)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Array.isArray(contracts)) {
+    // Allow clicks-only updates (contracts can be undefined)
+    if (contracts !== undefined && !Array.isArray(contracts)) {
       return NextResponse.json(
         { error: 'Contracts must be an array' },
         { status: 400 }
@@ -117,12 +118,14 @@ export async function POST(request: NextRequest) {
         }
       });
       
-      // Add/update with new contracts
-      contracts.forEach(contract => {
-        if (contract.address) {
-          contractMap.set(contract.address.toLowerCase(), contract);
-        }
-      });
+      // Add/update with new contracts (only if contracts array is provided)
+      if (contracts && Array.isArray(contracts)) {
+        contracts.forEach((contract: any) => {
+          if (contract.address) {
+            contractMap.set(contract.address.toLowerCase(), contract);
+          }
+        });
+      }
       
       // Convert back to array
       const mergedContracts = Array.from(contractMap.values());
