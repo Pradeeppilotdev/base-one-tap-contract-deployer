@@ -306,6 +306,8 @@ function ContractDeployer() {
   const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals'>('contracts');
   const [leaderboardOrder, setLeaderboardOrder] = useState<'asc' | 'desc'>('desc');
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
+  const LEADERBOARD_PAGE_SIZE = 10;
   const [manualReferralCode, setManualReferralCode] = useState<string>('');
   const [validatingReferral, setValidatingReferral] = useState(false);
   const [referralValidationError, setReferralValidationError] = useState<string | null>(null);
@@ -1193,6 +1195,7 @@ contract Calculator {
       setLeaderboardSortBy(column);
       setLeaderboardOrder('desc');
     }
+    setLeaderboardPage(1); // Reset to first page when sorting changes
   };
 
   // Load leaderboard when opened or when sort changes (independent of wallet connection)
@@ -2610,10 +2613,12 @@ contract Calculator {
                       </tr>
                     </thead>
                     <tbody className="divide-y-2 divide-[var(--light)]">
-                      {leaderboard.map((user, index) => (
+                      {leaderboard
+                        .slice((leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE, leaderboardPage * LEADERBOARD_PAGE_SIZE)
+                        .map((user, index) => (
                         <tr key={user.fid || `user-${index}`} className="hover:bg-[var(--light)]">
                           <td className="p-3 text-sm font-bold text-[var(--ink)]">
-                            #{index + 1}
+                            #{(leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1}
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-3">
@@ -2661,6 +2666,37 @@ contract Calculator {
                       ))}
                     </tbody>
                   </table>
+                  
+                  {/* Pagination Controls */}
+                  {leaderboard.length > LEADERBOARD_PAGE_SIZE && (
+                    <div className="flex items-center justify-between p-4 border-t-2 border-[var(--ink)]">
+                      <button
+                        onClick={() => setLeaderboardPage(p => Math.max(1, p - 1))}
+                        disabled={leaderboardPage === 1}
+                        className={`px-4 py-2 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
+                          leaderboardPage === 1
+                            ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                            : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                        }`}
+                      >
+                        ← Previous
+                      </button>
+                      <span className="text-sm font-bold text-[var(--ink)]">
+                        Page {leaderboardPage} of {Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)}
+                      </span>
+                      <button
+                        onClick={() => setLeaderboardPage(p => Math.min(Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE), p + 1))}
+                        disabled={leaderboardPage >= Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)}
+                        className={`px-4 py-2 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
+                          leaderboardPage >= Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)
+                            ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                            : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                        }`}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
