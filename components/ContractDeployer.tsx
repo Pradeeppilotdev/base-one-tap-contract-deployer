@@ -2564,6 +2564,7 @@ contract Calculator {
                   <p className="text-[var(--graphite)] text-sm">No leaderboard data yet</p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -2666,39 +2667,40 @@ contract Calculator {
                       ))}
                     </tbody>
                   </table>
-                  
-                  {/* Pagination Controls */}
-                  {leaderboard.length > LEADERBOARD_PAGE_SIZE && (
-                    <div className="flex items-center justify-between p-4 border-t-2 border-[var(--ink)]">
-                      <button
-                        onClick={() => setLeaderboardPage(p => Math.max(1, p - 1))}
-                        disabled={leaderboardPage === 1}
-                        className={`px-4 py-2 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
-                          leaderboardPage === 1
-                            ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
-                            : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
-                        }`}
-                      >
-                        ← Previous
-                      </button>
-                      <span className="text-sm font-bold text-[var(--ink)]">
-                        Page {leaderboardPage} of {Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)}
-                      </span>
-                      <button
-                        onClick={() => setLeaderboardPage(p => Math.min(Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE), p + 1))}
-                        disabled={leaderboardPage >= Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)}
-                        className={`px-4 py-2 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
-                          leaderboardPage >= Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)
-                            ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
-                            : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
-                        }`}
-                      >
-                        Next →
-                      </button>
-                    </div>
-                  )}
                 </div>
-              )}
+                
+                {/* Pagination Controls - Outside scrollable area */}
+                {leaderboard.length > LEADERBOARD_PAGE_SIZE && (
+                  <div className="flex items-center justify-between p-3 border-t-2 border-[var(--ink)] bg-[var(--paper)]">
+                    <button
+                      onClick={() => setLeaderboardPage(p => Math.max(1, p - 1))}
+                      disabled={leaderboardPage === 1}
+                      className={`px-3 py-2 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
+                        leaderboardPage === 1
+                          ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                          : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                      }`}
+                    >
+                      ←
+                    </button>
+                    <span className="text-sm font-bold text-[var(--ink)]">
+                      {leaderboardPage} of {Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)}
+                    </span>
+                    <button
+                      onClick={() => setLeaderboardPage(p => Math.min(Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE), p + 1))}
+                      disabled={leaderboardPage >= Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)}
+                      className={`px-3 py-2 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
+                        leaderboardPage >= Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)
+                          ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                          : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                      }`}
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
             </div>
           )}
         </div>
