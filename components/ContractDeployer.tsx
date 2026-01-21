@@ -2743,7 +2743,7 @@ contract Calculator {
                     </div>
 
                     {/* Referral Stats */}
-                    <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="grid grid-cols-3 gap-4 mb-6">
                       <div className="p-4 border-2 border-[var(--ink)] bg-[var(--light)]">
                         <p className="text-xs text-[var(--graphite)] mb-1">Referrals</p>
                         <p className="text-2xl font-bold text-[var(--ink)]">
@@ -2754,6 +2754,12 @@ contract Calculator {
                         <p className="text-xs text-[var(--graphite)] mb-1">Points</p>
                         <p className="text-2xl font-bold text-[var(--ink)]">
                           {userReferralInfo.totalPoints || 0}
+                        </p>
+                      </div>
+                      <div className="p-4 border-2 border-[var(--ink)] bg-[var(--light)]">
+                        <p className="text-xs text-[var(--graphite)] mb-1">Clicks</p>
+                        <p className="text-2xl font-bold text-[var(--ink)]">
+                          {clickCount}
                         </p>
                       </div>
                     </div>
