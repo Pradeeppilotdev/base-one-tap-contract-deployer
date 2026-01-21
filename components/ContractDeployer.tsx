@@ -682,7 +682,7 @@ function ContractDeployer() {
     }
   }, [farcasterUser]);
 
-  // Fetch user's personal click count from contract
+  // Fetch user's personal click count from contract and sync to Firebase
   const fetchClickCount = async () => {
     if (!clickCounterAddress) return;
     
@@ -703,7 +703,28 @@ function ContractDeployer() {
           functionName: 'getUserClickCount',
           args: [account as `0x${string}`],
         });
-        setClickCount(Number(userCount));
+        const onChainClicks = Number(userCount);
+        setClickCount(onChainClicks);
+        
+        // Sync on-chain clicks to Firebase (so leaderboard shows correct count)
+        if (onChainClicks > 0 && farcasterUser?.fid) {
+          try {
+            await fetch('/api/user-data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                walletAddress: account,
+                clicks: onChainClicks,
+                fid: farcasterUser.fid,
+                username: farcasterUser.username,
+                displayName: farcasterUser.displayName,
+                pfpUrl: farcasterUser.pfpUrl
+              })
+            });
+          } catch (err) {
+            console.error('Failed to sync clicks to backend:', err);
+          }
+        }
       } else {
         // If not connected, set to 0
         setClickCount(0);
@@ -802,20 +823,38 @@ function ContractDeployer() {
         const isSuccess = status === '0x1' || status === '0x01' || status === 1 || status === true;
         
         if (isSuccess) {
-          // Refresh click count
-          await fetchClickCount();
-          const updatedClicks = userClicks + 1;
-          setUserClicks(updatedClicks);
+          // Refresh click count from on-chain
+          const currentNetwork = getCurrentNetwork();
+          const chain = network === 'mainnet' ? base : baseSepolia;
+          const publicClient = createPublicClient({
+            chain,
+            transport: http(currentNetwork.rpcUrl),
+          });
           
-          // Save clicks to backend if account exists
-          if (account) {
+          let onChainClicks = 0;
+          try {
+            const userCount = await publicClient.readContract({
+              address: clickCounterAddress as `0x${string}`,
+              abi: CLICK_COUNTER_ABI,
+              functionName: 'getUserClickCount',
+              args: [account as `0x${string}`],
+            });
+            onChainClicks = Number(userCount);
+            setClickCount(onChainClicks);
+          } catch (err) {
+            console.error('Failed to fetch updated click count:', err);
+            onChainClicks = clickCount + 1; // Fallback to increment
+          }
+          
+          // Save on-chain clicks to backend
+          if (account && onChainClicks > 0) {
             try {
               await fetch('/api/user-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   walletAddress: account,
-                  clicks: updatedClicks,
+                  clicks: onChainClicks,
                   fid: farcasterUser?.fid,
                   username: farcasterUser?.username,
                   displayName: farcasterUser?.displayName,
