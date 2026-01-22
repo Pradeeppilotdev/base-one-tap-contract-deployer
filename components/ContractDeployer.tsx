@@ -2095,15 +2095,19 @@ contract Calculator {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
                     <span className={`text-sm font-bold px-2 py-1 ${
-                      (deployedContracts.length >= 20 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                      (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
                         ? 'bg-green-100 text-green-700 border border-green-300'
-                        : (deployedContracts.length >= 10 && clickCount >= 20 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                        ? 'bg-lime-100 text-lime-700 border border-lime-300'
+                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
                         ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
                         : 'bg-red-100 text-red-700 border border-red-300'
                     }`}>
-                      {(deployedContracts.length >= 20 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                      {(deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
                         ? 'HIGH'
-                        : (deployedContracts.length >= 10 && clickCount >= 20 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                        ? 'MEDIUM-HIGH'
+                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
                         ? 'MEDIUM'
                         : 'LOW'}
                     </span>
@@ -2111,9 +2115,11 @@ contract Calculator {
                   <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
                     <div 
                       className={`h-full transition-all ${
-                        (deployedContracts.length >= 20 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                        (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
                           ? 'bg-green-500'
-                          : (deployedContracts.length >= 10 && clickCount >= 20 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                          : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                          ? 'bg-lime-500'
+                          : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
                           ? 'bg-yellow-500'
                           : 'bg-red-400'
                       }`}
@@ -2121,9 +2127,11 @@ contract Calculator {
                     />
                   </div>
                   <p className="text-xs text-[var(--graphite)] mt-2">
-                    {(deployedContracts.length >= 20 && clickCount >= 50)
-                      ? 'Great job! Keep staying active to maintain your HIGH status.'
-                      : `Need: ${Math.max(0, 20 - deployedContracts.length)} more deploys, ${Math.max(0, 50 - clickCount)} more clicks for HIGH`}
+                    {(deployedContracts.length >= 30 && clickCount >= 50)
+                      ? 'Excellent! You have HIGH reward strength. Keep it up!'
+                      : (deployedContracts.length >= 15 && clickCount >= 25)
+                      ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
+                      : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
                   </p>
                 </div>
               </>
