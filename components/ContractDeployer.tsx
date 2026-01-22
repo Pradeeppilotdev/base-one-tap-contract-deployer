@@ -458,7 +458,7 @@ function ContractDeployer() {
           });
           
           if (syncResponse.ok) {
-            console.log('✅ Data synced to backend successfully');
+            console.log('Data synced to backend successfully');
             // After successful sync, reload from backend to get the merged result
             const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
             if (reloadResponse.ok) {
@@ -613,8 +613,8 @@ function ContractDeployer() {
         setReferralPoints(data.newUserPoints || 10);
         setReferredBy(referrerFid);
         const message = data.isBonus 
-          ? '🎉 You got 10 referral points! Referrer got 20 bonus points for 5th referral!'
-          : '🎉 You got 10 referral points!';
+          ? 'You got 10 referral points! Referrer got 20 bonus points for 5th referral!'
+          : 'You got 10 referral points!';
         setError(message);
         setTimeout(() => setError(null), 3000);
         // Clear manual referral code after successful tracking
@@ -868,14 +868,14 @@ function ContractDeployer() {
             }
           }
           
-          setError('✅ Clicked on-chain!');
+          setError('Clicked on-chain!');
           setTimeout(() => setError(null), 1000);
         } else {
-          setError('❌ Transaction failed');
+          setError('Transaction failed');
           setTimeout(() => setError(null), 1000);
         }
       } else {
-        setError('⏳ Transaction sent but receipt not found');
+        setError('Transaction sent but receipt not found');
         setTimeout(() => setError(null), 1000);
       }
     } catch (err: any) {
@@ -956,7 +956,7 @@ function ContractDeployer() {
               });
               
               if (response.ok) {
-                console.log('✅ Achievements saved to backend');
+                console.log('Achievements saved to backend');
                 // Reload from backend to ensure consistency
                 const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
                 if (reloadResponse.ok) {
@@ -1034,7 +1034,7 @@ function ContractDeployer() {
             });
             
             if (response.ok) {
-              console.log('✅ Contract saved to backend with deployer address:', walletAddressToUse);
+              console.log('Contract saved to backend with deployer address:', walletAddressToUse);
               // Reload from backend to ensure we have the merged data
               const reloadResponse = await fetch(`/api/user-data?wallet=${walletAddressToUse}`);
               if (reloadResponse.ok) {
@@ -1126,7 +1126,7 @@ contract Calculator {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        setError('✅ Contract verification submitted! Check BaseScan in a few minutes.');
+        setError('Contract verification submitted! Check BaseScan in a few minutes.');
         setTimeout(() => setError(null), 5000);
       } else {
         // If automatic verification fails, show manual option
@@ -1151,7 +1151,7 @@ contract Calculator {
       // Open BaseScan verification page
       window.open(`${currentNetwork.blockExplorer}/address/${contractAddress}#code`, '_blank');
       
-      setError('📋 Source code copied! Paste it on BaseScan verification page.');
+      setError('Source code copied! Paste it on BaseScan verification page.');
       setTimeout(() => setError(null), 5000);
     }).catch(() => {
       // If clipboard fails, just open the page
@@ -1226,9 +1226,9 @@ contract Calculator {
         console.log('Base Mainnet supported:', supportsBaseMainnet);
         
         if (!supportsBaseSepolia && !supportsBaseMainnet) {
-          console.warn('⚠️ Neither Base Mainnet nor Base Sepolia are supported by this host');
+          console.warn('Neither Base Mainnet nor Base Sepolia are supported by this host');
         } else if (!supportsBaseSepolia) {
-          console.warn('⚠️ Base Sepolia testnet is not supported by this host. Only Base Mainnet is available.');
+          console.warn('Base Sepolia testnet is not supported by this host. Only Base Mainnet is available.');
         }
         
         // Check for wallet capabilities
@@ -1862,21 +1862,21 @@ contract Calculator {
           }
         } else if (isFailed) {
           const currentNetwork = getCurrentNetwork();
-          setError(`❌ Transaction failed. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          setError(`Transaction failed. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
           setTimeout(() => setError(null), 1000);
         } else {
           const currentNetwork = getCurrentNetwork();
-          setError(`⚠️ Unknown status. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          setError(`Unknown status. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
           setTimeout(() => setError(null), 1000);
         }
       } else {
         const currentNetwork = getCurrentNetwork();
-        setError(`⏳ Transaction pending. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+        setError(`Transaction pending. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
         setTimeout(() => setError(null), 1000);
       }
     } catch (err: any) {
       if (err.code === 4001 || err.message?.includes('User rejected')) {
-        setError('❌ Transaction cancelled');
+        setError('Transaction cancelled');
       } else {
         setError(err.message || 'Deployment failed');
       }
@@ -1907,8 +1907,8 @@ contract Calculator {
 
       const contractCount = deployedContracts.length;
       const shareText = contractCount === 1 
-        ? `I just deployed my first smart contract on Base! 🚀 Deploy yours with one tap!`
-        : `I've deployed ${contractCount} smart contracts on Base! 🚀 Deploy yours with one tap!`;
+        ? `I just deployed my first smart contract on Base! Deploy yours with one tap!`
+        : `I've deployed ${contractCount} smart contracts on Base! Deploy yours with one tap!`;
       
       // Use Farcaster miniapp URL (this is the proper way to share miniapps)
       const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
@@ -1939,7 +1939,7 @@ contract Calculator {
       if (sdk?.actions?.composeCast) {
         // Share message with ref info
         const shareTextWithRef = referralCode 
-          ? `${shareText}\n\nDeploy based like me!! 🚀\n\nUse my referral: ${referralCode}`
+          ? `${shareText}\n\nDeploy based like me!!\n\nUse my referral: ${referralCode}`
           : shareText;
         
         await sdk.actions.composeCast({
@@ -1951,7 +1951,7 @@ contract Calculator {
         if (navigator.share) {
           await navigator.share({
             title: '1-Tap Contract Deployer',
-            text: `${shareText}\n\nDeploy based like me!! 🚀`,
+            text: `${shareText}\n\nDeploy based like me!!`,
             url: shareUrl
           });
         } else {
@@ -2045,9 +2045,81 @@ contract Calculator {
             Base Deployer
           </h1>
           <p className="text-[var(--graphite)] text-lg font-medium tracking-wide">
-            Deploy smart contracts with one tap
+            Boost Your Wallet Activity
           </p>
         </header>
+
+        {/* Wallet Health Stats */}
+        {account && (
+          <div className="sketch-card p-5 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              <h2 className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
+                Wallet Health
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <p className="text-xs text-[var(--graphite)] mb-1">Contracts Deployed</p>
+                <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length}</p>
+              </div>
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <p className="text-xs text-[var(--graphite)] mb-1">Unique Days Active</p>
+                <p className="text-xl font-bold text-[var(--ink)]">
+                  {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
+                </p>
+              </div>
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <p className="text-xs text-[var(--graphite)] mb-1">Total Transactions</p>
+                <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
+              </div>
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
+                <p className="text-xl font-bold text-[var(--ink)]">
+                  {Math.min(1000, deployedContracts.length * 15 + clickCount * 5 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 20)}/1000
+                </p>
+              </div>
+            </div>
+            
+            {/* Potential Reward Strength Indicator */}
+            <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)]">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
+                <span className={`text-sm font-bold px-2 py-1 ${
+                  (deployedContracts.length >= 10 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                    ? 'bg-green-100 text-green-700 border border-green-300'
+                    : (deployedContracts.length >= 5 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                    ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                    : 'bg-red-100 text-red-700 border border-red-300'
+                }`}>
+                  {(deployedContracts.length >= 10 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                    ? 'HIGH'
+                    : (deployedContracts.length >= 5 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                    ? 'MEDIUM'
+                    : 'LOW'}
+                </span>
+              </div>
+              <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
+                <div 
+                  className={`h-full transition-all ${
+                    (deployedContracts.length >= 10 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                      ? 'bg-green-500'
+                      : (deployedContracts.length >= 5 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                      ? 'bg-yellow-500'
+                      : 'bg-red-400'
+                  }`}
+                  style={{ width: `${Math.min(100, (deployedContracts.length * 15 + clickCount * 5 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 20) / 10)}%` }}
+                />
+              </div>
+              <p className="text-xs text-[var(--graphite)] mt-2">
+                {deployedContracts.length < 10 
+                  ? `Deploy ${10 - deployedContracts.length} more contracts to boost your score!`
+                  : 'Great job! Keep staying active to maintain eligibility.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Main Card */}
         <div className="sketch-card p-6 mb-6">
@@ -3020,7 +3092,7 @@ contract Calculator {
               {/* Achievement text */}
               <div className="mb-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-[var(--shade)] mb-2">
-                  🎉 Achievement Unlocked! 🎉
+                  Achievement Unlocked!
                 </div>
                 <h3 className="text-2xl font-black text-[var(--ink)] mb-2 google-sans-title">
                   {newAchievement?.name || 'Achievement Unlocked'}
