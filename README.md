@@ -1,6 +1,7 @@
 # Base Contract Deployer Mini App
 
 A Base mini app that allows users to deploy predefined smart contracts to the Base blockchain with a single click.
+primarily targeting user wallet to boost the wallet's activity
 
 ## Features
 
