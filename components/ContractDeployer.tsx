@@ -2061,7 +2061,7 @@ contract Calculator {
                 </h2>
               </div>
               <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage} / 2
+                {walletHealthPage} / 3
               </span>
             </div>
             
@@ -2135,7 +2135,7 @@ contract Calculator {
                   </p>
                 </div>
               </>
-            ) : (
+            ) : walletHealthPage === 2 ? (
               /* Activity Diversity Section - Page 2 */
               <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                 <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
@@ -2213,12 +2213,134 @@ contract Calculator {
                   }
                 </p>
               </div>
+            ) : (
+              /* Weekly Activity Planner - Page 3 */
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
+                  Weekly Activity Planner
+                </h3>
+                
+                <div className="space-y-2">
+                  {(() => {
+                    const today = new Date();
+                    const dayOfWeek = today.getDay();
+                    const monday = new Date(today);
+                    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+                    
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    const contractTypes = ['string', 'calculator', 'counter', 'clickCounter'];
+                    const contractNames = ['String Storage', 'Calculator', 'Counter', 'Click Counter'];
+                    
+                    const activeDates = new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString()));
+                    
+                    return days.map((day, index) => {
+                      const currentDate = new Date(monday);
+                      currentDate.setDate(monday.getDate() + index);
+                      const dateStr = currentDate.toDateString();
+                      const isToday = dateStr === today.toDateString();
+                      const isPast = currentDate < today && !isToday;
+                      const isActive = activeDates.has(dateStr);
+                      
+                      const dayContracts = deployedContracts.filter(c => 
+                        new Date(c.timestamp).toDateString() === dateStr
+                      );
+                      
+                      const usedTypes = new Set(deployedContracts.map(c => c.contractType));
+                      const suggestedType = contractTypes.find(t => !usedTypes.has(t)) || contractTypes[Math.floor(Math.random() * contractTypes.length)];
+                      const suggestedName = contractNames[contractTypes.indexOf(suggestedType)];
+                      
+                      return (
+                        <div key={day} className={`flex items-center justify-between p-2 border ${
+                          isToday ? 'border-[var(--ink)] bg-[var(--paper)]' : 'border-[var(--pencil)] bg-[var(--paper)]'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold w-8 ${isToday ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                              {day}
+                            </span>
+                            <span className="text-sm">
+                              {isActive ? (
+                                <span className="text-[var(--ink)]">[x]</span>
+                              ) : isPast ? (
+                                <span className="text-[var(--graphite)]">[ ]</span>
+                              ) : isToday ? (
+                                <span className="text-[var(--ink)] font-bold">[!]</span>
+                              ) : (
+                                <span className="text-[var(--graphite)]">[ ]</span>
+                              )}
+                            </span>
+                          </div>
+                          <span className={`text-xs ${isToday && !isActive ? 'font-bold text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                            {isActive && dayContracts.length > 0 
+                              ? `Deployed ${dayContracts[0].contractName}` 
+                              : isToday && !isActive 
+                              ? `DEPLOY TODAY (${suggestedName})`
+                              : isPast && !isActive
+                              ? 'Missed'
+                              : ''}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                
+                {/* Stats */}
+                <div className="mt-3 pt-3 border-t border-[var(--pencil)] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[var(--graphite)]">Goal: Stay active 5+ days/week</span>
+                    <span className="text-xs font-bold text-[var(--ink)]">
+                      {(() => {
+                        const today = new Date();
+                        const dayOfWeek = today.getDay();
+                        const monday = new Date(today);
+                        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+                        const sunday = new Date(monday);
+                        sunday.setDate(monday.getDate() + 6);
+                        
+                        const activeDays = deployedContracts.filter(c => {
+                          const d = new Date(c.timestamp);
+                          return d >= monday && d <= sunday;
+                        });
+                        const uniqueDays = new Set(activeDays.map(c => new Date(c.timestamp).toDateString())).size;
+                        return `${uniqueDays}/5 days`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[var(--graphite)]">Current Streak</span>
+                    <span className="text-xs font-bold text-[var(--ink)]">
+                      {(() => {
+                        const sortedDates = Array.from(new Set(deployedContracts.map(c => 
+                          new Date(c.timestamp).toDateString()
+                        ))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+                        
+                        if (sortedDates.length === 0) return '0 days';
+                        
+                        let streak = 0;
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        for (let i = 0; i < 365; i++) {
+                          const checkDate = new Date(today);
+                          checkDate.setDate(today.getDate() - i);
+                          if (sortedDates.includes(checkDate.toDateString())) {
+                            streak++;
+                          } else if (i > 0) {
+                            break;
+                          }
+                        }
+                        return `${streak} days`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
             )}
             
             {/* Pagination Controls */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--pencil)]">
               <button
-                onClick={() => setWalletHealthPage(1)}
+                onClick={() => setWalletHealthPage(p => Math.max(1, p - 1))}
                 disabled={walletHealthPage === 1}
                 className={`px-3 py-1 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
                   walletHealthPage === 1
@@ -2229,13 +2351,13 @@ contract Calculator {
                 ←
               </button>
               <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage === 1 ? 'Overview' : 'Activity Diversity'}
+                {walletHealthPage === 1 ? 'Overview' : walletHealthPage === 2 ? 'Activity Diversity' : 'Weekly Planner'}
               </span>
               <button
-                onClick={() => setWalletHealthPage(2)}
-                disabled={walletHealthPage === 2}
+                onClick={() => setWalletHealthPage(p => Math.min(3, p + 1))}
+                disabled={walletHealthPage === 3}
                 className={`px-3 py-1 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
-                  walletHealthPage === 2
+                  walletHealthPage === 3
                     ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
                     : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
                 }`}
