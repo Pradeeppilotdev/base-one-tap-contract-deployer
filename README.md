@@ -1,6 +1,7 @@
 # Base One-Tap Contract Deployer
 
 A Farcaster Mini App that helps users boost their wallet activity on Base blockchain. Deploy smart contracts, interact with on-chain contracts, and track your wallet health — all designed to help users build on-chain credibility.
+One Place to Know and Do Everything!
 
 ## Features
 
