@@ -320,6 +320,7 @@ function ContractDeployer() {
   const [clickCount, setClickCount] = useState<number>(0);
   const [clicking, setClicking] = useState(false);
   const [userClicks, setUserClicks] = useState<number>(0);
+  const [walletHealthPage, setWalletHealthPage] = useState(1);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -2052,71 +2053,187 @@ contract Calculator {
         {/* Wallet Health Stats */}
         {account && (
           <div className="sketch-card p-5 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-              <h2 className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
-                Wallet Health
-              </h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                <h2 className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
+                  Wallet Health
+                </h2>
+              </div>
+              <span className="text-xs text-[var(--graphite)]">
+                {walletHealthPage} / 2
+              </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            {walletHealthPage === 1 ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-xs text-[var(--graphite)] mb-1">Contracts Deployed</p>
+                    <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length}</p>
+                  </div>
+                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-xs text-[var(--graphite)] mb-1">Unique Days Active</p>
+                    <p className="text-xl font-bold text-[var(--ink)]">
+                      {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
+                    </p>
+                  </div>
+                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-xs text-[var(--graphite)] mb-1">Total Transactions</p>
+                    <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
+                  </div>
+                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
+                    <p className="text-xl font-bold text-[var(--ink)]">
+                      {Math.min(1000, deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20)}/1000
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Potential Reward Strength Indicator */}
+                <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
+                    <span className={`text-sm font-bold px-2 py-1 ${
+                      (deployedContracts.length >= 20 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                        ? 'bg-green-100 text-green-700 border border-green-300'
+                        : (deployedContracts.length >= 10 && clickCount >= 20 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                        : 'bg-red-100 text-red-700 border border-red-300'
+                    }`}>
+                      {(deployedContracts.length >= 20 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                        ? 'HIGH'
+                        : (deployedContracts.length >= 10 && clickCount >= 20 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                        ? 'MEDIUM'
+                        : 'LOW'}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${
+                        (deployedContracts.length >= 20 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                          ? 'bg-green-500'
+                          : (deployedContracts.length >= 10 && clickCount >= 20 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
+                          ? 'bg-yellow-500'
+                          : 'bg-red-400'
+                      }`}
+                      style={{ width: `${Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--graphite)] mt-2">
+                    {(deployedContracts.length >= 20 && clickCount >= 50)
+                      ? 'Great job! Keep staying active to maintain your HIGH status.'
+                      : `Need: ${Math.max(0, 20 - deployedContracts.length)} more deploys, ${Math.max(0, 50 - clickCount)} more clicks for HIGH`}
+                  </p>
+                </div>
+              </>
+            ) : (
+              /* Activity Diversity Section - Page 2 */
               <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                <p className="text-xs text-[var(--graphite)] mb-1">Contracts Deployed</p>
-                <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length}</p>
-              </div>
-              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                <p className="text-xs text-[var(--graphite)] mb-1">Unique Days Active</p>
-                <p className="text-xl font-bold text-[var(--ink)]">
-                  {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
+                <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
+                  Activity Diversity
+                </h3>
+                
+                <div className="space-y-3">
+                  {/* Contract Deployments */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[var(--graphite)]">Contract Deployments</span>
+                      <span className="text-xs font-bold text-[var(--ink)]">{Math.min(100, deployedContracts.length * 5)}%</span>
+                    </div>
+                    <div className="h-2 bg-[var(--paper)] border border-[var(--pencil)] overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--ink)] transition-all"
+                        style={{ width: `${Math.min(100, deployedContracts.length * 5)}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Contract Interactions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[var(--graphite)]">Contract Interactions</span>
+                      <span className="text-xs font-bold text-[var(--ink)]">{Math.min(100, clickCount * 2)}%</span>
+                    </div>
+                    <div className="h-2 bg-[var(--paper)] border border-[var(--pencil)] overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--ink)] transition-all"
+                        style={{ width: `${Math.min(100, clickCount * 2)}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Different Contract Types */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[var(--graphite)]">Different Contract Types</span>
+                      <span className="text-xs font-bold text-[var(--ink)]">{Math.min(100, new Set(deployedContracts.map(c => c.contractType)).size * 25)}%</span>
+                    </div>
+                    <div className="h-2 bg-[var(--paper)] border border-[var(--pencil)] overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--ink)] transition-all"
+                        style={{ width: `${Math.min(100, new Set(deployedContracts.map(c => c.contractType)).size * 25)}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Multi-day Activity */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[var(--graphite)]">Multi-day Activity</span>
+                      <span className="text-xs font-bold text-[var(--ink)]">{Math.min(100, new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 10)}%</span>
+                    </div>
+                    <div className="h-2 bg-[var(--paper)] border border-[var(--pencil)] overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--ink)] transition-all"
+                        style={{ width: `${Math.min(100, new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 10)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tip */}
+                <p className="text-xs text-[var(--graphite)] mt-3 pt-3 border-t border-[var(--pencil)]">
+                  <span className="font-bold">Tip:</span> {
+                    new Set(deployedContracts.map(c => c.contractType)).size < 4
+                      ? 'Deploy different contract types to maximize your wallet diversity score!'
+                      : clickCount < 50
+                      ? 'Interact with contracts more to boost your activity score!'
+                      : new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size < 10
+                      ? 'Stay active across multiple days for better scores!'
+                      : 'Great diversity! Keep up the varied activity.'
+                  }
                 </p>
               </div>
-              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                <p className="text-xs text-[var(--graphite)] mb-1">Total Transactions</p>
-                <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
-              </div>
-              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
-                <p className="text-xl font-bold text-[var(--ink)]">
-                  {Math.min(1000, deployedContracts.length * 15 + clickCount * 5 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 20)}/1000
-                </p>
-              </div>
-            </div>
+            )}
             
-            {/* Potential Reward Strength Indicator */}
-            <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)]">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
-                <span className={`text-sm font-bold px-2 py-1 ${
-                  (deployedContracts.length >= 10 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
-                    ? 'bg-green-100 text-green-700 border border-green-300'
-                    : (deployedContracts.length >= 5 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
-                    ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-                    : 'bg-red-100 text-red-700 border border-red-300'
-                }`}>
-                  {(deployedContracts.length >= 10 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
-                    ? 'HIGH'
-                    : (deployedContracts.length >= 5 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
-                    ? 'MEDIUM'
-                    : 'LOW'}
-                </span>
-              </div>
-              <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
-                <div 
-                  className={`h-full transition-all ${
-                    (deployedContracts.length >= 10 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 5)
-                      ? 'bg-green-500'
-                      : (deployedContracts.length >= 5 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
-                      ? 'bg-yellow-500'
-                      : 'bg-red-400'
-                  }`}
-                  style={{ width: `${Math.min(100, (deployedContracts.length * 15 + clickCount * 5 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 20) / 10)}%` }}
-                />
-              </div>
-              <p className="text-xs text-[var(--graphite)] mt-2">
-                {deployedContracts.length < 10 
-                  ? `Deploy ${10 - deployedContracts.length} more contracts to boost your score!`
-                  : 'Great job! Keep staying active to maintain eligibility.'}
-              </p>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--pencil)]">
+              <button
+                onClick={() => setWalletHealthPage(1)}
+                disabled={walletHealthPage === 1}
+                className={`px-3 py-1 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
+                  walletHealthPage === 1
+                    ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                    : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                }`}
+              >
+                ←
+              </button>
+              <span className="text-xs text-[var(--graphite)]">
+                {walletHealthPage === 1 ? 'Overview' : 'Activity Diversity'}
+              </span>
+              <button
+                onClick={() => setWalletHealthPage(2)}
+                disabled={walletHealthPage === 2}
+                className={`px-3 py-1 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
+                  walletHealthPage === 2
+                    ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                    : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                }`}
+              >
+                →
+              </button>
             </div>
           </div>
         )}
