@@ -1,24 +1,86 @@
 # Base One-Tap Contract Deployer
 
-A lightweight Base mini-app that lets users deploy predefined smart contracts to the Base blockchain with a single click — primarily intended to increase wallet activity and provide an easy way to demo simple contracts.
+A Farcaster Mini App that helps users boost their wallet activity on Base blockchain. Deploy smart contracts, interact with on-chain contracts, and track your wallet health — all designed to help users build on-chain credibility.
 
 ## Features
 
-- Deploy smart contracts directly from the web UI
-- Multiple contract templates included:
-  - String Storage
-  - Calculator
-  - Simple Token (ERC20-like with mint)
-- Automatic Base network switching in the client
-- Real-time deployment status and logs
-- Direct links to BaseScan for deployed contracts
+### Core Functionality
+- **One-tap contract deployment** — Deploy smart contracts directly from the web UI
+- **On-chain interactions** — Click counter for easy contract interactions
+- **Multiple contract templates**:
+  - String Storage — store and retrieve strings
+  - Calculator — simple arithmetic operations
+  - Counter — increment/decrement counter
+  - Click Counter — track on-chain clicks
+
+### Wallet Health Dashboard
+A comprehensive 3-page dashboard to track your on-chain activity:
+
+**Page 1 - Overview:**
+- Contracts Deployed count
+- Unique Days Active
+- Total Transactions
+- Activity Score (out of 1000)
+- Potential Reward Strength indicator (LOW / MEDIUM / MEDIUM-HIGH / HIGH)
+
+**Page 2 - Activity Diversity:**
+- Contract Deployments progress
+- Contract Interactions progress
+- Different Contract Types deployed
+- Multi-day Activity tracking
+- Dynamic tips for improvement
+
+**Page 3 - Weekly Activity Planner:**
+- 7-day week view (Mon-Sun)
+- Daily activity status tracking
+- Smart contract suggestions for inactive days
+- Weekly goal tracking (5+ days/week)
+- Current activity streak counter
+
+### Reward Strength Criteria
+| Level | Requirements |
+|-------|-------------|
+| HIGH | 30+ contracts, 50+ clicks, 10+ unique days, 4 contract types |
+| MEDIUM-HIGH | 15+ contracts, 25+ clicks, 7+ unique days |
+| MEDIUM | 5+ contracts OR 10+ clicks OR 3+ unique days |
+| LOW | Below MEDIUM thresholds |
+
+### Social Features
+- **Leaderboard** — See top deployers with pagination (10 per page)
+  - Sortable by contracts or referrals
+  - Shows contracts, referrals, clicks, and first deploy date
+- **Referral System** — Share referral codes and earn points
+- **Achievement System** — Unlock milestones for deployments
+- **Profile Modal** — View your stats, referrals, points, and clicks
+
+### Technical Features
+- Farcaster SDK integration for user context
+- Firebase Firestore for cross-device data persistence
+- Support for Base Mainnet and Base Sepolia testnet
+- Contract verification support via BaseScan API
+- Real-time deployment status tracking
 
 ## Prerequisites
 
-- Base app account (for publishing the mini-app)
-- A wallet that supports the Base network (e.g., MetaMask)
+- Farcaster account (for using the mini-app)
+- A wallet that supports the Base network
 - Node.js 18+ installed
+- Firebase project (for data persistence)
 - (Optional) Vercel account for hosting
+
+## Environment Variables
+
+Create a `.env.local` file with:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+BASESCAN_API_KEY=your_basescan_api_key
+```
 
 ## Quickstart — Local Development
 
@@ -27,91 +89,110 @@ A lightweight Base mini-app that lets users deploy predefined smart contracts to
    ```bash
    npm install
    ```
-3. Start the dev server:
+3. Set up environment variables (see above)
+4. Start the dev server:
    ```bash
    npm run dev
    ```
-4. Open http://localhost:3000 in your browser.
+5. Open http://localhost:3000 in your browser.
 
 Common npm scripts:
 - `npm run dev` — start development server
 - `npm run build` — build for production
-- `npm run start` — run production build (if applicable)
-
-## Deploying / Hosting
-
-You can host this app on Vercel (recommended for quick deploys):
-
-1. Push your code to GitHub.
-2. Import the repository in Vercel and deploy.
-3. Note your Vercel deployment URL for configuring the mini-app manifest.
-
-## Mini App Manifest / Base Preview Configuration
-
-1. After deploying, update `minikit.config.ts` with your production URL.
-2. Go to the Base Build Account Association Tool: https://www.base.dev/preview?tab=account
-3. Paste your domain and generate `accountAssociation` credentials.
-4. Update `minikit.config.ts` with the `accountAssociation` object returned by Base.
-5. Validate and preview the app at https://base.dev/preview.
-6. To publish, create a post in the Base app with your app’s URL.
+- `npm run start` — run production build
 
 ## Project Structure
 
 ```
 ├── app/
 │   ├── api/
+│   │   ├── leaderboard/
+│   │   │   └── route.ts          # Leaderboard aggregation API
+│   │   ├── user-data/
+│   │   │   └── route.ts          # User data persistence API
+│   │   ├── track-referral/
+│   │   │   └── route.ts          # Referral tracking API
+│   │   ├── validate-referral/
+│   │   │   └── route.ts          # Referral validation API
+│   │   ├── user-referral-info/
+│   │   │   └── route.ts          # User referral info API
+│   │   ├── verify-contract/
+│   │   │   └── route.ts          # Contract verification API
 │   │   └── webhook/
 │   │       └── route.ts          # Webhook endpoint
-│   ├── .well-known/
-│   │   └── farcaster.json/
-│   │       └── route.ts          # Manifest endpoint
 │   ├── layout.tsx                # Root layout
 │   ├── page.tsx                  # Main page
-│   └── globals.css               # Global styles
+│   └── globals.css               # Global styles & animations
 ├── components/
 │   └── ContractDeployer.tsx      # Main contract deployer component
+├── contracts/
+│   ├── StringStorage.sol         # String storage contract
+│   ├── Calculator.sol            # Calculator contract
+│   ├── Counter.sol               # Counter contract
+│   └── ClickCounter.sol          # Click counter contract
+├── lib/
+│   ├── firebase.ts               # Firebase configuration
+│   └── wagmi.ts                  # Wagmi configuration
 ├── minikit.config.ts             # Mini app configuration
 ├── next.config.js                # Next.js configuration
-└── package.json                  # Project dependencies & scripts
+└── package.json                  # Project dependencies
 ```
 
-(If you add or rename files, please update this section to reflect the current tree.)
+## Firebase Data Structure
 
-## Contract Templates
+```
+users/{walletAddress}
+├── contracts[]           # Deployed contracts array
+├── achievements[]        # Unlocked achievements
+├── clicks               # Total click count
+├── fid                  # Farcaster ID
+├── username             # Farcaster username
+├── displayName          # Display name
+├── pfpUrl               # Profile picture URL
+└── lastUpdated          # Timestamp
 
-Included templates (examples) — see the `contracts/` or project-specific folder for sources:
+referrals/{fid}
+├── referralCount        # Number of referrals
+├── totalPoints          # Points earned
+├── referredUsers[]      # List of referred users
+└── username             # Referrer username
+```
 
-1. String Storage — store and retrieve simple strings
-2. Calculator — simple arithmetic operations
-3. Simple Token — basic ERC20-like token with mint function
+## Deploying / Hosting
 
-## Configuration
+Deploy on Vercel (recommended):
 
-Edit `minikit.config.ts` to customize:
-- App name, description and metadata
-- Screenshots and images used in the manifest
-- Tags and categories
-- The `accountAssociation` details required by Base after deployment
+1. Push your code to GitHub
+2. Import the repository in Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy
+
+## Mini App Configuration
+
+1. Update `minikit.config.ts` with your production URL
+2. Generate `accountAssociation` at: https://www.base.dev/preview?tab=account
+3. Update the config with credentials
+4. Validate at https://base.dev/preview
+5. Publish via Farcaster
 
 ## Security & Notes
 
-- This app is provided as a demo/utility. Review and audit all smart contract templates before using them with real funds.
-- Keep private keys and secrets out of repository files. Use environment variables and secure secrets in your hosting provider.
+- This app is a utility for wallet activity. Review contracts before using with real funds.
+- Keep private keys and secrets in environment variables
+- Firebase rules should be configured for proper access control
 
 ## Contributing
 
-Contributions are welcome. A suggested flow:
-1. Fork the repo.
-2. Create a feature branch.
-3. Open a PR describing your changes.
-4. Add tests or manual validation steps where appropriate.
-
-Please open an issue for larger changes so we can discuss the design.
+1. Fork the repo
+2. Create a feature branch
+3. Open a PR with description
+4. Add tests where appropriate
 
 ## License
 
 MIT
 
-## Acknowledgements & Links
+## Acknowledgements
 
 - Base Developer Docs: https://www.base.dev
+- Farcaster SDK: https://docs.farcaster.xyz
