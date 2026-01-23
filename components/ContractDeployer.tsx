@@ -248,6 +248,25 @@ const STORAGE_KEY = 'base-deployer-contracts';
 const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
 const REFERRAL_KEY = 'base-deployer-referral';
+
+// On-chain wallet stats from Basescan API
+interface OnChainStats {
+  totalTransactions: number;
+  totalContractDeployments: number;
+  totalContractInteractions: number;
+  totalTokenTransfers: number;
+  uniqueContractsInteracted: number;
+  uniqueDaysActive: number;
+  firstTxDate: string | null;
+  lastTxDate: string | null;
+  ethBalance: string;
+  totalGasUsed: string;
+  successfulTxCount: number;
+  failedTxCount: number;
+  avgGasPerTx: string;
+  mostActiveDay: string | null;
+  txsByMonth: Record<string, number>;
+}
 const NETWORK_KEY = 'base-deployer-network';
 
 // Achievement system
@@ -321,6 +340,8 @@ function ContractDeployer() {
   const [clicking, setClicking] = useState(false);
   const [userClicks, setUserClicks] = useState<number>(0);
   const [walletHealthPage, setWalletHealthPage] = useState(1);
+  const [onChainStats, setOnChainStats] = useState<OnChainStats | null>(null);
+  const [loadingOnChainStats, setLoadingOnChainStats] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -535,6 +556,35 @@ function ContractDeployer() {
       }
     }
   }, [account, farcasterUser]);
+
+  // Fetch on-chain wallet stats from Basescan API
+  useEffect(() => {
+    const fetchOnChainStats = async () => {
+      if (!account || network !== 'mainnet') {
+        setOnChainStats(null);
+        return;
+      }
+
+      setLoadingOnChainStats(true);
+      try {
+        const response = await fetch(`/api/wallet-stats?address=${account}`);
+        if (response.ok) {
+          const stats = await response.json();
+          setOnChainStats(stats);
+        } else {
+          console.error('Failed to fetch on-chain stats');
+          setOnChainStats(null);
+        }
+      } catch (error) {
+        console.error('Error fetching on-chain stats:', error);
+        setOnChainStats(null);
+      } finally {
+        setLoadingOnChainStats(false);
+      }
+    };
+
+    fetchOnChainStats();
+  }, [account, network]);
 
   // Track referral and give points
   // Validate referral code
@@ -2061,31 +2111,67 @@ contract Calculator {
                 </h2>
               </div>
               <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage} / 3
+                {walletHealthPage} / 4
               </span>
             </div>
             
             {walletHealthPage === 1 ? (
               <>
+                {/* On-Chain Stats from Basescan */}
+                {network === 'mainnet' && (
+                  <div className="mb-4 p-3 border-2 border-[var(--ink)] bg-[var(--paper)]">
+                    <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-2">
+                      On-Chain Stats (Base Mainnet)
+                    </h3>
+                    {loadingOnChainStats ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-[var(--ink)]" />
+                        <span className="ml-2 text-xs text-[var(--graphite)]">Loading on-chain data...</span>
+                      </div>
+                    ) : onChainStats ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
+                          <p className="text-xs text-[var(--graphite)]">Total Txns</p>
+                          <p className="text-lg font-bold text-[var(--ink)]">{onChainStats.totalTransactions.toLocaleString()}</p>
+                        </div>
+                        <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
+                          <p className="text-xs text-[var(--graphite)]">Contracts Deployed</p>
+                          <p className="text-lg font-bold text-[var(--ink)]">{onChainStats.totalContractDeployments}</p>
+                        </div>
+                        <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
+                          <p className="text-xs text-[var(--graphite)]">Token Transfers</p>
+                          <p className="text-lg font-bold text-[var(--ink)]">{onChainStats.totalTokenTransfers.toLocaleString()}</p>
+                        </div>
+                        <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
+                          <p className="text-xs text-[var(--graphite)]">Days Active</p>
+                          <p className="text-lg font-bold text-[var(--ink)]">{onChainStats.uniqueDaysActive}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[var(--graphite)] text-center py-2">Unable to load on-chain stats</p>
+                    )}
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Contracts Deployed</p>
+                    <p className="text-xs text-[var(--graphite)] mb-1">App Deploys</p>
                     <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length}</p>
                   </div>
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Unique Days Active</p>
+                    <p className="text-xs text-[var(--graphite)] mb-1">App Days Active</p>
                     <p className="text-xl font-bold text-[var(--ink)]">
                       {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
                     </p>
                   </div>
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Total Transactions</p>
-                    <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
+                    <p className="text-xs text-[var(--graphite)] mb-1">App Clicks</p>
+                    <p className="text-xl font-bold text-[var(--ink)]">{clickCount}</p>
                   </div>
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                     <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
                     <p className="text-xl font-bold text-[var(--ink)]">
-                      {Math.min(1000, deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20)}/1000
+                      {Math.min(1000, deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20 + (onChainStats ? Math.min(200, onChainStats.totalTransactions) : 0))}/1000
                     </p>
                   </div>
                 </div>
@@ -2095,19 +2181,19 @@ contract Calculator {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
                     <span className={`text-sm font-bold px-2 py-1 ${
-                      (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                      ((onChainStats && onChainStats.totalTransactions >= 100 && onChainStats.uniqueDaysActive >= 30) || (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4))
                         ? 'bg-green-100 text-green-700 border border-green-300'
-                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                        : ((onChainStats && onChainStats.totalTransactions >= 50 && onChainStats.uniqueDaysActive >= 15) || (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7))
                         ? 'bg-lime-100 text-lime-700 border border-lime-300'
-                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                        : ((onChainStats && onChainStats.totalTransactions >= 20) || deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
                         ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
                         : 'bg-red-100 text-red-700 border border-red-300'
                     }`}>
-                      {(deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                      {((onChainStats && onChainStats.totalTransactions >= 100 && onChainStats.uniqueDaysActive >= 30) || (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4))
                         ? 'HIGH'
-                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                        : ((onChainStats && onChainStats.totalTransactions >= 50 && onChainStats.uniqueDaysActive >= 15) || (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7))
                         ? 'MEDIUM-HIGH'
-                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                        : ((onChainStats && onChainStats.totalTransactions >= 20) || deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
                         ? 'MEDIUM'
                         : 'LOW'}
                     </span>
@@ -2115,22 +2201,22 @@ contract Calculator {
                   <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
                     <div 
                       className={`h-full transition-all ${
-                        (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                        ((onChainStats && onChainStats.totalTransactions >= 100 && onChainStats.uniqueDaysActive >= 30) || (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4))
                           ? 'bg-green-500'
-                          : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                          : ((onChainStats && onChainStats.totalTransactions >= 50 && onChainStats.uniqueDaysActive >= 15) || (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7))
                           ? 'bg-lime-500'
-                          : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                          : ((onChainStats && onChainStats.totalTransactions >= 20) || deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
                           ? 'bg-yellow-500'
                           : 'bg-red-400'
                       }`}
-                      style={{ width: `${Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10)}%` }}
+                      style={{ width: `${Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20 + (onChainStats ? Math.min(200, onChainStats.totalTransactions) : 0)) / 10)}%` }}
                     />
                   </div>
                   <p className="text-xs text-[var(--graphite)] mt-2">
-                    {(deployedContracts.length >= 30 && clickCount >= 50)
+                    {((onChainStats && onChainStats.totalTransactions >= 100) || (deployedContracts.length >= 30 && clickCount >= 50))
                       ? 'Excellent! You have HIGH reward strength. Keep it up!'
-                      : (deployedContracts.length >= 15 && clickCount >= 25)
-                      ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
+                      : onChainStats 
+                      ? `On-chain: ${onChainStats.totalTransactions} txns, ${onChainStats.uniqueDaysActive} days. Need more activity for higher tier.`
                       : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
                   </p>
                 </div>
@@ -2213,7 +2299,7 @@ contract Calculator {
                   }
                 </p>
               </div>
-            ) : (
+            ) : walletHealthPage === 3 ? (
               /* Weekly Activity Planner - Page 3 */
               <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                 <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
@@ -2335,6 +2421,78 @@ contract Calculator {
                   </div>
                 </div>
               </div>
+            ) : (
+              /* On-Chain Details - Page 4 */
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
+                  On-Chain Details
+                </h3>
+                
+                {network !== 'mainnet' ? (
+                  <p className="text-xs text-[var(--graphite)] text-center py-4">
+                    Switch to Base Mainnet to see on-chain stats
+                  </p>
+                ) : loadingOnChainStats ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-[var(--ink)]" />
+                    <span className="ml-2 text-xs text-[var(--graphite)]">Loading on-chain data...</span>
+                  </div>
+                ) : onChainStats ? (
+                  <div className="space-y-3">
+                    {/* ETH Balance */}
+                    <div className="p-2 border border-[var(--ink)] bg-[var(--paper)]">
+                      <p className="text-xs text-[var(--graphite)]">ETH Balance</p>
+                      <p className="text-lg font-bold text-[var(--ink)]">{parseFloat(onChainStats.ethBalance).toFixed(4)} ETH</p>
+                    </div>
+                    
+                    {/* Transaction Stats */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)]">Successful Txns</p>
+                        <p className="text-sm font-bold text-green-600">{onChainStats.successfulTxCount}</p>
+                      </div>
+                      <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)]">Failed Txns</p>
+                        <p className="text-sm font-bold text-red-600">{onChainStats.failedTxCount}</p>
+                      </div>
+                      <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)]">Contracts Interacted</p>
+                        <p className="text-sm font-bold text-[var(--ink)]">{onChainStats.uniqueContractsInteracted}</p>
+                      </div>
+                      <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)]">Contract Calls</p>
+                        <p className="text-sm font-bold text-[var(--ink)]">{onChainStats.totalContractInteractions}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Activity Period */}
+                    <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                      <p className="text-xs text-[var(--graphite)] mb-1">Activity Period</p>
+                      <p className="text-xs font-bold text-[var(--ink)]">
+                        {onChainStats.firstTxDate 
+                          ? `${new Date(onChainStats.firstTxDate).toLocaleDateString()} - ${new Date(onChainStats.lastTxDate!).toLocaleDateString()}`
+                          : 'No transactions yet'}
+                      </p>
+                    </div>
+                    
+                    {/* Most Active Day */}
+                    {onChainStats.mostActiveDay && (
+                      <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)]">Most Active Day</p>
+                        <p className="text-xs font-bold text-[var(--ink)]">{onChainStats.mostActiveDay}</p>
+                      </div>
+                    )}
+                    
+                    {/* Gas Stats */}
+                    <div className="p-2 bg-[var(--paper)] border border-[var(--pencil)]">
+                      <p className="text-xs text-[var(--graphite)]">Total Gas Used</p>
+                      <p className="text-xs font-bold text-[var(--ink)]">{(Number(onChainStats.totalGasUsed) / 1e9).toFixed(4)} Gwei</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--graphite)] text-center py-4">Unable to load on-chain stats</p>
+                )}
+              </div>
             )}
             
             {/* Pagination Controls */}
@@ -2351,13 +2509,13 @@ contract Calculator {
                 ←
               </button>
               <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage === 1 ? 'Overview' : walletHealthPage === 2 ? 'Activity Diversity' : 'Weekly Planner'}
+                {walletHealthPage === 1 ? 'Overview' : walletHealthPage === 2 ? 'Activity Diversity' : walletHealthPage === 3 ? 'Weekly Planner' : 'On-Chain Details'}
               </span>
               <button
-                onClick={() => setWalletHealthPage(p => Math.min(3, p + 1))}
-                disabled={walletHealthPage === 3}
+                onClick={() => setWalletHealthPage(p => Math.min(4, p + 1))}
+                disabled={walletHealthPage === 4}
                 className={`px-3 py-1 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
-                  walletHealthPage === 3
+                  walletHealthPage === 4
                     ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
                     : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
                 }`}
