@@ -15,12 +15,13 @@ One Place to Know and Do Everything!
   - Click Counter — track on-chain clicks
 
 ### Wallet Health Dashboard
-A comprehensive 4-page dashboard to track your on-chain activity:
+A comprehensive 3-page dashboard to track your on-chain activity:
 
 **Page 1 - Overview:**
-- Real-time on-chain stats from Basescan API (Base Mainnet)
-  - Total transactions, contracts deployed, token transfers, days active
-- App activity stats (deploys, clicks, activity score)
+- Contracts Deployed count
+- Unique Days Active
+- Total Transactions
+- Activity Score (out of 1000)
 - Potential Reward Strength indicator (LOW / MEDIUM / MEDIUM-HIGH / HIGH)
 
 **Page 2 - Activity Diversity:**
@@ -37,20 +38,12 @@ A comprehensive 4-page dashboard to track your on-chain activity:
 - Weekly goal tracking (5+ days/week)
 - Current activity streak counter
 
-**Page 4 - On-Chain Details:**
-- ETH balance on Base
-- Successful vs failed transactions
-- Unique contracts interacted with
-- Activity period (first to last transaction)
-- Most active day
-- Total gas used
-
 ### Reward Strength Criteria
 | Level | Requirements |
 |-------|-------------|
-| HIGH | 100+ on-chain txns + 30 days active OR 30+ app deploys + 50+ clicks + 10+ days + 4 contract types |
-| MEDIUM-HIGH | 50+ on-chain txns + 15 days active OR 15+ app deploys + 25+ clicks + 7+ days |
-| MEDIUM | 20+ on-chain txns OR 5+ app deploys OR 10+ clicks OR 3+ unique days |
+| HIGH | 30+ contracts, 50+ clicks, 10+ unique days, 4 contract types |
+| MEDIUM-HIGH | 15+ contracts, 25+ clicks, 7+ unique days |
+| MEDIUM | 5+ contracts OR 10+ clicks OR 3+ unique days |
 | LOW | Below MEDIUM thresholds |
 
 ### Social Features
@@ -64,7 +57,6 @@ A comprehensive 4-page dashboard to track your on-chain activity:
 ### Technical Features
 - Farcaster SDK integration for user context
 - Firebase Firestore for cross-device data persistence
-- **Basescan v2 API integration** for real on-chain wallet stats
 - Support for Base Mainnet and Base Sepolia testnet
 - Contract verification support via BaseScan API
 - Real-time deployment status tracking
@@ -119,8 +111,6 @@ Common npm scripts:
 │   │   │   └── route.ts          # Leaderboard aggregation API
 │   │   ├── user-data/
 │   │   │   └── route.ts          # User data persistence API
-│   │   ├── wallet-stats/
-│   │   │   └── route.ts          # On-chain wallet stats via Basescan v2 API
 │   │   ├── track-referral/
 │   │   │   └── route.ts          # Referral tracking API
 │   │   ├── validate-referral/
