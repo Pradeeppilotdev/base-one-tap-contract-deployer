@@ -2261,7 +2261,7 @@ contract Calculator {
                               {isActive ? (
                                 <span className="w-3 h-3 bg-[var(--ink)] rounded-full"></span>
                               ) : isPast ? (
-                                <span className="w-3 h-3 border border-[var(--pencil)] rounded-full"></span>
+                                <span className="text-red-400 text-xs font-bold">✕</span>
                               ) : isToday ? (
                                 <span className="w-3 h-3 border-2 border-[var(--ink)] rounded-full animate-pulse"></span>
                               ) : (
