@@ -2416,7 +2416,7 @@ contract Calculator {
                       <div className="space-y-2 mb-4 font-mono text-xs">
                         {weeks.map((week, i) => {
                           const filled = Math.round((week.count / maxActions) * 12);
-                          const bar = '[' + '#'.repeat(filled) + '_'.repeat(12 - filled) + ']';
+                          const bar = '█'.repeat(filled) + '░'.repeat(12 - filled);
                           return (
                             <div key={i} className="flex items-center justify-between">
                               <span className="text-[var(--graphite)] w-16">{week.label}:</span>
