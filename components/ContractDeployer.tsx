@@ -2215,12 +2215,12 @@ contract Calculator {
               </div>
             ) : walletHealthPage === 3 ? (
               /* Weekly Activity Planner - Page 3 */
-              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
+              <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-2">
                   Weekly Activity Planner
                 </h3>
                 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {(() => {
                     const today = new Date();
                     const dayOfWeek = today.getDay();
@@ -2250,32 +2250,32 @@ contract Calculator {
                       const suggestedName = contractNames[contractTypes.indexOf(suggestedType)];
                       
                       return (
-                        <div key={day} className={`flex items-center justify-between p-2 border ${
+                        <div key={day} className={`flex items-center justify-between px-2 py-1.5 border ${
                           isToday ? 'border-[var(--ink)] bg-[var(--paper)]' : 'border-[var(--pencil)] bg-[var(--paper)]'
                         }`}>
                           <div className="flex items-center gap-2">
-                            <span className={`text-xs font-bold w-8 ${isToday ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                            <span className={`text-xs font-bold w-7 ${isToday ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
                               {day}
                             </span>
-                            <span className="text-sm">
+                            <span className="w-4 h-4 flex items-center justify-center">
                               {isActive ? (
-                                <span className="text-[var(--ink)]">[x]</span>
+                                <span className="w-3 h-3 bg-[var(--ink)] rounded-full"></span>
                               ) : isPast ? (
-                                <span className="text-[var(--graphite)]">[ ]</span>
+                                <span className="w-3 h-3 border border-[var(--pencil)] rounded-full"></span>
                               ) : isToday ? (
-                                <span className="text-[var(--ink)] font-bold">[!]</span>
+                                <span className="w-3 h-3 border-2 border-[var(--ink)] rounded-full animate-pulse"></span>
                               ) : (
-                                <span className="text-[var(--graphite)]">[ ]</span>
+                                <span className="w-3 h-3 border border-[var(--pencil)] rounded-full opacity-50"></span>
                               )}
                             </span>
                           </div>
-                          <span className={`text-xs ${isToday && !isActive ? 'font-bold text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                          <span className={`text-xs truncate max-w-[140px] ${isToday && !isActive ? 'font-bold text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
                             {isActive && dayContracts.length > 0 
-                              ? `Deployed ${dayContracts[0].contractName}` 
+                              ? dayContracts[0].contractName
                               : isToday && !isActive 
-                              ? `DEPLOY TODAY (${suggestedName})`
+                              ? `Deploy: ${suggestedName}`
                               : isPast && !isActive
-                              ? 'Missed'
+                              ? '--'
                               : ''}
                           </span>
                         </div>
@@ -2285,9 +2285,9 @@ contract Calculator {
                 </div>
                 
                 {/* Stats */}
-                <div className="mt-3 pt-3 border-t border-[var(--pencil)] space-y-1">
+                <div className="mt-2 pt-2 border-t border-[var(--pencil)] space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-[var(--graphite)]">Goal: Stay active 5+ days/week</span>
+                    <span className="text-xs text-[var(--graphite)]">Goal: 5+ days/week</span>
                     <span className="text-xs font-bold text-[var(--ink)]">
                       {(() => {
                         const today = new Date();
