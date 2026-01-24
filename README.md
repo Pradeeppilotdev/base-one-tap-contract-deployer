@@ -15,7 +15,7 @@ One Place to Know and Do Everything!
   - Click Counter — track on-chain clicks
 
 ### Wallet Health Dashboard
-A comprehensive 3-page dashboard to track your on-chain activity:
+A comprehensive 4-page dashboard to track your on-chain activity:
 
 **Page 1 - Overview:**
 - Contracts Deployed count
@@ -37,6 +37,13 @@ A comprehensive 3-page dashboard to track your on-chain activity:
 - Smart contract suggestions for inactive days
 - Weekly goal tracking (5+ days/week)
 - Current activity streak counter
+
+**Page 4 - Activity Heatmap:**
+- Visual representation of last 30 days activity
+- Weekly action bars (screenshot-friendly)
+- Best day stats
+- Longest streak counter
+- Activity level badge (GETTING STARTED / WARMING UP / ACTIVE / POWER USER)
 
 ### Reward Strength Criteria
 | Level | Requirements |

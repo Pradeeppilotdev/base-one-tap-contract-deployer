@@ -2061,7 +2061,7 @@ contract Calculator {
                 </h2>
               </div>
               <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage} / 3
+                {walletHealthPage} / 4
               </span>
             </div>
             
@@ -2213,7 +2213,7 @@ contract Calculator {
                   }
                 </p>
               </div>
-            ) : (
+            ) : walletHealthPage === 3 ? (
               /* Weekly Activity Planner - Page 3 */
               <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                 <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3">
@@ -2335,6 +2335,131 @@ contract Calculator {
                   </div>
                 </div>
               </div>
+            ) : (
+              /* Activity Heatmap - Page 4 */
+              <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-3 text-center">
+                  YOUR ON-CHAIN FOOTPRINT
+                </h3>
+                <p className="text-xs text-[var(--graphite)] text-center mb-4">Last 30 Days</p>
+                
+                {(() => {
+                  const today = new Date();
+                  const thirtyDaysAgo = new Date(today);
+                  thirtyDaysAgo.setDate(today.getDate() - 30);
+                  
+                  // Get all activity in last 30 days
+                  const recentContracts = deployedContracts.filter(c => new Date(c.timestamp) >= thirtyDaysAgo);
+                  
+                  // Group by week
+                  const weeks = [0, 1, 2, 3].map(weekNum => {
+                    const weekStart = new Date(thirtyDaysAgo);
+                    weekStart.setDate(thirtyDaysAgo.getDate() + (weekNum * 7));
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 7);
+                    
+                    const weekContracts = recentContracts.filter(c => {
+                      const d = new Date(c.timestamp);
+                      return d >= weekStart && d < weekEnd;
+                    });
+                    
+                    return {
+                      label: `Week ${weekNum + 1}`,
+                      count: weekContracts.length + Math.floor(clickCount / 4), // Approximate clicks per week
+                      deploys: weekContracts.length
+                    };
+                  });
+                  
+                  const maxActions = Math.max(...weeks.map(w => w.count), 1);
+                  
+                  // Find best day
+                  const dayActivity: Record<string, { deploys: number; date: Date }> = {};
+                  recentContracts.forEach(c => {
+                    const dateStr = new Date(c.timestamp).toDateString();
+                    if (!dayActivity[dateStr]) {
+                      dayActivity[dateStr] = { deploys: 0, date: new Date(c.timestamp) };
+                    }
+                    dayActivity[dateStr].deploys++;
+                  });
+                  
+                  const bestDay = Object.entries(dayActivity).sort((a, b) => b[1].deploys - a[1].deploys)[0];
+                  
+                  // Calculate longest streak
+                  const sortedDates = Array.from(new Set(deployedContracts.map(c => 
+                    new Date(c.timestamp).toDateString()
+                  ))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+                  
+                  let longestStreak = 0;
+                  let currentStreak = 1;
+                  for (let i = 1; i < sortedDates.length; i++) {
+                    const prevDate = new Date(sortedDates[i - 1]);
+                    const currDate = new Date(sortedDates[i]);
+                    const diffDays = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diffDays === 1) {
+                      currentStreak++;
+                      longestStreak = Math.max(longestStreak, currentStreak);
+                    } else {
+                      currentStreak = 1;
+                    }
+                  }
+                  longestStreak = Math.max(longestStreak, currentStreak, sortedDates.length > 0 ? 1 : 0);
+                  
+                  // Activity level
+                  const totalActions = recentContracts.length + clickCount;
+                  const activityLevel = totalActions >= 50 ? 'POWER USER' : 
+                                       totalActions >= 25 ? 'ACTIVE' : 
+                                       totalActions >= 10 ? 'WARMING UP' : 'GETTING STARTED';
+                  
+                  return (
+                    <>
+                      {/* Weekly bars */}
+                      <div className="space-y-2 mb-4 font-mono text-xs">
+                        {weeks.map((week, i) => {
+                          const filled = Math.round((week.count / maxActions) * 12);
+                          const bar = '[' + '#'.repeat(filled) + '_'.repeat(12 - filled) + ']';
+                          return (
+                            <div key={i} className="flex items-center justify-between">
+                              <span className="text-[var(--graphite)] w-16">{week.label}:</span>
+                              <span className="text-[var(--ink)] tracking-tighter">{bar}</span>
+                              <span className="text-[var(--graphite)] w-20 text-right">{week.count} actions</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Stats */}
+                      <div className="space-y-2 pt-3 border-t border-[var(--pencil)]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-[var(--graphite)]">Best day:</span>
+                          <span className="text-xs font-bold text-[var(--ink)]">
+                            {bestDay ? `${bestDay[1].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (${bestDay[1].deploys} deploys)` : 'No activity yet'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-[var(--graphite)]">Longest streak:</span>
+                          <span className="text-xs font-bold text-[var(--ink)]">{longestStreak} days</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-[var(--pencil)]">
+                          <span className="text-xs text-[var(--graphite)]">Activity level:</span>
+                          <span className={`text-xs font-bold px-2 py-1 ${
+                            activityLevel === 'POWER USER' ? 'bg-green-100 text-green-700 border border-green-300' :
+                            activityLevel === 'ACTIVE' ? 'bg-lime-100 text-lime-700 border border-lime-300' :
+                            activityLevel === 'WARMING UP' ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' :
+                            'bg-[var(--light)] text-[var(--graphite)] border border-[var(--pencil)]'
+                          }`}>
+                            {activityLevel}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Share hint */}
+                      <p className="text-xs text-[var(--graphite)] text-center mt-3 pt-3 border-t border-[var(--pencil)]">
+                        Screenshot and share your on-chain footprint!
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
             )}
             
             {/* Pagination Controls */}
@@ -2351,13 +2476,13 @@ contract Calculator {
                 ←
               </button>
               <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage === 1 ? 'Overview' : walletHealthPage === 2 ? 'Activity Diversity' : 'Weekly Planner'}
+                {walletHealthPage === 1 ? 'Overview' : walletHealthPage === 2 ? 'Activity Diversity' : walletHealthPage === 3 ? 'Weekly Planner' : 'Activity Heatmap'}
               </span>
               <button
-                onClick={() => setWalletHealthPage(p => Math.min(3, p + 1))}
-                disabled={walletHealthPage === 3}
+                onClick={() => setWalletHealthPage(p => Math.min(4, p + 1))}
+                disabled={walletHealthPage === 4}
                 className={`px-3 py-1 border-2 border-[var(--ink)] font-bold text-sm transition-colors ${
-                  walletHealthPage === 3
+                  walletHealthPage === 4
                     ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
                     : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
                 }`}
