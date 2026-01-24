@@ -3316,7 +3316,7 @@ contract Calculator {
               Enter Referral Code
             </h3>
             <form onSubmit={handleManualReferralSubmit} className="space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={manualReferralCode}
@@ -3332,7 +3332,7 @@ contract Calculator {
                 <button
                   type="submit"
                   disabled={validatingReferral || referralValidated || !manualReferralCode.trim()}
-                  className="px-4 py-2 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--sketch)] transition-colors"
+                  className="px-4 py-2 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--sketch)] transition-colors whitespace-nowrap"
                 >
                   {validatingReferral ? (
                     <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
