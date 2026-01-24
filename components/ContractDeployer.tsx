@@ -3086,7 +3086,23 @@ contract Calculator {
                             #{(leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1}
                           </td>
                           <td className="p-3">
-                            <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => {
+                                // Load the clicked user's profile data
+                                setUserReferralInfo({
+                                  fid: user.fid,
+                                  username: user.username,
+                                  displayName: user.displayName,
+                                  pfpUrl: user.pfpUrl,
+                                  contractCount: user.contractCount,
+                                  referralCount: user.referralCount,
+                                  clicks: user.clicks,
+                                  firstDeployedAt: user.firstDeployedAt
+                                });
+                                setShowProfileModal(true);
+                              }}
+                              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity w-full"
+                            >
                               {user.pfpUrl ? (
                                 <img 
                                   src={user.pfpUrl} 
@@ -3100,20 +3116,15 @@ contract Calculator {
                               )}
                               <div className="min-w-0 flex-1">
                                 <div className="text-sm font-semibold text-[var(--ink)] truncate">
-                                  {user.displayName || user.username || `FID ${user.fid}`}
+                                  {user.displayName || user.username || 'User'}
                                 </div>
                                 {user.username && (
                                   <div className="text-xs text-[var(--graphite)] truncate">
-                                    @{user.username} • FID {user.fid}
-                                  </div>
-                                )}
-                                {!user.username && user.fid && (
-                                  <div className="text-xs text-[var(--graphite)]">
-                                    FID {user.fid}
+                                    @{user.username}
                                   </div>
                                 )}
                               </div>
-                            </div>
+                            </button>
                           </td>
                           <td className="p-3 text-sm font-bold text-[var(--ink)]">
                             {user.contractCount}
