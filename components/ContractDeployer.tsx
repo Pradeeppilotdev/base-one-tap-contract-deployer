@@ -2413,14 +2413,18 @@ contract Calculator {
                   return (
                     <>
                       {/* Weekly bars */}
-                      <div className="space-y-2 mb-4 font-mono text-xs">
+                      <div className="space-y-2 mb-4 text-xs">
                         {weeks.map((week, i) => {
-                          const filled = Math.round((week.count / maxActions) * 12);
-                          const bar = '█'.repeat(filled) + '░'.repeat(12 - filled);
+                          const filledPercent = maxActions > 0 ? (week.count / maxActions) * 100 : 0;
                           return (
-                            <div key={i} className="flex items-center justify-between">
+                            <div key={i} className="flex items-center justify-between gap-2">
                               <span className="text-[var(--graphite)] w-16">{week.label}:</span>
-                              <span className="text-[var(--ink)] tracking-tighter">{bar}</span>
+                              <div className="flex-1 h-3 bg-[var(--pencil)] rounded-sm overflow-hidden">
+                                <div 
+                                  className="h-full bg-[var(--ink)] rounded-sm transition-all duration-300"
+                                  style={{ width: `${filledPercent}%` }}
+                                />
+                              </div>
                               <span className="text-[var(--graphite)] w-20 text-right">{week.count} actions</span>
                             </div>
                           );
