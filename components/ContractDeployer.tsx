@@ -303,7 +303,7 @@ function ContractDeployer() {
   const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals' | 'clicks'>('contracts');
+  const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals' | 'clicks' | 'firstDeploy'>('contracts');
   const [leaderboardOrder, setLeaderboardOrder] = useState<'asc' | 'desc'>('desc');
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [leaderboardPage, setLeaderboardPage] = useState(1);
@@ -1189,7 +1189,7 @@ contract Calculator {
   };
 
   // Toggle leaderboard sort
-  const toggleLeaderboardSort = (column: 'contracts' | 'referrals' | 'clicks') => {
+  const toggleLeaderboardSort = (column: 'contracts' | 'referrals' | 'clicks' | 'firstDeploy') => {
     if (leaderboardSortBy === column) {
       setLeaderboardOrder(leaderboardOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -3029,12 +3029,10 @@ contract Calculator {
                         >
                           <div className="flex items-center gap-2">
                             Contracts
-                            {leaderboardSortBy === 'contracts' && (
-                              leaderboardOrder === 'asc' ? (
-                                <ChevronUp className="w-4 h-4" strokeWidth={2} />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" strokeWidth={2} />
-                              )
+                            {leaderboardSortBy === 'contracts' && leaderboardOrder === 'asc' ? (
+                              <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${leaderboardSortBy !== 'contracts' ? 'opacity-30' : ''}`} strokeWidth={2} />
                             )}
                           </div>
                         </th>
@@ -3044,12 +3042,10 @@ contract Calculator {
                         >
                           <div className="flex items-center gap-2">
                             Referrals
-                            {leaderboardSortBy === 'referrals' && (
-                              leaderboardOrder === 'asc' ? (
-                                <ChevronUp className="w-4 h-4" strokeWidth={2} />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" strokeWidth={2} />
-                              )
+                            {leaderboardSortBy === 'referrals' && leaderboardOrder === 'asc' ? (
+                              <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${leaderboardSortBy !== 'referrals' ? 'opacity-30' : ''}`} strokeWidth={2} />
                             )}
                           </div>
                         </th>
@@ -3059,17 +3055,25 @@ contract Calculator {
                         >
                           <div className="flex items-center gap-2">
                             Clicks
-                            {leaderboardSortBy === 'clicks' && (
-                              leaderboardOrder === 'asc' ? (
-                                <ChevronUp className="w-4 h-4" strokeWidth={2} />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" strokeWidth={2} />
-                              )
+                            {leaderboardSortBy === 'clicks' && leaderboardOrder === 'asc' ? (
+                              <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${leaderboardSortBy !== 'clicks' ? 'opacity-30' : ''}`} strokeWidth={2} />
                             )}
                           </div>
                         </th>
-                        <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
-                          First Deploy
+                        <th 
+                          className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider cursor-pointer hover:bg-[var(--light)]"
+                          onClick={() => toggleLeaderboardSort('firstDeploy')}
+                        >
+                          <div className="flex items-center gap-2">
+                            First Deploy
+                            {leaderboardSortBy === 'firstDeploy' && leaderboardOrder === 'asc' ? (
+                              <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                            ) : (
+                              <ChevronDown className={`w-4 h-4 ${leaderboardSortBy !== 'firstDeploy' ? 'opacity-30' : ''}`} strokeWidth={2} />
+                            )}
+                          </div>
                         </th>
                       </tr>
                     </thead>

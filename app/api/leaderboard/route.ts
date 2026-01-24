@@ -132,6 +132,9 @@ export async function GET(request: NextRequest) {
         } else if (sortBy === 'clicks') {
           aValue = a.clicks;
           bValue = b.clicks;
+        } else if (sortBy === 'firstDeploy') {
+          aValue = a.firstDeployedAt || 0;
+          bValue = b.firstDeployedAt || 0;
         } else {
           aValue = a.referralCount;
           bValue = b.referralCount;
