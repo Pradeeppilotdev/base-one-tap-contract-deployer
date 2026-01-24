@@ -2275,7 +2275,7 @@ contract Calculator {
                               : isToday && !isActive 
                               ? `Deploy: ${suggestedName}`
                               : isPast && !isActive
-                              ? '--'
+                              ? 'Missed :('
                               : ''}
                           </span>
                         </div>
