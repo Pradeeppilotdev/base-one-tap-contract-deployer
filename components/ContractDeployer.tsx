@@ -3086,53 +3086,44 @@ contract Calculator {
                             #{(leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1}
                           </td>
                           <td className="p-3">
-                            <button
-                              onClick={() => {
-                                // Load the clicked user's profile data
-                                setUserReferralInfo({
-                                  fid: user.fid,
-                                  username: user.username,
-                                  displayName: user.displayName,
-                                  pfpUrl: user.pfpUrl,
-                                  contractCount: user.contractCount,
-                                  referralCount: user.referralCount,
-                                  clicks: user.clicks,
-                                  firstDeployedAt: user.firstDeployedAt
-                                });
-                                setShowProfileModal(true);
-                              }}
-                              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity w-full"
-                            >
-                              {user.pfpUrl ? (
-                                <img 
-                                  src={user.pfpUrl} 
-                                  alt={user.displayName || user.username || 'User'}
-                                  className="w-8 h-8 rounded-full border-2 border-[var(--ink)] flex-shrink-0"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center flex-shrink-0">
-                                  <User className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-semibold text-[var(--ink)] truncate">
-                                  {user.displayName || user.username || 'User'}
-                                </div>
-                                {user.username && (
-                                  <div className="text-xs text-[var(--graphite)] truncate">
-                                    @{user.username}
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={user.username ? `https://farcaster.xyz/${user.username}` : `https://warpcast.com/~/conversations`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 hover:opacity-70 transition-opacity flex-shrink-0"
+                              >
+                                {user.pfpUrl ? (
+                                  <img 
+                                    src={user.pfpUrl} 
+                                    alt={user.displayName || user.username || 'User'}
+                                    className="w-8 h-8 rounded-full border-2 border-[var(--ink)] flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center flex-shrink-0">
+                                    <User className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
                                   </div>
                                 )}
-                              </div>
-                            </button>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold text-[var(--ink)] truncate">
+                                    {user.displayName || user.username || 'User'}
+                                  </div>
+                                  {user.username && (
+                                    <div className="text-xs text-[var(--graphite)] truncate">
+                                      @{user.username}
+                                    </div>
+                                  )}
+                                </div>
+                              </a>
+                            </div>
                           </td>
-                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                          <td className="p-3 text-sm font-bold text-[var(--ink)] text-center">
                             {user.contractCount}
                           </td>
-                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                          <td className="p-3 text-sm font-bold text-[var(--ink)] text-center">
                             {user.referralCount}
                           </td>
-                          <td className="p-3 text-sm font-bold text-[var(--ink)]">
+                          <td className="p-3 text-sm font-bold text-[var(--ink)] text-center">
                             {user.clicks || 0}
                           </td>
                           <td className="p-3 text-xs text-[var(--graphite)]">
