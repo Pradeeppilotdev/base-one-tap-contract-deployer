@@ -129,6 +129,9 @@ export async function GET(request: NextRequest) {
         if (sortBy === 'contracts') {
           aValue = a.contractCount;
           bValue = b.contractCount;
+        } else if (sortBy === 'clicks') {
+          aValue = a.clicks;
+          bValue = b.clicks;
         } else {
           aValue = a.referralCount;
           bValue = b.referralCount;

@@ -303,7 +303,7 @@ function ContractDeployer() {
   const [verifyingContract, setVerifyingContract] = useState<string | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals'>('contracts');
+  const [leaderboardSortBy, setLeaderboardSortBy] = useState<'contracts' | 'referrals' | 'clicks'>('contracts');
   const [leaderboardOrder, setLeaderboardOrder] = useState<'asc' | 'desc'>('desc');
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [leaderboardPage, setLeaderboardPage] = useState(1);
@@ -1189,7 +1189,7 @@ contract Calculator {
   };
 
   // Toggle leaderboard sort
-  const toggleLeaderboardSort = (column: 'contracts' | 'referrals') => {
+  const toggleLeaderboardSort = (column: 'contracts' | 'referrals' | 'clicks') => {
     if (leaderboardSortBy === column) {
       setLeaderboardOrder(leaderboardOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -3053,8 +3053,20 @@ contract Calculator {
                             )}
                           </div>
                         </th>
-                        <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
-                          Clicks
+                        <th 
+                          className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider cursor-pointer hover:bg-[var(--light)]"
+                          onClick={() => toggleLeaderboardSort('clicks')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Clicks
+                            {leaderboardSortBy === 'clicks' && (
+                              leaderboardOrder === 'asc' ? (
+                                <ChevronUp className="w-4 h-4" strokeWidth={2} />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" strokeWidth={2} />
+                              )
+                            )}
+                          </div>
                         </th>
                         <th className="p-3 text-left text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
                           First Deploy
