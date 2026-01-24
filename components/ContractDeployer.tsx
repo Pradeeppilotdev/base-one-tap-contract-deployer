@@ -321,6 +321,7 @@ function ContractDeployer() {
   const [clicking, setClicking] = useState(false);
   const [userClicks, setUserClicks] = useState<number>(0);
   const [walletHealthPage, setWalletHealthPage] = useState(1);
+  const [showWalletHealth, setShowWalletHealth] = useState(true);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -2052,20 +2053,32 @@ contract Calculator {
 
         {/* Wallet Health Stats */}
         {account && (
-          <div className="sketch-card p-5 mb-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="sketch-card mb-6">
+            <button
+              onClick={() => setShowWalletHealth(!showWalletHealth)}
+              className="w-full p-5 flex items-center justify-between text-left"
+            >
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
                 <h2 className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
                   Wallet Health
                 </h2>
               </div>
-              <span className="text-xs text-[var(--graphite)]">
-                {walletHealthPage} / 4
-              </span>
-            </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--graphite)]">
+                  {walletHealthPage} / 4
+                </span>
+                {showWalletHealth ? (
+                  <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                )}
+              </div>
+            </button>
             
-            {walletHealthPage === 1 ? (
+            {showWalletHealth && (
+              <div className="border-t-2 border-[var(--ink)] p-5">
+                {walletHealthPage === 1 ? (
               <>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
@@ -2494,6 +2507,8 @@ contract Calculator {
                 →
               </button>
             </div>
+          </div>
+            )}
           </div>
         )}
 
