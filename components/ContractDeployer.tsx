@@ -322,6 +322,7 @@ function ContractDeployer() {
   const [userClicks, setUserClicks] = useState<number>(0);
   const [walletHealthPage, setWalletHealthPage] = useState(1);
   const [showWalletHealth, setShowWalletHealth] = useState(true);
+  const [showNetworkSelection, setShowNetworkSelection] = useState(true);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -2513,10 +2514,22 @@ contract Calculator {
           
           {/* Network Selection */}
           <div className="mb-6">
-            <p className="block text-sm font-bold text-[var(--ink)] mb-3 uppercase tracking-wider">
-              Network
-            </p>
-            <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setShowNetworkSelection(!showNetworkSelection)}
+              className="w-full flex items-center justify-between text-left mb-3"
+            >
+              <p className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">
+                Network
+              </p>
+              {showNetworkSelection ? (
+                <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              )}
+            </button>
+            {showNetworkSelection && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => switchNetwork('mainnet')}
                 className={`
@@ -2604,9 +2617,9 @@ contract Calculator {
                 </div>
               </div>
             )}
+            </>
+            )}
           </div>
-
-          {/* Coinbase Wallet Notice */}
           {account && isExternalCoinbaseWallet && (
             <div className="flex items-start gap-3 p-4 mb-6 border-2 border-[var(--pencil)] bg-[var(--light)]">
               <AlertCircle className="w-5 h-5 text-[var(--ink)] flex-shrink-0 mt-0.5" strokeWidth={2} />
