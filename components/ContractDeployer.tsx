@@ -3412,14 +3412,17 @@ contract Calculator {
         )}
 
         {/* Stats & Achievements Section */}
-        <div className="mt-6 mb-6 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
+        <div className="mt-6 mb-6 sketch-card">
           <button
             onClick={() => setShowAchievements(!showAchievements)}
             className="w-full p-4 flex items-center justify-between text-left"
           >
-            <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
-              Your Stats & Achievements
-            </h3>
+            <div className="flex items-center gap-3">
+              <Gem className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
+                Your Stats & Achievements
+              </h3>
+            </div>
             {showAchievements ? (
               <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
             ) : (
