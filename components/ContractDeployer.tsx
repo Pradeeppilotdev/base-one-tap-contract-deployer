@@ -268,6 +268,11 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: 'twenty', name: 'Deployment Legend', description: 'Deploy 20 contracts', icon: Crown, milestone: 20, unlocked: false },
   { id: 'fifty', name: 'Base Builder', description: 'Deploy 50 contracts', icon: Rocket, milestone: 50, unlocked: false },
   { id: 'hundred', name: 'Contract Deity', description: 'Deploy 100 contracts', icon: Gem, milestone: 100, unlocked: false },
+  { id: 'twohundred', name: 'Mega Creator', description: 'Deploy 200 contracts', icon: Zap, milestone: 200, unlocked: false },
+  { id: 'threehundred', name: 'Unstoppable Force', description: 'Deploy 300 contracts', icon: Rocket, milestone: 300, unlocked: false },
+  { id: 'fivehundred', name: 'Blockchain Pioneer', description: 'Deploy 500 contracts', icon: Crown, milestone: 500, unlocked: false },
+  { id: 'sevenhundredfifty', name: 'Web3 Visionary', description: 'Deploy 750 contracts', icon: Sparkles, milestone: 750, unlocked: false },
+  { id: 'thousand', name: 'Legendary Builder', description: 'Deploy 1000 contracts', icon: Gem, milestone: 1000, unlocked: false },
 ];
 
 function ContractDeployer() {
@@ -293,6 +298,7 @@ function ContractDeployer() {
   const [walletType, setWalletType] = useState<'farcaster' | 'external' | null>(null);
   const [isInFarcaster, setIsInFarcaster] = useState(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
+  const [achievementsPage, setAchievementsPage] = useState(1);
   const [sdkReady, setSdkReady] = useState(false);
   const [isAppAdded, setIsAppAdded] = useState(false);
   const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
@@ -3437,41 +3443,85 @@ contract Calculator {
             </div>
           </div>
 
-          {/* Achievements Grid */}
+          {/* Achievements Grid with Pagination */}
           <div>
             <h4 className="font-bold text-[var(--ink)] text-xs uppercase tracking-wider mb-3">
               Achievements
             </h4>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-              {ACHIEVEMENTS.map((achievement, index) => {
-                const Icon = achievement.icon;
-                const isUnlocked = achievements.find(a => a.id === achievement.id)?.unlocked || false;
-                return (
-                  <div
-                    key={achievement.id}
-                    className={`flex flex-col items-center p-3 border-2 animate-slide-in stagger-${Math.min(index + 1, 3)} ${
-                      isUnlocked 
-                        ? 'border-[var(--ink)] bg-[var(--paper)]' 
-                        : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
-                    }`}
-                    title={isUnlocked ? `${achievement.name}: ${achievement.description}` : `Locked: ${achievement.description}`}
-                  >
-                    <Icon 
-                      className={`w-6 h-6 mb-2 ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`} 
-                      strokeWidth={2} 
-                    />
-                    <div className={`text-xs text-center font-semibold ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
-                      {achievement.milestone}
-                    </div>
+            {(() => {
+              const ACHIEVEMENTS_PER_PAGE = 6;
+              const totalPages = Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PER_PAGE);
+              const startIndex = (achievementsPage - 1) * ACHIEVEMENTS_PER_PAGE;
+              const paginatedAchievements = ACHIEVEMENTS.slice(startIndex, startIndex + ACHIEVEMENTS_PER_PAGE);
+              
+              return (
+                <>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-3">
+                    {paginatedAchievements.map((achievement, index) => {
+                      const Icon = achievement.icon;
+                      const isUnlocked = achievements.find(a => a.id === achievement.id)?.unlocked || false;
+                      return (
+                        <div
+                          key={achievement.id}
+                          className={`flex flex-col items-center p-3 border-2 animate-slide-in stagger-${Math.min(index + 1, 3)} ${
+                            isUnlocked 
+                              ? 'border-[var(--ink)] bg-[var(--paper)]' 
+                              : 'border-[var(--pencil)] bg-[var(--light)] opacity-50'
+                          }`}
+                          title={isUnlocked ? `${achievement.name}: ${achievement.description}` : `Locked: ${achievement.description}`}
+                        >
+                          <Icon 
+                            className={`w-6 h-6 mb-2 ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`} 
+                            strokeWidth={2} 
+                          />
+                          <div className={`text-xs text-center font-semibold ${isUnlocked ? 'text-[var(--ink)]' : 'text-[var(--graphite)]'}`}>
+                            {achievement.milestone}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-            {achievements.filter(a => !a.unlocked).length > 0 && (
-              <div className="text-xs text-[var(--graphite)] mt-3 text-center">
-                Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
-              </div>
-            )}
+                  
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between gap-2 mb-3 pt-2 border-t border-[var(--pencil)]">
+                      <button
+                        onClick={() => setAchievementsPage(p => Math.max(1, p - 1))}
+                        disabled={achievementsPage === 1}
+                        className={`px-3 py-1.5 border-2 border-[var(--ink)] font-bold text-xs transition-colors ${
+                          achievementsPage === 1
+                            ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                            : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                        }`}
+                      >
+                        ←
+                      </button>
+                      <span className="text-xs font-bold text-[var(--ink)]">
+                        {achievementsPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setAchievementsPage(p => Math.min(totalPages, p + 1))}
+                        disabled={achievementsPage >= totalPages}
+                        className={`px-3 py-1.5 border-2 border-[var(--ink)] font-bold text-xs transition-colors ${
+                          achievementsPage >= totalPages
+                            ? 'bg-[var(--light)] text-[var(--graphite)] cursor-not-allowed'
+                            : 'bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                        }`}
+                      >
+                        →
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Next Achievement Hint */}
+                  {achievements.filter(a => !a.unlocked).length > 0 && (
+                    <div className="text-xs text-[var(--graphite)] text-center pt-2 border-t border-[var(--pencil)]">
+                      Next: {achievements.find(a => !a.unlocked)?.name} ({achievements.find(a => !a.unlocked)?.milestone} contracts)
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
 
