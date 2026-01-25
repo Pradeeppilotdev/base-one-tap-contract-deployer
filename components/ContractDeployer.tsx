@@ -2425,18 +2425,35 @@ contract Calculator {
                   
                   return (
                     <>
-                      {/* Weekly bars */}
+                      {/* Weekly heatmap dots */}
                       <div className="space-y-2 mb-4 text-xs">
                         {weeks.map((week, i) => {
-                          const filledPercent = maxActions > 0 ? (week.count / maxActions) * 100 : 0;
                           return (
                             <div key={i} className="flex items-center justify-between gap-2">
                               <span className="text-[var(--graphite)] w-16">{week.label}:</span>
-                              <div className="flex-1 h-3 bg-[var(--pencil)] rounded-sm overflow-hidden">
-                                <div 
-                                  className="h-full bg-[var(--ink)] rounded-sm transition-all duration-300"
-                                  style={{ width: `${filledPercent}%` }}
-                                />
+                              <div className="flex items-center gap-1 flex-1">
+                                {[...Array(12)].map((_, idx) => {
+                                  const dotsPerWeek = 12;
+                                  const actionsPerDot = Math.max(1, maxActions / dotsPerWeek);
+                                  const dotThreshold = actionsPerDot * (idx + 1);
+                                  const isActive = week.count >= dotThreshold;
+                                  const intensity = isActive ? Math.min(1, week.count / (actionsPerDot * (idx + 1))) : 0;
+                                  
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`w-2 h-2 rounded-sm transition-all ${
+                                        isActive
+                                          ? 'bg-[var(--ink)]'
+                                          : 'bg-[var(--pencil)] opacity-20'
+                                      }`}
+                                      style={{
+                                        opacity: isActive ? 0.3 + (intensity * 0.7) : 0.2
+                                      }}
+                                      title={`${week.label}: ${week.count} actions`}
+                                    />
+                                  );
+                                })}
                               </div>
                               <span className="text-[var(--graphite)] w-20 text-right">{week.count} actions</span>
                             </div>
