@@ -329,6 +329,7 @@ function ContractDeployer() {
   const [walletHealthPage, setWalletHealthPage] = useState(1);
   const [showWalletHealth, setShowWalletHealth] = useState(true);
   const [showNetworkSelection, setShowNetworkSelection] = useState(true);
+  const [showAchievements, setShowAchievements] = useState(true);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -3411,20 +3412,32 @@ contract Calculator {
         )}
 
         {/* Stats & Achievements Section */}
-        <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mt-6 mb-6 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
+          <button
+            onClick={() => setShowAchievements(!showAchievements)}
+            className="w-full p-4 flex items-center justify-between text-left"
+          >
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
               Your Stats & Achievements
             </h3>
-            {referralCode && (
-              <div className="text-xs text-[var(--graphite)]">
-                Ref: <span className="font-mono">{referralCode}</span>
-              </div>
+            {showAchievements ? (
+              <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
             )}
-          </div>
+          </button>
           
-          {/* Stats Row */}
-          <div className="mb-4 pb-4 border-b-2 border-[var(--light)]">
+          {showAchievements && (
+            <div className="border-t-2 border-[var(--ink)] p-4">
+              {/* Referral Code Display */}
+              {referralCode && (
+                <div className="text-xs text-[var(--graphite)] mb-3 pb-2 border-b border-[var(--pencil)]">
+                  Ref: <span className="font-mono">{referralCode}</span>
+                </div>
+              )}
+              
+              {/* Stats Row */}
+              <div className="mb-4 pb-4 border-b-2 border-[var(--light)]">
             <div className="flex items-center gap-4 flex-wrap">
               <div>
                 <div className="text-2xl font-bold text-[var(--ink)]">
@@ -3522,7 +3535,9 @@ contract Calculator {
                 </>
               );
             })()}
-          </div>
+            </div>
+            </div>
+          )}
         </div>
 
         {/* Achievement Celebration Modal */}
