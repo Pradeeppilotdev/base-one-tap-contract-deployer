@@ -289,6 +289,7 @@ function ContractDeployer() {
   });
   const [deploying, setDeploying] = useState(false);
   const [deployedAddress, setDeployedAddress] = useState<string | null>(null);
+  const [successFading, setSuccessFading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
@@ -1776,6 +1777,17 @@ contract Calculator {
           
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
+            setSuccessFading(false);
+            
+            // Trigger fade-out after 1.5 seconds, then clear after animation completes
+            setTimeout(() => {
+              setSuccessFading(true);
+            }, 1500);
+            
+            setTimeout(() => {
+              setDeployedAddress(null);
+              setSuccessFading(false);
+            }, 2000);
             
             // Extract the actual deployer address from the transaction
             // With Farcaster's account abstraction, this will be the user's account abstraction address
@@ -2862,7 +2874,7 @@ contract Calculator {
 
           {/* Success Message */}
           {deployedAddress && (
-            <div className="mt-4 p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
+            <div className={`mt-4 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] transition-all ${successFading ? 'animate-fade-out' : 'animate-fade-in'}`}>
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
                 <p className="font-bold text-[var(--ink)] text-sm uppercase tracking-wide">Deployed Successfully</p>
