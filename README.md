@@ -15,7 +15,7 @@ One Place to Know and Do Everything!
   - Click Counter — track on-chain clicks
 
 ### Wallet Health Dashboard
-A comprehensive 4-page dashboard to track your on-chain activity:
+A comprehensive 4-page collapsible dashboard to track your on-chain activity:
 
 **Page 1 - Overview:**
 - Contracts Deployed count
@@ -32,18 +32,27 @@ A comprehensive 4-page dashboard to track your on-chain activity:
 - Dynamic tips for improvement
 
 **Page 3 - Weekly Activity Planner:**
-- 7-day week view (Mon-Sun)
-- Daily activity status tracking
+- 7-day week view (Mon-Sun) with elegant dot indicators
+- Daily activity status (● filled, ○ empty, ✕ missed)
 - Smart contract suggestions for inactive days
+- "Missed :(" indicator for past missed days
 - Weekly goal tracking (5+ days/week)
 - Current activity streak counter
 
 **Page 4 - Activity Heatmap:**
-- Visual representation of last 30 days activity
-- Weekly action bars (screenshot-friendly)
+- Visual representation of last 30 days activity with Unicode blocks
+- Weekly action blocks (████████░░░░ style, screenshot-friendly)
 - Best day stats
 - Longest streak counter
 - Activity level badge (GETTING STARTED / WARMING UP / ACTIVE / POWER USER)
+
+### Collapsible Sections
+All major sections feature consistent expand/collapse UI with chevron icons:
+- **Wallet Health** — 4-page dashboard with pagination
+- **Contracts Deployed** — List of deployed contracts with count badge
+- **Leaderboard** — Rankings with sorting and pagination
+- **Network Selection** — Choose between Base Mainnet or Sepolia testnet
+- **Your Stats & Achievements** — Stats and achievement progression
 
 ### Reward Strength Criteria
 | Level | Requirements |
@@ -53,20 +62,44 @@ A comprehensive 4-page dashboard to track your on-chain activity:
 | MEDIUM | 5+ contracts OR 10+ clicks OR 3+ unique days |
 | LOW | Below MEDIUM thresholds |
 
+### Achievement System
+11 achievement milestones with pagination (6 per page):
+- **Deploy 1** — First Deploy
+- **Deploy 5** — Power User
+- **Deploy 10** — Contract Master
+- **Deploy 20** — Deployment Legend
+- **Deploy 50** — Base Builder
+- **Deploy 100** — Contract Deity
+- **Deploy 200** — Mega Creator
+- **Deploy 300** — Unstoppable Force
+- **Deploy 500** — Blockchain Pioneer
+- **Deploy 750** — Web3 Visionary
+- **Deploy 1000** — Legendary Builder
+
 ### Social Features
 - **Leaderboard** — See top deployers with pagination (10 per page)
-  - Sortable by contracts or referrals
-  - Shows contracts, referrals, clicks, and first deploy date
+  - Sortable by Contracts, Referrals, Clicks, and First Deploy date
+  - Clickable user profiles redirecting to Farcaster
+  - Shows FarcasterID with username, display name, and PFP
 - **Referral System** — Share referral codes and earn points
-- **Achievement System** — Unlock milestones for deployments
+- **Achievement System** — Unlock 11 milestones up to 1000 deployments
 - **Profile Modal** — View your stats, referrals, points, and clicks
+
+### Visual & UX Features
+- Pencil sketch aesthetic with hand-drawn borders
+- Smooth fade animations for success messages (auto-disappear after 1.5 seconds)
+- Responsive mobile design with proper flex layouts
+- Consistent color scheme using CSS variables (--ink, --paper, --graphite, etc.)
+- Icons for all major sections and actions
+- Real-time transaction status with auto-clearing
 
 ### Technical Features
 - Farcaster SDK integration for user context
 - Firebase Firestore for cross-device data persistence
 - Support for Base Mainnet and Base Sepolia testnet
 - Contract verification support via BaseScan API
-- Real-time deployment status tracking
+- Real-time deployment status tracking with automatic cleanup
+- Leaderboard sorting and pagination with smart contract interaction
 
 ## Prerequisites
 
