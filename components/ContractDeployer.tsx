@@ -1786,6 +1786,7 @@ contract Calculator {
             
             setTimeout(() => {
               setDeployedAddress(null);
+              setTxHash(null);
               setSuccessFading(false);
             }, 2000);
             
