@@ -47,6 +47,7 @@ interface DeployedContract {
   txHash: string;
   timestamp: number;
   inputValue?: string;
+  gasSpent?: string; // In Wei
 }
 
 // Factory Contract Addresses
@@ -261,6 +262,23 @@ interface Achievement {
   unlockedAt?: number;
 }
 
+// Helper function to format gas costs
+const formatGasSpent = (weiAmount: string) => {
+  try {
+    const wei = BigInt(weiAmount);
+    const eth = Number(wei) / 1e18;
+    
+    return {
+      wei: weiAmount,
+      eth: eth.toFixed(6),
+      ethShort: eth.toFixed(4),
+      usd: (eth * 2500).toFixed(2) // Approximate ETH price
+    };
+  } catch (e) {
+    return { wei: '0', eth: '0', ethShort: '0', usd: '0' };
+  }
+};
+
 const ACHIEVEMENTS: Achievement[] = [
   { id: 'first', name: 'First Deploy', description: 'Deploy your first contract', icon: Sparkles, milestone: 1, unlocked: false },
   { id: 'five', name: 'Power User', description: 'Deploy 5 contracts', icon: Zap, milestone: 5, unlocked: false },
@@ -327,6 +345,7 @@ function ContractDeployer() {
   const [clickCount, setClickCount] = useState<number>(0);
   const [clicking, setClicking] = useState(false);
   const [userClicks, setUserClicks] = useState<number>(0);
+  const [totalGasSpent, setTotalGasSpent] = useState<string>('0'); // In Wei
   const [walletHealthPage, setWalletHealthPage] = useState(1);
   const [showWalletHealth, setShowWalletHealth] = useState(true);
   const [showNetworkSelection, setShowNetworkSelection] = useState(true);
@@ -427,6 +446,20 @@ function ContractDeployer() {
         }
         
         setDeployedContracts(finalContracts);
+        
+        // Calculate total gas spent
+        const totalGas = finalContracts.reduce((sum, contract) => {
+          if (contract.gasSpent) {
+            try {
+              return (BigInt(sum) + BigInt(contract.gasSpent)).toString();
+            } catch (e) {
+              console.warn('Could not parse gas for contract:', contract.gasSpent);
+              return sum;
+            }
+          }
+          return sum;
+        }, '0');
+        setTotalGasSpent(totalGas);
         
         // Load achievements - backend takes priority
         let finalAchievements: Achievement[] = [];
@@ -1817,13 +1850,34 @@ contract Calculator {
             
             // Save to history (localStorage + backend)
             // Use the actual deployer address from the transaction (account abstraction address)
+            
+            // Calculate gas spent (gasUsed * gasPrice)
+            let gasSpent = '0';
+            if (receipt?.gasUsed && receipt?.effectiveGasPrice) {
+              try {
+                const gasUsedBigInt = BigInt(receipt.gasUsed);
+                const gasPriceBigInt = BigInt(receipt.effectiveGasPrice);
+                gasSpent = (gasUsedBigInt * gasPriceBigInt).toString();
+                
+                // Update total gas spent
+                setTotalGasSpent(prevGas => {
+                  const prev = BigInt(prevGas);
+                  const current = prev + gasUsedBigInt * gasPriceBigInt;
+                  return current.toString();
+                });
+              } catch (e) {
+                console.warn('Could not calculate gas spent:', e);
+              }
+            }
+            
             await saveContract({
               address: contractAddress,
               contractType: selectedContract,
               contractName: template.name,
               txHash: hash,
               timestamp: Date.now(),
-              inputValue: inputValue || undefined
+              inputValue: inputValue || undefined,
+              gasSpent: gasSpent
             }, actualDeployerAddress || undefined);
             
             setInputValue('');
@@ -2115,6 +2169,11 @@ contract Calculator {
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                     <p className="text-xs text-[var(--graphite)] mb-1">Total Transactions</p>
                     <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
+                  </div>
+                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-xs text-[var(--graphite)] mb-1">Gas Spent</p>
+                    <p className="text-lg font-bold text-[var(--ink)]">{formatGasSpent(totalGasSpent).ethShort} ETH</p>
+                    <p className="text-xs text-[var(--graphite)]">${formatGasSpent(totalGasSpent).usd}</p>
                   </div>
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                     <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
