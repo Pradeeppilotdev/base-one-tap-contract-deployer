@@ -447,6 +447,61 @@ function ContractDeployer() {
         
         setDeployedContracts(finalContracts);
         
+        // Fetch historical gas data for contracts that don't have it
+        const contractsNeedingGasData = finalContracts.filter(c => !c.gasSpent && c.txHash);
+        if (contractsNeedingGasData.length > 0) {
+          console.log(`Fetching gas data for ${contractsNeedingGasData.length} historical contracts...`);
+          
+          const currentNetwork = network === 'mainnet' ? NETWORKS.mainnet : NETWORKS.testnet;
+          
+          // Fetch gas data for all contracts concurrently
+          const gasDataPromises = contractsNeedingGasData.map(async (contract) => {
+            try {
+              const response = await fetch(currentNetwork.rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'eth_getTransactionReceipt',
+                  params: [contract.txHash],
+                  id: 1
+                })
+              });
+              
+              const data = await response.json();
+              if (data.result?.gasUsed && data.result?.effectiveGasPrice) {
+                const gasUsedBigInt = BigInt(data.result.gasUsed);
+                const gasPriceBigInt = BigInt(data.result.effectiveGasPrice);
+                const gasSpent = (gasUsedBigInt * gasPriceBigInt).toString();
+                
+                return { txHash: contract.txHash, gasSpent };
+              }
+            } catch (e) {
+              console.warn(`Could not fetch gas for ${contract.txHash}:`, e);
+            }
+            return null;
+          });
+          
+          const gasDataResults = await Promise.all(gasDataPromises);
+          const gasDataMap = new Map(gasDataResults.filter(r => r !== null).map(r => [r!.txHash, r!.gasSpent]));
+          
+          // Update contracts with fetched gas data
+          if (gasDataMap.size > 0) {
+            const updatedContracts = finalContracts.map(c => {
+              if (gasDataMap.has(c.txHash) && !c.gasSpent) {
+                return { ...c, gasSpent: gasDataMap.get(c.txHash) };
+              }
+              return c;
+            });
+            
+            setDeployedContracts(updatedContracts);
+            finalContracts = updatedContracts;
+            
+            // Update localStorage with new gas data
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedContracts));
+          }
+        }
+        
         // Calculate total gas spent
         const totalGas = finalContracts.reduce((sum, contract) => {
           if (contract.gasSpent) {
