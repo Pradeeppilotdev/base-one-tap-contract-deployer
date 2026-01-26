@@ -263,7 +263,7 @@ interface Achievement {
 }
 
 // Helper function to format ETH balance
-const formatBalance = (weiAmount: string) => {
+const formatBalance = (weiAmount: string, priceInUsd: number = 2500) => {
   try {
     const wei = BigInt(weiAmount);
     const eth = Number(wei) / 1e18;
@@ -272,7 +272,7 @@ const formatBalance = (weiAmount: string) => {
       wei: weiAmount,
       eth: eth.toFixed(6),
       ethShort: eth.toFixed(4),
-      usd: (eth * 2500).toFixed(2)
+      usd: (eth * priceInUsd).toFixed(2)
     };
   } catch (e) {
     return { wei: '0', eth: '0', ethShort: '0', usd: '0' };
@@ -280,7 +280,7 @@ const formatBalance = (weiAmount: string) => {
 };
 
 // Helper function to format gas costs
-const formatGasSpent = (weiAmount: string) => {
+const formatGasSpent = (weiAmount: string, priceInUsd: number = 2500) => {
   try {
     const wei = BigInt(weiAmount);
     const eth = Number(wei) / 1e18;
@@ -289,7 +289,7 @@ const formatGasSpent = (weiAmount: string) => {
       wei: weiAmount,
       eth: eth.toFixed(6),
       ethShort: eth.toFixed(4),
-      usd: (eth * 2500).toFixed(2) // Approximate ETH price
+      usd: (eth * priceInUsd).toFixed(2) // Real-time ETH price
     };
   } catch (e) {
     return { wei: '0', eth: '0', ethShort: '0', usd: '0' };
@@ -365,6 +365,9 @@ function ContractDeployer() {
   const [totalGasSpent, setTotalGasSpent] = useState<string>('0'); // In Wei
   const [walletBalance, setWalletBalance] = useState<string>('0'); // In Wei
   const [loadingBalance, setLoadingBalance] = useState(false);
+  const [ethPrice, setEthPrice] = useState<number>(2500); // USD price of ETH
+  const [loadingPrice, setLoadingPrice] = useState(false);
+  const [priceLastFetched, setPriceLastFetched] = useState<number>(0);
   const [walletHealthPage, setWalletHealthPage] = useState(1);
   const [showWalletHealth, setShowWalletHealth] = useState(true);
   const [showNetworkSelection, setShowNetworkSelection] = useState(true);
@@ -875,6 +878,14 @@ function ContractDeployer() {
       return () => clearInterval(interval);
     }
   }, [account, network]);
+
+  // Fetch ETH price on mount and refresh every 5 hours
+  useEffect(() => {
+    fetchEthPrice();
+    // Refresh price every 5 hours (18000000 milliseconds)
+    const interval = setInterval(() => fetchEthPrice(), 5 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle click counter button click
   const handleClickCounter = async () => {
@@ -1495,6 +1506,25 @@ contract Calculator {
       console.warn('Error fetching wallet balance:', error);
     } finally {
       setLoadingBalance(false);
+    }
+  };
+
+  // Fetch real-time ETH price from cached API
+  const fetchEthPrice = async () => {
+    try {
+      setLoadingPrice(true);
+      const response = await fetch('/api/eth-price');
+      const data = await response.json();
+      
+      if (data.price && typeof data.price === 'number') {
+        setEthPrice(data.price);
+        setPriceLastFetched(Date.now());
+      }
+    } catch (error) {
+      console.warn('Error fetching ETH price:', error);
+      // Keep using the current ethPrice on error
+    } finally {
+      setLoadingPrice(false);
     }
   };
 
@@ -2285,14 +2315,19 @@ contract Calculator {
                   </div>
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                     <p className="text-xs text-[var(--graphite)] mb-1">Gas Spent</p>
-                    <p className="text-lg font-bold text-[var(--ink)]">{formatGasSpent(totalGasSpent).ethShort} ETH</p>
-                    <p className="text-xs text-[var(--graphite)]">${formatGasSpent(totalGasSpent).usd}</p>
+                    <p className="text-lg font-bold text-[var(--ink)]">{formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH</p>
+                    <p className="text-xs text-[var(--graphite)]">${formatGasSpent(totalGasSpent, ethPrice).usd}</p>
                   </div>
                   <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
                     <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
                     <p className="text-xl font-bold text-[var(--ink)]">
                       {Math.min(1000, deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20)}/1000
                     </p>
+                  </div>
+                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-xs text-[var(--graphite)] mb-1">ETH Price (Live)</p>
+                    <p className="text-xl font-bold text-[var(--ink)]">${ethPrice.toFixed(2)}</p>
+                    <p className="text-xs text-[var(--graphite)]">{loadingPrice ? 'Updating...' : 'Via CoinMarketCap'}</p>
                   </div>
                 </div>
                 
@@ -2305,11 +2340,11 @@ contract Calculator {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
                       <p className="text-xs text-[var(--graphite)]">ETH</p>
-                      <p className="text-lg font-bold text-[var(--ink)]">{formatBalance(walletBalance).ethShort}</p>
+                      <p className="text-lg font-bold text-[var(--ink)]">{formatBalance(walletBalance, ethPrice).ethShort}</p>
                     </div>
                     <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
                       <p className="text-xs text-[var(--graphite)]">USD</p>
-                      <p className="text-lg font-bold text-[var(--ink)]">${formatBalance(walletBalance).usd}</p>
+                      <p className="text-lg font-bold text-[var(--ink)]">${formatBalance(walletBalance, ethPrice).usd}</p>
                     </div>
                   </div>
                 </div>
