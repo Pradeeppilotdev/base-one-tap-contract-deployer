@@ -262,6 +262,23 @@ interface Achievement {
   unlockedAt?: number;
 }
 
+// Helper function to format ETH balance
+const formatBalance = (weiAmount: string) => {
+  try {
+    const wei = BigInt(weiAmount);
+    const eth = Number(wei) / 1e18;
+    
+    return {
+      wei: weiAmount,
+      eth: eth.toFixed(6),
+      ethShort: eth.toFixed(4),
+      usd: (eth * 2500).toFixed(2)
+    };
+  } catch (e) {
+    return { wei: '0', eth: '0', ethShort: '0', usd: '0' };
+  }
+};
+
 // Helper function to format gas costs
 const formatGasSpent = (weiAmount: string) => {
   try {
@@ -346,6 +363,8 @@ function ContractDeployer() {
   const [clicking, setClicking] = useState(false);
   const [userClicks, setUserClicks] = useState<number>(0);
   const [totalGasSpent, setTotalGasSpent] = useState<string>('0'); // In Wei
+  const [walletBalance, setWalletBalance] = useState<string>('0'); // In Wei
+  const [loadingBalance, setLoadingBalance] = useState(false);
   const [walletHealthPage, setWalletHealthPage] = useState(1);
   const [showWalletHealth, setShowWalletHealth] = useState(true);
   const [showNetworkSelection, setShowNetworkSelection] = useState(true);
@@ -846,6 +865,16 @@ function ContractDeployer() {
       return () => clearInterval(interval);
     }
   }, [clickCounterAddress, account, network]);
+
+  // Fetch wallet balance when account changes
+  useEffect(() => {
+    if (account) {
+      fetchWalletBalance(account);
+      // Refresh balance every 30 seconds
+      const interval = setInterval(() => fetchWalletBalance(account), 30000);
+      return () => clearInterval(interval);
+    }
+  }, [account, network]);
 
   // Handle click counter button click
   const handleClickCounter = async () => {
@@ -1439,6 +1468,35 @@ contract Calculator {
   
   // Get current network configuration
   const getCurrentNetwork = () => NETWORKS[network];
+
+  // Fetch wallet balance
+  const fetchWalletBalance = async (walletAddress: string) => {
+    if (!walletAddress) return;
+    
+    setLoadingBalance(true);
+    try {
+      const currentNetwork = getCurrentNetwork();
+      const response = await fetch(currentNetwork.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getBalance',
+          params: [walletAddress, 'latest'],
+          id: 1
+        })
+      });
+      
+      const data = await response.json();
+      if (data.result) {
+        setWalletBalance(BigInt(data.result).toString());
+      }
+    } catch (error) {
+      console.warn('Error fetching wallet balance:', error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
   // Save network preference to localStorage
   const saveNetworkPreference = (newNetwork: NetworkType) => {
@@ -2235,6 +2293,24 @@ contract Calculator {
                     <p className="text-xl font-bold text-[var(--ink)]">
                       {Math.min(1000, deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20)}/1000
                     </p>
+                  </div>
+                </div>
+                
+                {/* Wallet Balance Widget */}
+                <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)] mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-[var(--ink)]">Wallet Balance</span>
+                    {loadingBalance && <span className="text-xs text-[var(--graphite)]">Loading...</span>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
+                      <p className="text-xs text-[var(--graphite)]">ETH</p>
+                      <p className="text-lg font-bold text-[var(--ink)]">{formatBalance(walletBalance).ethShort}</p>
+                    </div>
+                    <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
+                      <p className="text-xs text-[var(--graphite)]">USD</p>
+                      <p className="text-lg font-bold text-[var(--ink)]">${formatBalance(walletBalance).usd}</p>
+                    </div>
                   </div>
                 </div>
                 
