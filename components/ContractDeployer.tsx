@@ -372,6 +372,7 @@ function ContractDeployer() {
   const [showWalletHealth, setShowWalletHealth] = useState(true);
   const [showNetworkSelection, setShowNetworkSelection] = useState(true);
   const [showAchievements, setShowAchievements] = useState(true);
+  const [contractSortOrder, setContractSortOrder] = useState<'newest' | 'oldest'>('newest'); // Latest first by default
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -3136,11 +3137,11 @@ contract Calculator {
 
         {/* Contracts Deployed Section */}
         <div className="sketch-card">
-          <button
-            onClick={toggleShowHistory}
-            className="w-full p-4 flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-3">
+          <div className="w-full p-4 flex items-center justify-between border-b-2 border-[var(--ink)]">
+            <button
+              onClick={toggleShowHistory}
+              className="flex items-center gap-3 flex-1 text-left"
+            >
               <Clock className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
               <span className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
                 Contracts Deployed
@@ -3150,13 +3151,28 @@ contract Calculator {
                   {deployedContracts.length}
                 </span>
               )}
-            </div>
-            {showHistory ? (
-              <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-            )}
-          </button>
+            </button>
+            <div className="flex items-center gap-2">
+              {showHistory && deployedContracts.length > 0 && (
+                <button
+                  onClick={() => setContractSortOrder(contractSortOrder === 'newest' ? 'oldest' : 'newest')}
+                  className="p-1 hover:bg-[var(--light)] rounded transition-colors"
+                  title={contractSortOrder === 'newest' ? 'Showing newest first' : 'Showing oldest first'}
+                >
+                  {contractSortOrder === 'newest' ? (
+                    <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                  )}
+                </button>
+              )}
+              {showHistory ? (
+                <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              )}
+            </button>
+          </div>
           
           {showHistory && (
             <div className="border-t-2 border-[var(--ink)]">
@@ -3167,7 +3183,15 @@ contract Calculator {
                 </div>
               ) : (
                 <div className={`divide-y-2 divide-[var(--light)] ${deployedContracts.length > 5 ? 'max-h-[400px] overflow-y-auto' : ''}`}>
-                  {deployedContracts.map((contract, index) => {
+                  {[...deployedContracts]
+                    .sort((a, b) => {
+                      if (contractSortOrder === 'newest') {
+                        return b.timestamp - a.timestamp; // Latest first
+                      } else {
+                        return a.timestamp - b.timestamp; // Oldest first
+                      }
+                    })
+                    .map((contract, index) => {
                     const template = CONTRACT_TEMPLATES[contract.contractType as keyof typeof CONTRACT_TEMPLATES];
                     const Icon = template?.icon || FileCode2;
                     return (
