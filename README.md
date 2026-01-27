@@ -8,6 +8,9 @@ One Place to Know and Do Everything!
 ### Core Functionality
 - **One-tap contract deployment** — Deploy smart contracts directly from the web UI
 - **On-chain interactions** — Click counter for easy contract interactions
+- **Gas tracking** — Real-time gas cost monitoring with retroactive fetching for historical contracts
+- **Real-time ETH pricing** — Auto-refreshing ETH/USD rates from CoinMarketCap (cached 5 hours in Firebase)
+- **Wallet health metrics** — Current balance, gas spent, activity score, and reward strength
 - **Multiple contract templates**:
   - String Storage — store and retrieve strings
   - Calculator — simple arithmetic operations
@@ -21,7 +24,10 @@ A comprehensive 4-page collapsible dashboard to track your on-chain activity:
 - Contracts Deployed count
 - Unique Days Active
 - Total Transactions
+- Gas Spent — Total gas spent across all deployments in ETH and USD
 - Activity Score (out of 1000)
+- ETH Price (Live) — Real-time ETH/USD rate from CoinMarketCap with auto-refresh
+- Wallet Balance — Current balance in ETH and USD
 - Potential Reward Strength indicator (LOW / MEDIUM / MEDIUM-HIGH / HIGH)
 
 **Page 2 - Activity Diversity:**
@@ -49,7 +55,13 @@ A comprehensive 4-page collapsible dashboard to track your on-chain activity:
 ### Collapsible Sections
 All major sections feature consistent expand/collapse UI with chevron icons:
 - **Wallet Health** — 4-page dashboard with pagination
-- **Contracts Deployed** — List of deployed contracts with count badge
+  - Gas Tracker shows total gas spent with retroactive ETH→USD conversion
+  - Real-time ETH prices fetched from CoinMarketCap (5-hour cache)
+  - Wallet balance widget with auto-refresh every 30 seconds
+- **Contracts Deployed** — List of deployed contracts with count badge and sorting
+  - Sort by newest or oldest deployment dates
+  - Copy contract address with one click
+  - Verify contracts on BaseScan
 - **Leaderboard** — Rankings with sorting and pagination
 - **Network Selection** — Choose between Base Mainnet or Sepolia testnet
 - **Your Stats & Achievements** — Stats and achievement progression
@@ -121,7 +133,11 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 BASESCAN_API_KEY=your_basescan_api_key
+CMC_PRO_API_KEY=your_coinmarketcap_api_key
 ```
+
+**For hosted deployments (Vercel):**
+Also add `CMC_PRO_API_KEY` to your platform's environment variables settings. The CoinMarketCap API key is used server-side to fetch real-time ETH prices and is never exposed to the client.
 
 ## Quickstart — Local Development
 
@@ -147,6 +163,8 @@ Common npm scripts:
 ```
 ├── app/
 │   ├── api/
+│   │   ├── eth-price/
+│   │   │   └── route.ts          # Real-time ETH price API with Firebase caching
 │   │   ├── leaderboard/
 │   │   │   └── route.ts          # Leaderboard aggregation API
 │   │   ├── user-data/
@@ -184,6 +202,14 @@ Common npm scripts:
 ```
 users/{walletAddress}
 ├── contracts[]           # Deployed contracts array
+│   ├── address          # Contract address
+│   ├── contractType     # Contract template type
+│   ├── contractName     # Contract name
+│   ├── txHash           # Transaction hash
+│   ├── timestamp        # Deployment timestamp
+│   ├── inputValue       # Constructor input (if any)
+│   ├── gasSpent         # Gas cost in Wei
+│   └── network          # Network (mainnet/testnet)
 ├── achievements[]        # Unlocked achievements
 ├── clicks               # Total click count
 ├── fid                  # Farcaster ID
@@ -197,7 +223,28 @@ referrals/{fid}
 ├── totalPoints          # Points earned
 ├── referredUsers[]      # List of referred users
 └── username             # Referrer username
+
+system/eth_price
+├── price                # Current ETH price in USD
+└── timestamp            # Last fetch timestamp (5-hour cache)
 ```
+
+## Gas Tracker & Real-Time Pricing
+
+### Gas Tracking
+The app automatically tracks gas costs for all deployed contracts:
+- **Real-time calculation** — Gas cost fetched from blockchain via `eth_getTransactionReceipt`
+- **Retroactive fetching** — Older contracts are updated when first loaded
+- **ETH & USD display** — Automatic conversion using real-time ETH prices
+- **Cumulative stats** — Total gas spent shown in Wallet Health overview
+
+### Real-Time ETH Price Feed
+Powered by CoinMarketCap API with smart caching:
+- **Fetch frequency** — Every 5 hours from CoinMarketCap, or on-demand if cache expires
+- **Firebase caching** — Prices cached in Firestore at `system/eth_price` document
+- **Fallback chain** — Valid cache → CoinMarketCap → Expired cache → $2500 default
+- **Auto-refresh** — Client updates prices automatically every 5 hours
+- **USD conversion** — All currency displays use real-time rates
 
 ## Deploying / Hosting
 
@@ -205,8 +252,14 @@ Deploy on Vercel (recommended):
 
 1. Push your code to GitHub
 2. Import the repository in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy
+3. Add environment variables in Vercel dashboard:
+   - All Firebase environment variables (from `.env.local`)
+   - `BASESCAN_API_KEY` for contract verification
+   - `CMC_PRO_API_KEY` for real-time ETH prices (**important**)
+4. Update `minikit.config.ts` with your production URL
+5. Deploy
+
+**Note:** Without `CMC_PRO_API_KEY` set in the hosting platform's environment variables, the ETH price feed will fall back to the cached price or default $2500.
 
 ## Mini App Configuration
 
@@ -221,6 +274,14 @@ Deploy on Vercel (recommended):
 - This app is a utility for wallet activity. Review contracts before using with real funds.
 - Keep private keys and secrets in environment variables
 - Firebase rules should be configured for proper access control
+- **Firestore permissions:** The app requires the following rules for the system collection:
+  ```
+  match /system/{document=**} {
+    allow read, write: if true;
+  }
+  ```
+  This allows the ETH price cache to be read and written by all users.
+- **CoinMarketCap API:** This is a server-side only API call. Your API key is never exposed to the client and cannot be stolen from the browser console.
 
 ## Contributing
 
