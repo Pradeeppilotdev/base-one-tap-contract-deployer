@@ -3137,37 +3137,45 @@ contract Calculator {
 
         {/* Contracts Deployed Section */}
         <div className="sketch-card">
-          <div className="w-full p-4 flex items-center justify-between border-b-2 border-[var(--ink)]">
-            <button
-              onClick={toggleShowHistory}
-              className="flex items-center gap-3 flex-1 text-left"
-            >
+          <button
+            onClick={toggleShowHistory}
+            className="w-full p-4 flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-3">
               <Clock className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
               <span className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
                 Contracts Deployed
               </span>
               {deployedContracts.length > 0 && (
-                <span className="px-2 py-0.5 text-xs font-bold bg-[var(--ink)] text-[var(--paper)]">
-                  {deployedContracts.length}
-                </span>
-              )}
-            </button>
-            <div className="flex items-center gap-2">
-              {showHistory && deployedContracts.length > 0 && (
-                <button
-                  onClick={() => setContractSortOrder(contractSortOrder === 'newest' ? 'oldest' : 'newest')}
-                  className="p-1 hover:bg-[var(--light)] rounded transition-colors"
-                  title={contractSortOrder === 'newest' ? 'Showing newest first' : 'Showing oldest first'}
-                >
-                  {contractSortOrder === 'newest' ? (
-                    <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 text-xs font-bold bg-[var(--ink)] text-[var(--paper)]">
+                    {deployedContracts.length}
+                  </span>
+                  {showHistory && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setContractSortOrder(contractSortOrder === 'newest' ? 'oldest' : 'newest');
+                      }}
+                      className="p-1 hover:bg-[var(--light)] rounded transition-colors"
+                      title={contractSortOrder === 'newest' ? 'Showing newest first' : 'Showing oldest first'}
+                    >
+                      {contractSortOrder === 'newest' ? (
+                        <ChevronUp className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               )}
             </div>
-          </div>
+            {showHistory ? (
+              <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            )}
+          </button>
           
           {showHistory && (
             <div className="border-t-2 border-[var(--ink)]">
