@@ -2162,30 +2162,38 @@ contract Calculator {
     
     setGeneratingResume(true);
     try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const element = document.getElementById('resume-card');
       if (!element) {
         setError('Resume card not found');
+        setGeneratingResume(false);
         return;
       }
 
-      // Add a white background for the canvas
       const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
         scale: 2,
-        logging: false
+        logging: false,
+        allowTaint: true,
+        useCORS: true
       });
 
-      // Download the image
+      const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
+      link.href = image;
       link.download = `base-deployer-resume-${account.slice(-6)}.png`;
+      link.style.display = 'none';
       document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      
+      setTimeout(() => {
+        link.click();
+        document.body.removeChild(link);
+        setGeneratingResume(false);
+      }, 200);
     } catch (err) {
       console.error('Error generating resume:', err);
       setError('Failed to generate resume image');
-    } finally {
       setGeneratingResume(false);
     }
   };
@@ -2193,20 +2201,29 @@ contract Calculator {
   // Share resume on Twitter
   const shareOnTwitter = () => {
     const metrics = getResumeMetrics();
-    const text = `🚀 My @base On-Chain Resume 📊\n\n✅ ${metrics.contractCount} Contracts Deployed\n📈 ${metrics.totalTransactions} Total Transactions\n⚡ ${metrics.gasSpentEth} ETH Gas Spent\n💪 ${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength 🎯\n\nBuilding on-chain credibility with @BaseDeployer!\n\n#Base #Web3`;
+    const text = `My @base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength\n\nBuilding on-chain credibility with Base Deployer!\n\n#Base #Web3`;
     
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-    window.open(twitterUrl, '_blank');
+    try {
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+      window.open(twitterUrl, '_blank', 'width=550,height=420');
+    } catch (err) {
+      console.error('Error sharing on Twitter:', err);
+      setError('Failed to share on Twitter');
+    }
   };
 
   // Share resume on Farcaster
   const shareOnFarcaster = () => {
     const metrics = getResumeMetrics();
-    const text = `My @base On-Chain Resume 📊\n\n✅ ${metrics.contractCount} Contracts Deployed\n📈 ${metrics.totalTransactions} Total Transactions\n⚡ ${metrics.gasSpentEth} ETH Gas Spent\n💪 ${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength 🎯\n\nBuilding on-chain credibility with Base Deployer!`;
+    const text = `My @base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength\n\nBuilding on-chain credibility with Base Deployer!`;
     
-    // Farcaster share via frames or compose intent
-    const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
-    window.open(farcasterUrl, '_blank');
+    try {
+      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
+      window.open(farcasterUrl, '_blank', 'width=550,height=420');
+    } catch (err) {
+      console.error('Error sharing on Farcaster:', err);
+      setError('Failed to share on Farcaster');
+    }
   };
 
   // Share the app via Farcaster with referral code
@@ -4027,7 +4044,7 @@ contract Calculator {
                         </div>
 
                         <p className="text-xs text-[var(--graphite)] text-center pt-2">
-                          💡 Tip: Share your resume to flex your on-chain credentials and inspire others!
+                          Tip: Share your resume to showcase your on-chain credentials and inspire others
                         </p>
                       </div>
                     </div>
