@@ -3166,11 +3166,6 @@ contract Calculator {
                   )}
                 </button>
               )}
-              {showHistory ? (
-                <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-              )}
             </div>
           </div>
           
