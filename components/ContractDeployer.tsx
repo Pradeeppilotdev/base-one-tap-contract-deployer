@@ -3171,7 +3171,7 @@ contract Calculator {
               ) : (
                 <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
               )}
-            </button>
+            </div>
           </div>
           
           {showHistory && (
