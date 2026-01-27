@@ -2157,45 +2157,52 @@ contract Calculator {
   };
 
   // Download resume as image
-  const downloadResumeAsImage = async () => {
+  const downloadResumeAsImage = () => {
     if (!account) return;
     
     setGeneratingResume(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const element = document.getElementById('resume-card');
-      if (!element) {
-        setError('Resume card not found');
-        setGeneratingResume(false);
-        return;
-      }
+    
+    // Small delay to ensure rendering
+    setTimeout(async () => {
+      try {
+        const element = document.getElementById('resume-card');
+        if (!element) {
+          console.error('Resume card element not found');
+          setGeneratingResume(false);
+          return;
+        }
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        allowTaint: true,
-        useCORS: true
-      });
+        console.log('Starting html2canvas conversion...');
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          logging: true,
+          allowTaint: true,
+          useCORS: true,
+          removeContainer: true
+        });
 
-      const image = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `base-deployer-resume-${account.slice(-6)}.png`;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      
-      setTimeout(() => {
+        console.log('Canvas created, converting to image...');
+        const image = canvas.toDataURL('image/png');
+        
+        // Create and trigger download
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = `base-deployer-resume-${account.slice(-6)}.png`;
+        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        
+        // Cleanup
+        setTimeout(() => {
+          document.body.removeChild(link);
+          setGeneratingResume(false);
+          console.log('Download complete');
+        }, 100);
+      } catch (err) {
+        console.error('Error generating resume image:', err);
         setGeneratingResume(false);
-      }, 200);
-    } catch (err) {
-      console.error('Error generating resume:', err);
-      setError('Failed to generate resume image');
-      setGeneratingResume(false);
-    }
+      }
+    }, 100);
   };
 
   // Share resume on Twitter
