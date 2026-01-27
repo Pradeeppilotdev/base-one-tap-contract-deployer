@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import { 
   AlertCircle, 
   CheckCircle2, 
@@ -25,7 +26,10 @@ import {
   Rocket,
   Gem,
   Star,
-  X
+  X,
+  Download,
+  Twitter,
+  MessageCircle
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { encodeFunctionData, decodeEventLog, createPublicClient, http } from 'viem';
@@ -373,6 +377,8 @@ function ContractDeployer() {
   const [showNetworkSelection, setShowNetworkSelection] = useState(true);
   const [showAchievements, setShowAchievements] = useState(true);
   const [contractSortOrder, setContractSortOrder] = useState<'newest' | 'oldest'>('newest'); // Latest first by default
+  const [showResume, setShowResume] = useState(false);
+  const [generatingResume, setGeneratingResume] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -2116,12 +2122,100 @@ contract Calculator {
     });
   };
 
+  // Helper function to get resume metrics
+  const getResumeMetrics = () => {
+    const uniqueDays = new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size;
+    const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
+    const totalGas = deployedContracts.reduce((sum, c) => BigInt(sum) + BigInt(c.gasSpent || '0'), BigInt(0));
+    const gasInEth = Number(totalGas) / 1e18;
+    const gasInUsd = gasInEth * ethPrice;
+
+    return {
+      contractCount: deployedContracts.length,
+      uniqueDays,
+      contractTypes,
+      totalTransactions: deployedContracts.length + clickCount,
+      gasSpentEth: gasInEth.toFixed(4),
+      gasSpentUsd: gasInUsd.toFixed(2),
+      totalClicks: clickCount,
+      rewardStrength: getRewardStrength()
+    };
+  };
+
+  const getRewardStrength = () => {
+    const uniqueDays = new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size;
+    const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
+
+    if (deployedContracts.length >= 30 && clickCount >= 50 && uniqueDays >= 10 && contractTypes >= 4) {
+      return { level: 'HIGH', color: 'bg-green-100 text-green-700' };
+    } else if (deployedContracts.length >= 15 && clickCount >= 25 && uniqueDays >= 7) {
+      return { level: 'MEDIUM-HIGH', color: 'bg-lime-100 text-lime-700' };
+    } else if (deployedContracts.length >= 5 || clickCount >= 10 || uniqueDays >= 3) {
+      return { level: 'MEDIUM', color: 'bg-yellow-100 text-yellow-700' };
+    }
+    return { level: 'LOW', color: 'bg-red-100 text-red-700' };
+  };
+
+  // Download resume as image
+  const downloadResumeAsImage = async () => {
+    if (!account) return;
+    
+    setGeneratingResume(true);
+    try {
+      const element = document.getElementById('resume-card');
+      if (!element) {
+        setError('Resume card not found');
+        return;
+      }
+
+      // Add a white background for the canvas
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false
+      });
+
+      // Download the image
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `base-deployer-resume-${account.slice(-6)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error generating resume:', err);
+      setError('Failed to generate resume image');
+    } finally {
+      setGeneratingResume(false);
+    }
+  };
+
+  // Share resume on Twitter
+  const shareOnTwitter = () => {
+    const metrics = getResumeMetrics();
+    const text = `🚀 My @base On-Chain Resume 📊\n\n✅ ${metrics.contractCount} Contracts Deployed\n📈 ${metrics.totalTransactions} Total Transactions\n⚡ ${metrics.gasSpentEth} ETH Gas Spent\n💪 ${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength 🎯\n\nBuilding on-chain credibility with @BaseDeployer!\n\n#Base #Web3`;
+    
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(twitterUrl, '_blank');
+  };
+
+  // Share resume on Farcaster
+  const shareOnFarcaster = () => {
+    const metrics = getResumeMetrics();
+    const text = `My @base On-Chain Resume 📊\n\n✅ ${metrics.contractCount} Contracts Deployed\n📈 ${metrics.totalTransactions} Total Transactions\n⚡ ${metrics.gasSpentEth} ETH Gas Spent\n💪 ${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength 🎯\n\nBuilding on-chain credibility with Base Deployer!`;
+    
+    // Farcaster share via frames or compose intent
+    const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
+    window.open(farcasterUrl, '_blank');
+  };
+
   // Share the app via Farcaster with referral code
   const shareApp = async () => {
     try {
       // Only allow sharing if user has deployed at least one contract
       if (!deployedContracts || deployedContracts.length === 0) {
         setError('Deploy at least one contract to share!');
+
         setTimeout(() => setError(null), 3000);
         return;
       }
@@ -3807,6 +3901,142 @@ contract Calculator {
             </div>
           )}
         </div>
+
+        {/* On-Chain Resume Section */}
+        {account && (
+          <div className="mt-6 mb-6 sketch-card">
+            <button
+              onClick={() => setShowResume(!showResume)}
+              className="w-full p-4 flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-3">
+                <Rocket className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                <span className="font-bold text-[var(--ink)] uppercase tracking-wider text-sm">
+                  On-Chain Resume
+                </span>
+              </div>
+              {showResume ? (
+                <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              )}
+            </button>
+
+            {showResume && (
+              <div className="border-t-2 border-[var(--ink)]">
+                {(() => {
+                  const metrics = getResumeMetrics();
+                  return (
+                    <div className="p-4">
+                      {/* Resume Card */}
+                      <div 
+                        id="resume-card"
+                        className="p-6 bg-gradient-to-br from-[var(--paper)] to-[var(--light)] border-2 border-[var(--ink)] mb-4"
+                      >
+                        {/* Header */}
+                        <div className="text-center mb-6 pb-4 border-b-2 border-[var(--pencil)]">
+                          <div className="inline-flex items-center justify-center w-12 h-12 mb-3 border-2 border-[var(--ink)] rounded-full bg-[var(--ink)]">
+                            <Rocket className="w-6 h-6 text-[var(--paper)]" strokeWidth={2.5} />
+                          </div>
+                          <h2 className="text-2xl font-black text-[var(--ink)] mb-1">Base On-Chain Resume</h2>
+                          <p className="text-xs font-mono text-[var(--graphite)]">
+                            {account.slice(0, 6)}...{account.slice(-4)}
+                          </p>
+                        </div>
+
+                        {/* Metrics Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          {/* Contracts Deployed */}
+                          <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--paper)] text-center">
+                            <div className="text-xs text-[var(--graphite)] mb-1 font-bold uppercase tracking-wider">Contracts</div>
+                            <div className="text-3xl font-black text-[var(--ink)]">{metrics.contractCount}</div>
+                            <div className="text-xs text-[var(--shade)]">Deployed</div>
+                          </div>
+
+                          {/* Total Transactions */}
+                          <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--paper)] text-center">
+                            <div className="text-xs text-[var(--graphite)] mb-1 font-bold uppercase tracking-wider">Transactions</div>
+                            <div className="text-3xl font-black text-[var(--ink)]">{metrics.totalTransactions}</div>
+                            <div className="text-xs text-[var(--shade)]">Total</div>
+                          </div>
+
+                          {/* Days Active */}
+                          <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--paper)] text-center">
+                            <div className="text-xs text-[var(--graphite)] mb-1 font-bold uppercase tracking-wider">Days Active</div>
+                            <div className="text-3xl font-black text-[var(--ink)]">{metrics.uniqueDays}</div>
+                            <div className="text-xs text-[var(--shade)]">Diverse</div>
+                          </div>
+
+                          {/* Gas Spent */}
+                          <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--paper)] text-center">
+                            <div className="text-xs text-[var(--graphite)] mb-1 font-bold uppercase tracking-wider">Gas Spent</div>
+                            <div className="text-2xl font-black text-[var(--ink)]">{metrics.gasSpentEth}</div>
+                            <div className="text-xs text-[var(--shade)]">ETH</div>
+                          </div>
+                        </div>
+
+                        {/* Reward Strength */}
+                        <div className={`p-4 border-2 border-[var(--ink)] text-center ${metrics.rewardStrength.color}`}>
+                          <div className="text-xs font-bold uppercase tracking-wider mb-1">Reward Strength</div>
+                          <div className="text-2xl font-black">{metrics.rewardStrength.level}</div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-4 pt-4 border-t-2 border-[var(--pencil)] text-center">
+                          <p className="text-xs text-[var(--graphite)] font-mono">
+                            Generated by Base Deployer 🚀
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="space-y-2">
+                        <button
+                          onClick={downloadResumeAsImage}
+                          disabled={generatingResume}
+                          className="w-full px-4 py-3 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 transition-colors hover:bg-[var(--sketch)]"
+                        >
+                          {generatingResume ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                              Generating...
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center gap-2">
+                              <Download className="w-4 h-4" strokeWidth={2} />
+                              Download as Image
+                            </span>
+                          )}
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={shareOnTwitter}
+                            className="px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] font-bold text-xs uppercase tracking-wider hover:border-[var(--ink)] transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Twitter className="w-4 h-4" strokeWidth={2} />
+                            Share on X
+                          </button>
+                          <button
+                            onClick={shareOnFarcaster}
+                            className="px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] font-bold text-xs uppercase tracking-wider hover:border-[var(--ink)] transition-colors flex items-center justify-center gap-2"
+                          >
+                            <MessageCircle className="w-4 h-4" strokeWidth={2} />
+                            Share on FC
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-[var(--graphite)] text-center pt-2">
+                          💡 Tip: Share your resume to flex your on-chain credentials and inspire others!
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Achievement Celebration Modal */}
         {newAchievement && (

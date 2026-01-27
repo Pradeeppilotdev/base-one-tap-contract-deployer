@@ -11,6 +11,7 @@ One Place to Know and Do Everything!
 - **Gas tracking** — Real-time gas cost monitoring with retroactive fetching for historical contracts
 - **Real-time ETH pricing** — Auto-refreshing ETH/USD rates from CoinMarketCap (cached 5 hours in Firebase)
 - **Wallet health metrics** — Current balance, gas spent, activity score, and reward strength
+- **Shareable On-Chain Resume** — Export wallet metrics as beautiful PNG images with download & social sharing
 - **Multiple contract templates**:
   - String Storage — store and retrieve strings
   - Calculator — simple arithmetic operations
@@ -245,6 +246,38 @@ Powered by CoinMarketCap API with smart caching:
 - **Fallback chain** — Valid cache → CoinMarketCap → Expired cache → $2500 default
 - **Auto-refresh** — Client updates prices automatically every 5 hours
 - **USD conversion** — All currency displays use real-time rates
+
+## Shareable On-Chain Resume
+
+A viral feature that lets users showcase their wallet metrics:
+
+**Features:**
+- **Beautiful Resume Card** — Displays key metrics in a professionally designed format
+- **Key Metrics Displayed**:
+  - Contracts Deployed
+  - Total Transactions
+  - Days Active
+  - Gas Spent (ETH)
+  - Reward Strength Level (LOW / MEDIUM / MEDIUM-HIGH / HIGH)
+- **Download as PNG** — Export resume as high-quality image with watermark
+- **Social Sharing**:
+  - Share directly to Twitter/X with pre-filled metrics
+  - Share to Farcaster with formatted text
+  - Pre-generated social captions included
+
+**Why It's Viral:**
+- Users want to flex their on-chain credentials
+- Screenshot-friendly design for Twitter/Farcaster
+- Includes "Base Deployer 🚀" watermark for attribution
+- Inspires others to build their own activity metrics
+- Perfect for proving wallet credibility for airdrops
+
+**Technical Details:**
+- Uses `html2canvas` library for DOM-to-image conversion
+- Renders with white background for optimal sharing
+- Automatic wallet address display (truncated)
+- Responsive design works on all devices
+- Social sharing uses native web share APIs and platform URLs
 
 ## Deploying / Hosting
 
