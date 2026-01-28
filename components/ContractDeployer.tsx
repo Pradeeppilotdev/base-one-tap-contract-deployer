@@ -2223,11 +2223,27 @@ contract Calculator {
 
   // Share resume on Twitter
   const shareOnTwitter = () => {
-    const metrics = getResumeMetrics();
-    const text = `My @base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength\n\nBuilding on-chain credibility with Base Deployer!\n\n#Base #Web3`;
+    if (!account) return;
     
+    const metrics = getResumeMetrics();
+    
+    // Store resume data for the share page
+    localStorage.setItem(
+      `resume-data-${account}`,
+      JSON.stringify({
+        ...metrics,
+        address: account,
+        displayName: farcasterUser?.displayName,
+        username: farcasterUser?.username,
+        pfpUrl: farcasterUser?.pfpUrl,
+      })
+    );
+
     try {
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}`;
+      const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`;
+      
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(resumeUrl)}`;
       window.open(twitterUrl, '_blank', 'width=550,height=420');
     } catch (err) {
       console.error('Error sharing on Twitter:', err);
@@ -2237,11 +2253,27 @@ contract Calculator {
 
   // Share resume on Farcaster
   const shareOnFarcaster = () => {
-    const metrics = getResumeMetrics();
-    const text = `My @base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\n${metrics.rewardStrength.level} Reward Strength\n\nBuilding on-chain credibility with Base Deployer!`;
+    if (!account) return;
     
+    const metrics = getResumeMetrics();
+    
+    // Store resume data for the share page
+    localStorage.setItem(
+      `resume-data-${account}`,
+      JSON.stringify({
+        ...metrics,
+        address: account,
+        displayName: farcasterUser?.displayName,
+        username: farcasterUser?.username,
+        pfpUrl: farcasterUser?.pfpUrl,
+      })
+    );
+
     try {
-      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`;
+      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}`;
+      const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
+      
+      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
       window.open(farcasterUrl, '_blank', 'width=550,height=420');
     } catch (err) {
       console.error('Error sharing on Farcaster:', err);
