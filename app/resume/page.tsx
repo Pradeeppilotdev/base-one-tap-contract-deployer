@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Metadata } from 'next';
 
 interface UserData {
   contractCount: number;
@@ -11,48 +10,81 @@ interface UserData {
   gasSpentEth: string;
   gasSpentUsd: string;
   totalClicks: number;
-  rewardStrength: string;
+  rewardStrength: { level: string; textColor: string; bgColor: string };
   address: string;
   displayName?: string;
   username?: string;
   pfpUrl?: string;
 }
 
-const resumeMetaData = ({
-  contractCount,
-  gasSpentEth,
-  displayName,
-  username,
-}: {
-  contractCount: number;
-  gasSpentEth: string;
-  displayName?: string;
-  username?: string;
-}) => {
-  const userDisplay = displayName || username || 'Developer';
-  return {
-    title: `${userDisplay}'s Base On-Chain Resume`,
-    description: `${userDisplay} has deployed ${contractCount} smart contracts and spent ${gasSpentEth} ETH in gas on Base. View their on-chain credentials!`,
-  };
-};
-
 export default function ResumePage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState('');
 
   useEffect(() => {
+    // Get current URL for sharing
+    setCurrentUrl(typeof window !== 'undefined' ? window.location.href : '');
+
     const params = new URLSearchParams(window.location.search);
     const address = params.get('address');
 
     if (address) {
-      // Fetch user data from localStorage or API
+      // Fetch user data from localStorage
       const storedData = localStorage.getItem(`resume-data-${address}`);
       if (storedData) {
-        setUserData(JSON.parse(storedData));
+        try {
+          setUserData(JSON.parse(storedData));
+        } catch (e) {
+          console.error('Failed to parse resume data:', e);
+        }
       }
     }
     setLoading(false);
   }, []);
+
+  // Set dynamic OG tags
+  useEffect(() => {
+    if (userData) {
+      // Update meta tags for OpenGraph
+      const title = `${userData.displayName || userData.username || 'Developer'}'s Base On-Chain Resume`;
+      const description = `${userData.contractCount} Contracts Deployed | ${userData.totalTransactions} Transactions | ${userData.gasSpentEth} ETH Gas | ${userData.rewardStrength.level} Reward Strength`;
+      const imageUrl = `${currentUrl.split('?')[0].replace('/resume', '')}/api/resume-og?address=${userData.address}`;
+
+      document.title = title;
+
+      // Update or create meta tags
+      const updateMetaTag = (property: string, content: string) => {
+        let element = document.querySelector(`meta[property="${property}"]`);
+        if (!element) {
+          element = document.createElement('meta');
+          element.setAttribute('property', property);
+          document.head.appendChild(element);
+        }
+        element.setAttribute('content', content);
+      };
+
+      const updateMetaTagName = (name: string, content: string) => {
+        let element = document.querySelector(`meta[name="${name}"]`);
+        if (!element) {
+          element = document.createElement('meta');
+          element.setAttribute('name', name);
+          document.head.appendChild(element);
+        }
+        element.setAttribute('content', content);
+      };
+
+      updateMetaTag('og:title', title);
+      updateMetaTag('og:description', description);
+      updateMetaTag('og:image', imageUrl);
+      updateMetaTag('og:url', currentUrl);
+      updateMetaTag('og:type', 'website');
+      updateMetaTagName('twitter:card', 'summary_large_image');
+      updateMetaTagName('twitter:title', title);
+      updateMetaTagName('twitter:description', description);
+      updateMetaTagName('twitter:image', imageUrl);
+    }
+  }, [userData, currentUrl]);
 
   if (loading) {
     return (
@@ -65,10 +97,20 @@ export default function ResumePage() {
   if (!userData) {
     return (
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
-        <div className="text-[var(--ink)] text-lg">Resume not found</div>
+        <div className="text-center">
+          <div className="text-[var(--ink)] text-lg mb-4">Resume not found</div>
+          <a
+            href="/"
+            className="text-blue-600 hover:underline"
+          >
+            Back to app
+          </a>
+        </div>
       </div>
     );
   }
+
+  const strengthLevel = userData.rewardStrength.level || 'MEDIUM';
 
   return (
     <div className="min-h-screen bg-[var(--paper)] p-4">
@@ -137,15 +179,20 @@ export default function ResumePage() {
             </p>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-black text-[var(--ink)]">
-                {userData.rewardStrength}
+                {strengthLevel}
               </span>
               <div className="h-3 flex-1 border-2 border-[var(--ink)] bg-[var(--light)]">
                 <div
                   className="h-full bg-[var(--ink)]"
                   style={{
-                    width: userData.rewardStrength === 'HIGH' ? '100%' : 
-                           userData.rewardStrength === 'MEDIUM-HIGH' ? '75%' :
-                           userData.rewardStrength === 'MEDIUM' ? '50%' : '25%'
+                    width:
+                      strengthLevel === 'HIGH'
+                        ? '100%'
+                        : strengthLevel === 'MEDIUM-HIGH'
+                          ? '75%'
+                          : strengthLevel === 'MEDIUM'
+                            ? '50%'
+                            : '25%',
                   }}
                 />
               </div>
@@ -164,8 +211,8 @@ export default function ResumePage() {
         <div className="mt-8 space-y-3">
           <a
             href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-              `Check out my Base On-Chain Resume!\n\n${userData.contractCount} Contracts Deployed\n${userData.totalTransactions} Total Transactions\n${userData.gasSpentEth} ETH Gas Spent\n\nBuilding on-chain credibility with Base Deployer!\n\n#Base #Web3`
-            )}&url=${encodeURIComponent(window.location.href)}`}
+              `Check out my Base On-Chain Resume\n\n${userData.contractCount} Contracts Deployed\n${userData.totalTransactions} Total Transactions\n${userData.gasSpentEth} ETH Gas Spent\n${userData.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`
+            )}&url=${encodeURIComponent(currentUrl)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="block text-center w-full py-3 bg-black text-white font-bold border-2 border-black hover:bg-white hover:text-black transition-colors"
@@ -175,13 +222,20 @@ export default function ResumePage() {
 
           <a
             href={`https://warpcast.com/~/compose?text=${encodeURIComponent(
-              `Check out my Base On-Chain Resume!\n\n${userData.contractCount} Contracts Deployed\n${userData.totalTransactions} Total Transactions\n${userData.gasSpentEth} ETH Gas Spent\n\nBuilding on-chain credibility with Base Deployer!`
-            )}&embeds[]=${encodeURIComponent(window.location.href)}`}
+              `Check out my Base On-Chain Resume\n\n${userData.contractCount} Contracts Deployed\n${userData.totalTransactions} Total Transactions\n${userData.gasSpentEth} ETH Gas Spent\n${userData.uniqueDays} Days Active\n\nBuilding on-chain credibility!`
+            )}&embeds[]=${encodeURIComponent(currentUrl)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="block text-center w-full py-3 bg-[#8B5CF6] text-white font-bold border-2 border-[#8B5CF6] hover:bg-white hover:text-[#8B5CF6] transition-colors"
           >
             Share on Farcaster
+          </a>
+
+          <a
+            href="/"
+            className="block text-center w-full py-3 bg-[var(--light)] text-[var(--ink)] font-bold border-2 border-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--light)] transition-colors"
+          >
+            Back to App
           </a>
         </div>
       </div>
