@@ -2,89 +2,52 @@
 
 import { useEffect, useState } from 'react';
 
-interface UserData {
-  contractCount: number;
-  uniqueDays: number;
-  contractTypes: number;
-  totalTransactions: number;
-  gasSpentEth: string;
-  gasSpentUsd: string;
-  totalClicks: number;
-  rewardStrength: { level: string; textColor: string; bgColor: string };
+interface ResumeData {
   address: string;
   displayName?: string;
   username?: string;
   pfpUrl?: string;
+  contractCount: number;
+  totalTransactions: number;
+  gasSpentEth: string;
+  uniqueDays: number;
+  rewardStrength?: {
+    level: string;
+    color?: string;
+  };
 }
 
 export default function ResumePage() {
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<ResumeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUrl, setCurrentUrl] = useState('');
 
   useEffect(() => {
-    // Get current URL for sharing
-    setCurrentUrl(typeof window !== 'undefined' ? window.location.href : '');
+    if (typeof window === 'undefined') return;
+    
+    setCurrentUrl(window.location.href);
+    const addressParam = new URLSearchParams(window.location.search).get('address');
 
-    const params = new URLSearchParams(window.location.search);
-    const address = params.get('address');
+    if (!addressParam) {
+      setLoading(false);
+      return;
+    }
 
-    if (address) {
-      // Fetch user data from localStorage
-      const storedData = localStorage.getItem(`resume-data-${address}`);
-      if (storedData) {
-        try {
-          setUserData(JSON.parse(storedData));
-        } catch (e) {
-          console.error('Failed to parse resume data:', e);
-        }
+    // Try localStorage first, then sessionStorage
+    const storedData = localStorage.getItem(`resume-data-${addressParam}`) ||
+                       sessionStorage.getItem(`resume-data-${addressParam}`);
+
+    if (storedData) {
+      try {
+        const parsed = JSON.parse(storedData);
+        setUserData(parsed);
+      } catch (e) {
+        console.error('Failed to parse resume data:', e);
       }
     }
+
     setLoading(false);
   }, []);
-
-  // Set dynamic OG tags
-  useEffect(() => {
-    if (userData) {
-      // Update meta tags for OpenGraph
-      const title = `${userData.displayName || userData.username || 'Developer'}'s Base On-Chain Resume`;
-      const description = `${userData.contractCount} Contracts Deployed | ${userData.totalTransactions} Transactions | ${userData.gasSpentEth} ETH Gas | ${userData.rewardStrength.level} Reward Strength`;
-      const imageUrl = `${currentUrl.split('?')[0].replace('/resume', '')}/api/resume-og?address=${userData.address}`;
-
-      document.title = title;
-
-      // Update or create meta tags
-      const updateMetaTag = (property: string, content: string) => {
-        let element = document.querySelector(`meta[property="${property}"]`);
-        if (!element) {
-          element = document.createElement('meta');
-          element.setAttribute('property', property);
-          document.head.appendChild(element);
-        }
-        element.setAttribute('content', content);
-      };
-
-      const updateMetaTagName = (name: string, content: string) => {
-        let element = document.querySelector(`meta[name="${name}"]`);
-        if (!element) {
-          element = document.createElement('meta');
-          element.setAttribute('name', name);
-          document.head.appendChild(element);
-        }
-        element.setAttribute('content', content);
-      };
-
-      updateMetaTag('og:title', title);
-      updateMetaTag('og:description', description);
-      updateMetaTag('og:image', imageUrl);
-      updateMetaTag('og:url', currentUrl);
-      updateMetaTag('og:type', 'website');
-      updateMetaTagName('twitter:card', 'summary_large_image');
-      updateMetaTagName('twitter:title', title);
-      updateMetaTagName('twitter:description', description);
-      updateMetaTagName('twitter:image', imageUrl);
-    }
-  }, [userData, currentUrl]);
 
   if (loading) {
     return (
@@ -99,6 +62,7 @@ export default function ResumePage() {
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[var(--ink)] text-lg mb-4">Resume not found</div>
+          <p className="text-[var(--graphite)] text-sm mb-4">Try sharing from the app again</p>
           <a
             href="/"
             className="text-blue-600 hover:underline"
@@ -110,7 +74,7 @@ export default function ResumePage() {
     );
   }
 
-  const strengthLevel = userData.rewardStrength.level || 'MEDIUM';
+  const strengthLevel = userData.rewardStrength?.level || 'MEDIUM';
 
   return (
     <div className="min-h-screen bg-[var(--paper)] p-4">

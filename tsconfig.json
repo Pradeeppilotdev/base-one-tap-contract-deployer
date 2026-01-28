@@ -23,6 +23,9 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.ts"],
-  "exclude": ["node_modules", "scripts", "test", "hardhat.config.ts"]
+  "exclude": ["node_modules", "scripts", "test", "hardhat.config.ts"],
+  "ts-node": {
+    "transpileOnly": true
+  }
 }
 

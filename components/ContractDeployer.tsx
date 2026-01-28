@@ -2226,18 +2226,18 @@ contract Calculator {
     if (!account) return;
     
     const metrics = getResumeMetrics();
+    const resumeData = {
+      ...metrics,
+      address: account,
+      displayName: farcasterUser?.displayName,
+      username: farcasterUser?.username,
+      pfpUrl: farcasterUser?.pfpUrl,
+    };
     
-    // Store resume data for the share page
-    localStorage.setItem(
-      `resume-data-${account}`,
-      JSON.stringify({
-        ...metrics,
-        address: account,
-        displayName: farcasterUser?.displayName,
-        username: farcasterUser?.username,
-        pfpUrl: farcasterUser?.pfpUrl,
-      })
-    );
+    // Store resume data in both localStorage and sessionStorage
+    const dataStr = JSON.stringify(resumeData);
+    localStorage.setItem(`resume-data-${account}`, dataStr);
+    sessionStorage.setItem(`resume-data-${account}`, dataStr);
 
     try {
       const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}`;
@@ -2256,18 +2256,18 @@ contract Calculator {
     if (!account) return;
     
     const metrics = getResumeMetrics();
+    const resumeData = {
+      ...metrics,
+      address: account,
+      displayName: farcasterUser?.displayName,
+      username: farcasterUser?.username,
+      pfpUrl: farcasterUser?.pfpUrl,
+    };
     
-    // Store resume data for the share page
-    localStorage.setItem(
-      `resume-data-${account}`,
-      JSON.stringify({
-        ...metrics,
-        address: account,
-        displayName: farcasterUser?.displayName,
-        username: farcasterUser?.username,
-        pfpUrl: farcasterUser?.pfpUrl,
-      })
-    );
+    // Store resume data in both localStorage and sessionStorage
+    const dataStr = JSON.stringify(resumeData);
+    localStorage.setItem(`resume-data-${account}`, dataStr);
+    sessionStorage.setItem(`resume-data-${account}`, dataStr);
 
     try {
       const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}`;
