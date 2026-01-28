@@ -9,10 +9,10 @@ export function middleware(request: NextRequest) {
   response.headers.delete('X-Frame-Options');
   
   // Set permissive Content-Security-Policy for frame-ancestors
-  // This allows Farcaster to embed our app in an iframe
+  // This allows Farcaster to embed our app in an iframe and load external images
   response.headers.set(
     'Content-Security-Policy',
-    "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://farcaster.xyz https://farcaster.xyz *; img-src 'self' blob: data:;"
+    "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://farcaster.xyz https://farcaster.xyz *; img-src 'self' blob: data: https:;"
   );
 
   // Set CORS headers

@@ -1,6 +1,27 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.farcaster.xyz',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.warpcast.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.imgix.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vercel.app',
+      },
+    ],
+    unoptimized: true, // Disable optimization for Farcaster frame compatibility
+  },
   // Allow ngrok and other tunneling services for Base mini app development
   allowedDevOrigins: [
     'https://*.ngrok-free.app',

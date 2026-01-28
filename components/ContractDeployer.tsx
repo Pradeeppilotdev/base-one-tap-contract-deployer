@@ -2370,6 +2370,7 @@ contract Calculator {
                   src={farcasterUser.pfpUrl} 
                   alt={farcasterUser.displayName || farcasterUser.username || 'User'}
                   className="w-8 h-8 rounded-full border border-[var(--ink)]"
+                  crossOrigin="anonymous"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full border border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
@@ -3525,6 +3526,7 @@ contract Calculator {
                                     src={user.pfpUrl} 
                                     alt={user.displayName || user.username || 'User'}
                                     className="w-8 h-8 rounded-full border-2 border-[var(--ink)] flex-shrink-0"
+                                    crossOrigin="anonymous"
                                   />
                                 ) : (
                                   <div className="w-8 h-8 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center flex-shrink-0">
