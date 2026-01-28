@@ -2176,28 +2176,41 @@ contract Calculator {
         const canvas = await html2canvas(element, {
           backgroundColor: '#ffffff',
           scale: 2,
-          logging: true,
+          logging: false,
           allowTaint: true,
           useCORS: true,
-          removeContainer: true
+          removeContainer: true,
+          windowHeight: element.scrollHeight,
+          windowWidth: element.scrollWidth
         });
 
-        console.log('Canvas created, converting to image...');
-        const image = canvas.toDataURL('image/png');
-        
-        // Create and trigger download
-        const link = document.createElement('a');
-        link.href = image;
-        link.download = `base-deployer-resume-${account.slice(-6)}.png`;
-        document.body.appendChild(link);
-        link.click();
-        
-        // Cleanup
-        setTimeout(() => {
-          document.body.removeChild(link);
-          setGeneratingResume(false);
-          console.log('Download complete');
-        }, 100);
+        console.log('Canvas created, converting to blob...');
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            console.error('Failed to create blob from canvas');
+            setGeneratingResume(false);
+            return;
+          }
+
+          // Create blob URL and download
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = `base-deployer-resume-${account.slice(-6)}.png`;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          
+          // Trigger download
+          link.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+            setGeneratingResume(false);
+            console.log('Download complete');
+          }, 100);
+        }, 'image/png');
       } catch (err) {
         console.error('Error generating resume image:', err);
         setGeneratingResume(false);

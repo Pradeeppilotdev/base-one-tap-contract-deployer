@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
   // This allows Farcaster to embed our app in an iframe
   response.headers.set(
     'Content-Security-Policy',
-    "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://farcaster.xyz https://farcaster.xyz *;"
+    "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://farcaster.xyz https://farcaster.xyz *; img-src 'self' blob: data:;"
   );
 
   // Set CORS headers
