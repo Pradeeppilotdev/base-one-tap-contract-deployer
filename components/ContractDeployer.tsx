@@ -2184,7 +2184,7 @@ contract Calculator {
           windowWidth: element.scrollWidth
         });
 
-        console.log('Canvas created, converting to blob...');
+        console.log('Canvas created, opening in new tab...');
         canvas.toBlob((blob) => {
           if (!blob) {
             console.error('Failed to create blob from canvas');
@@ -2192,24 +2192,27 @@ contract Calculator {
             return;
           }
 
-          // Create blob URL and download
+          // Create blob URL and open in new tab
           const blobUrl = URL.createObjectURL(blob);
+          
+          // Try to download first (works on non-frame environments)
           const link = document.createElement('a');
           link.href = blobUrl;
           link.download = `base-deployer-resume-${account.slice(-6)}.png`;
-          link.style.display = 'none';
-          document.body.appendChild(link);
           
-          // Trigger download
-          link.click();
+          try {
+            link.click();
+          } catch (e) {
+            // If download fails (in frames), open in new tab instead
+            console.log('Download blocked, opening in new tab...');
+            window.open(blobUrl, '_blank');
+          }
           
-          // Cleanup
+          // Cleanup after a delay
           setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(blobUrl);
             setGeneratingResume(false);
-            console.log('Download complete');
-          }, 100);
+            console.log('Image generation complete');
+          }, 500);
         }, 'image/png');
       } catch (err) {
         console.error('Error generating resume image:', err);
