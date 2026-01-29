@@ -2221,65 +2221,123 @@ contract Calculator {
     }, 100);
   };
 
-  // Share resume on Twitter
-  const shareOnTwitter = () => {
+  // Share resume on Twitter with IPFS image
+  const shareOnTwitter = async () => {
     if (!account) return;
     
-    const metrics = getResumeMetrics();
-    const resumeData = {
-      ...metrics,
-      address: account,
-      displayName: farcasterUser?.displayName,
-      username: farcasterUser?.username,
-      pfpUrl: farcasterUser?.pfpUrl,
-    };
-    
-    // Store resume data in both localStorage and sessionStorage
-    const dataStr = JSON.stringify(resumeData);
-    localStorage.setItem(`resume-data-${account}`, dataStr);
-    sessionStorage.setItem(`resume-data-${account}`, dataStr);
-
     try {
-      const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
-      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}`;
-      const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`;
+      setGeneratingResume(true);
+      const metrics = getResumeMetrics();
+      const resumeData = {
+        ...metrics,
+        address: account,
+        displayName: farcasterUser?.displayName,
+        username: farcasterUser?.username,
+        pfpUrl: farcasterUser?.pfpUrl,
+      };
       
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(resumeUrl)}`;
-      window.open(twitterUrl, '_blank', 'width=550,height=420');
+      // Store resume data in both localStorage and sessionStorage
+      const dataStr = JSON.stringify(resumeData);
+      localStorage.setItem(`resume-data-${account}`, dataStr);
+      sessionStorage.setItem(`resume-data-${account}`, dataStr);
+
+      // Capture resume image and upload to IPFS
+      const resumeElement = document.getElementById('resume-capture');
+      if (resumeElement && typeof window !== 'undefined') {
+        const canvas = await html2canvas(resumeElement, {
+          backgroundColor: '#fafaf8',
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+        });
+        
+        const imageDataUrl = canvas.toDataURL('image/png');
+        
+        // Upload to IPFS
+        const uploadResponse = await fetch('/api/ipfs-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageDataUrl }),
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image to IPFS');
+        }
+        
+        const { ipfsUrl } = (await uploadResponse.json()) as { ipfsUrl: string };
+        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
+        const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}`;
+        
+        const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`;
+        
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(resumeUrl)}`;
+        window.open(twitterUrl, '_blank', 'width=550,height=420');
+      }
     } catch (err) {
       console.error('Error sharing on Twitter:', err);
       setError('Failed to share on Twitter');
+    } finally {
+      setGeneratingResume(false);
     }
   };
 
-  // Share resume on Farcaster
-  const shareOnFarcaster = () => {
+  // Share resume on Farcaster with IPFS image
+  const shareOnFarcaster = async () => {
     if (!account) return;
     
-    const metrics = getResumeMetrics();
-    const resumeData = {
-      ...metrics,
-      address: account,
-      displayName: farcasterUser?.displayName,
-      username: farcasterUser?.username,
-      pfpUrl: farcasterUser?.pfpUrl,
-    };
-    
-    // Store resume data in both localStorage and sessionStorage
-    const dataStr = JSON.stringify(resumeData);
-    localStorage.setItem(`resume-data-${account}`, dataStr);
-    sessionStorage.setItem(`resume-data-${account}`, dataStr);
-
     try {
-      const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
-      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}`;
-      const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
+      setGeneratingResume(true);
+      const metrics = getResumeMetrics();
+      const resumeData = {
+        ...metrics,
+        address: account,
+        displayName: farcasterUser?.displayName,
+        username: farcasterUser?.username,
+        pfpUrl: farcasterUser?.pfpUrl,
+      };
       
-      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
-      window.open(farcasterUrl, '_blank', 'width=550,height=420');
+      // Store resume data in both localStorage and sessionStorage
+      const dataStr = JSON.stringify(resumeData);
+      localStorage.setItem(`resume-data-${account}`, dataStr);
+      sessionStorage.setItem(`resume-data-${account}`, dataStr);
+
+      // Capture resume image and upload to IPFS
+      const resumeElement = document.getElementById('resume-capture');
+      if (resumeElement && typeof window !== 'undefined') {
+        const canvas = await html2canvas(resumeElement, {
+          backgroundColor: '#fafaf8',
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+        });
+        
+        const imageDataUrl = canvas.toDataURL('image/png');
+        
+        // Upload to IPFS
+        const uploadResponse = await fetch('/api/ipfs-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageDataUrl }),
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image to IPFS');
+        }
+        
+        const { ipfsUrl } = (await uploadResponse.json()) as { ipfsUrl: string };
+        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
+        const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}`;
+        
+        const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
+        
+        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
+        window.open(farcasterUrl, '_blank', 'width=550,height=420');
+      }
     } catch (err) {
       console.error('Error sharing on Farcaster:', err);
       setError('Failed to share on Farcaster');
+    } finally {
+      setGeneratingResume(false);
     }
   };
 

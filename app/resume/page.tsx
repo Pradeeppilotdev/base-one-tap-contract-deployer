@@ -55,7 +55,8 @@ export default function ResumePage() {
 
     const strengthLevel = userData.rewardStrength?.level || 'MEDIUM';
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
-    const ogImageUrl = `${baseUrl}/api/resume-og?address=${userData.address}&contracts=${userData.contractCount}&transactions=${userData.totalTransactions}&gas=${userData.gasSpentEth}&days=${userData.uniqueDays}&strength=${strengthLevel}`;
+    const imageParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('image') : null;
+    const ogImageUrl = imageParam || `${baseUrl}/api/resume-og?address=${userData.address}&contracts=${userData.contractCount}&transactions=${userData.totalTransactions}&gas=${userData.gasSpentEth}&days=${userData.uniqueDays}&strength=${strengthLevel}`;
     
     const title = `${userData.displayName || userData.username || 'Developer'}'s Base On-Chain Resume`;
     const description = `${userData.contractCount} Contracts Deployed | ${userData.totalTransactions} Transactions | ${userData.gasSpentEth} ETH Gas | ${userData.uniqueDays} Days Active`;
@@ -125,6 +126,7 @@ export default function ResumePage() {
       <div className="max-w-2xl mx-auto">
         {/* Resume Card */}
         <div
+          id="resume-capture"
           className="border-4 border-[var(--ink)] bg-gradient-to-br from-[var(--paper)] via-[var(--paper)] to-[var(--light)] p-6 md:p-8"
           style={{
             backgroundImage:
