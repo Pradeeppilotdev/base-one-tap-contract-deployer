@@ -2240,7 +2240,8 @@ contract Calculator {
     sessionStorage.setItem(`resume-data-${account}`, dataStr);
 
     try {
-      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}`;
+      const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
+      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}`;
       const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`;
       
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(resumeUrl)}`;
@@ -2270,7 +2271,8 @@ contract Calculator {
     sessionStorage.setItem(`resume-data-${account}`, dataStr);
 
     try {
-      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}`;
+      const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
+      const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}`;
       const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
       
       const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;

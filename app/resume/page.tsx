@@ -49,6 +49,50 @@ export default function ResumePage() {
     setLoading(false);
   }, []);
 
+  // Update meta tags when userData changes
+  useEffect(() => {
+    if (!userData || typeof document === 'undefined') return;
+
+    const strengthLevel = userData.rewardStrength?.level || 'MEDIUM';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
+    const ogImageUrl = `${baseUrl}/api/resume-og?address=${userData.address}&contracts=${userData.contractCount}&transactions=${userData.totalTransactions}&gas=${userData.gasSpentEth}&days=${userData.uniqueDays}&strength=${strengthLevel}`;
+    
+    const title = `${userData.displayName || userData.username || 'Developer'}'s Base On-Chain Resume`;
+    const description = `${userData.contractCount} Contracts Deployed | ${userData.totalTransactions} Transactions | ${userData.gasSpentEth} ETH Gas | ${userData.uniqueDays} Days Active`;
+
+    document.title = title;
+
+    const updateMetaTag = (property: string, content: string) => {
+      let element = document.querySelector(`meta[property="${property}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('property', property);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
+    const updateMetaTagName = (name: string, content: string) => {
+      let element = document.querySelector(`meta[name="${name}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('name', name);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
+    updateMetaTag('og:title', title);
+    updateMetaTag('og:description', description);
+    updateMetaTag('og:image', ogImageUrl);
+    updateMetaTag('og:url', currentUrl);
+    updateMetaTag('og:type', 'website');
+    updateMetaTagName('twitter:card', 'summary_large_image');
+    updateMetaTagName('twitter:title', title);
+    updateMetaTagName('twitter:description', description);
+    updateMetaTagName('twitter:image', ogImageUrl);
+  }, [userData, currentUrl]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
