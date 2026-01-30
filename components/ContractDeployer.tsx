@@ -4298,6 +4298,111 @@ contract Calculator {
             Compiled with Solidity 0.8.19
           </p>
         </footer>
+
+        {/* Hidden Resume Card for Image Capture */}
+        <div
+          id="resume-capture"
+          className="hidden"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px',
+            width: '1080px',
+            minHeight: '1350px',
+          }}
+        >
+          <div
+            className="border-4 border-[var(--ink)] bg-gradient-to-br from-[var(--paper)] via-[var(--paper)] to-[var(--light)] p-8"
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(0,0,0,.02) 35px, rgba(0,0,0,.02) 70px)',
+              fontFamily: "'Comic Sans MS', cursive",
+            }}
+          >
+            {/* Header */}
+            <div className="border-b-4 border-[var(--ink)] pb-6 mb-8">
+              <h1 className="text-4xl font-black text-[var(--ink)] leading-tight">
+                Base On-Chain Resume
+              </h1>
+              <p className="text-sm text-[var(--graphite)] mt-4">
+                {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'Address'}
+              </p>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
+                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
+                  Contracts
+                </div>
+                <div className="text-5xl font-black text-[var(--ink)] leading-tight">
+                  {deployedContracts.length}
+                </div>
+              </div>
+
+              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
+                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
+                  Transactions
+                </div>
+                <div className="text-5xl font-black text-[var(--ink)] leading-tight">
+                  {deployedContracts.length + (clickCount || 0)}
+                </div>
+              </div>
+
+              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
+                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
+                  Days Active
+                </div>
+                <div className="text-5xl font-black text-[var(--ink)] leading-tight">
+                  {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
+                </div>
+              </div>
+
+              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
+                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
+                  Gas Spent
+                </div>
+                <div className="text-3xl font-black text-[var(--ink)] leading-tight">
+                  {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
+                </div>
+              </div>
+            </div>
+
+            {/* Reward Strength Badge */}
+            <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)] mb-8">
+              <p className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-4">
+                Reward Strength
+              </p>
+              <div className="flex items-center gap-4">
+                <span className="text-4xl font-black text-[var(--ink)]">
+                  {getRewardStrength()?.level || 'MEDIUM'}
+                </span>
+                <div className="h-6 flex-1 border-4 border-[var(--ink)] bg-[var(--light)]">
+                  <div
+                    className="h-full bg-[var(--ink)]"
+                    style={{
+                      width:
+                        getRewardStrength()?.level === 'HIGH'
+                          ? '100%'
+                          : getRewardStrength()?.level === 'MEDIUM-HIGH'
+                          ? '75%'
+                          : getRewardStrength()?.level === 'MEDIUM'
+                          ? '50%'
+                          : '25%',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t-4 border-[var(--ink)] pt-6 text-center">
+              <p className="text-sm font-bold text-[var(--graphite)] tracking-wide">
+                Built on Base | On-Chain Activity Proof
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
