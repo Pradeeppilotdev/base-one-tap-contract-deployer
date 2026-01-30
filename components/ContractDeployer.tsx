@@ -4353,98 +4353,93 @@ contract Calculator {
             visibility: 'hidden',
             pointerEvents: 'none',
             zIndex: '-9999',
+            backgroundColor: '#fafaf8',
+            fontFamily: "'Comic Sans MS', cursive",
+            padding: '32px',
           }}
         >
-          <div
-            className="border-4 border-[var(--ink)] bg-gradient-to-br from-[var(--paper)] via-[var(--paper)] to-[var(--light)] p-8"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(0,0,0,.02) 35px, rgba(0,0,0,.02) 70px)',
-              fontFamily: "'Comic Sans MS', cursive",
-            }}
-          >
-            {/* Header */}
-            <div className="border-b-4 border-[var(--ink)] pb-6 mb-8">
-              <h1 className="text-4xl font-black text-[var(--ink)] leading-tight">
-                Base On-Chain Resume
-              </h1>
-              <p className="text-sm text-[var(--graphite)] mt-4">
-                {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'Address'}
-              </p>
-            </div>
+          {/* Header */}
+          <div style={{ borderBottom: '4px solid #000', paddingBottom: '24px', marginBottom: '32px' }}>
+            <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1.2 }}>
+              Base On-Chain Resume
+            </h1>
+            <p style={{ fontSize: '14px', color: '#666', marginTop: '16px' }}>
+              {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'Address'}
+            </p>
+          </div>
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
-                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
-                  Contracts
-                </div>
-                <div className="text-5xl font-black text-[var(--ink)] leading-tight">
-                  {deployedContracts.length}
-                </div>
+          {/* Metrics Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+                Contracts
               </div>
-
-              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
-                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
-                  Transactions
-                </div>
-                <div className="text-5xl font-black text-[var(--ink)] leading-tight">
-                  {deployedContracts.length + (clickCount || 0)}
-                </div>
-              </div>
-
-              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
-                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
-                  Days Active
-                </div>
-                <div className="text-5xl font-black text-[var(--ink)] leading-tight">
-                  {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
-                </div>
-              </div>
-
-              <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)]">
-                <div className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-3">
-                  Gas Spent
-                </div>
-                <div className="text-3xl font-black text-[var(--ink)] leading-tight">
-                  {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
-                </div>
+              <div style={{ fontSize: '60px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+                {deployedContracts.length}
               </div>
             </div>
 
-            {/* Reward Strength Badge */}
-            <div className="border-4 border-[var(--ink)] p-6 bg-[var(--paper)] mb-8">
-              <p className="text-sm font-bold text-[var(--graphite)] uppercase tracking-widest mb-4">
-                Reward Strength
-              </p>
-              <div className="flex items-center gap-4">
-                <span className="text-4xl font-black text-[var(--ink)]">
-                  {getRewardStrength()?.level || 'MEDIUM'}
-                </span>
-                <div className="h-6 flex-1 border-4 border-[var(--ink)] bg-[var(--light)]">
-                  <div
-                    className="h-full bg-[var(--ink)]"
-                    style={{
-                      width:
-                        getRewardStrength()?.level === 'HIGH'
-                          ? '100%'
-                          : getRewardStrength()?.level === 'MEDIUM-HIGH'
-                          ? '75%'
-                          : getRewardStrength()?.level === 'MEDIUM'
-                          ? '50%'
-                          : '25%',
-                    }}
-                  />
-                </div>
+            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+                Transactions
+              </div>
+              <div style={{ fontSize: '60px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+                {deployedContracts.length + (clickCount || 0)}
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="border-t-4 border-[var(--ink)] pt-6 text-center">
-              <p className="text-sm font-bold text-[var(--graphite)] tracking-wide">
-                Built on Base | On-Chain Activity Proof
-              </p>
+            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+                Days Active
+              </div>
+              <div style={{ fontSize: '60px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+                {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
+              </div>
             </div>
+
+            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+                Gas Spent
+              </div>
+              <div style={{ fontSize: '36px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+                {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
+              </div>
+            </div>
+          </div>
+
+          {/* Reward Strength Badge */}
+          <div style={{ border: '4px solid #000', padding: '24px', marginBottom: '32px', backgroundColor: '#fafaf8' }}>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px' }}>
+              Reward Strength
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '48px', fontWeight: 900, color: '#000' }}>
+                {getRewardStrength()?.level || 'MEDIUM'}
+              </span>
+              <div style={{ height: '24px', flex: 1, border: '4px solid #000', backgroundColor: '#f0f0f0' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    backgroundColor: '#000',
+                    width:
+                      getRewardStrength()?.level === 'HIGH'
+                        ? '100%'
+                        : getRewardStrength()?.level === 'MEDIUM-HIGH'
+                        ? '75%'
+                        : getRewardStrength()?.level === 'MEDIUM'
+                        ? '50%'
+                        : '25%',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ borderTop: '4px solid #000', paddingTop: '24px', textAlign: 'center' }}>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#666', letterSpacing: '0.05em' }}>
+              Built on Base | On-Chain Activity Proof
+            </p>
           </div>
         </div>
       </div>
