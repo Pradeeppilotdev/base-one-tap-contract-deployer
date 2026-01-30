@@ -7,14 +7,18 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[IPFS-UPLOAD] Starting image upload...');
     
-    const { imageDataUrl } = await request.json();
+    const { imageDataUrl, timestamp } = await request.json();
     console.log('[IPFS-UPLOAD] Received image data URL:', imageDataUrl?.substring(0, 50) + '...');
+    console.log('[IPFS-UPLOAD] Request timestamp:', timestamp, 'Current:', Date.now());
 
     if (!imageDataUrl) {
       console.error('[IPFS-UPLOAD] Error: Image data URL is required');
       return NextResponse.json(
         { error: 'Image data URL is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+        }
       );
     }
 
@@ -32,7 +36,10 @@ export async function POST(request: NextRequest) {
           hasApiKey: !!PINATA_API_KEY,
           hasSecretKey: !!PINATA_SECRET_API_KEY,
         },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+        }
       );
     }
 
@@ -87,7 +94,10 @@ export async function POST(request: NextRequest) {
           status: pinataResponse.status,
           details: error,
         },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+        }
       );
     }
 
@@ -102,6 +112,12 @@ export async function POST(request: NextRequest) {
       success: true,
       ipfsUrl,
       ipfsHash: pinataData.IpfsHash,
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   } catch (error) {
     console.error('[IPFS-UPLOAD] Catch block error:', error);
@@ -110,7 +126,14 @@ export async function POST(request: NextRequest) {
         error: 'Failed to upload image',
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
     );
   }
 }

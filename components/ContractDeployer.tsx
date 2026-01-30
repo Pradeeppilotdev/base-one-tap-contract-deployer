@@ -2284,11 +2284,17 @@ contract Calculator {
         
         console.log('[TWITTER-SHARE] Uploading to IPFS...');
         
-        // Upload to IPFS
+        // Upload to IPFS with cache-busting headers
         const uploadResponse = await fetch('/api/ipfs-upload', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageDataUrl }),
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Request-ID': `${Date.now()}-${Math.random()}`,
+          },
+          body: JSON.stringify({ imageDataUrl, timestamp: Date.now() }),
         });
         
         console.log('[TWITTER-SHARE] Upload response status:', uploadResponse.status);
@@ -2385,11 +2391,17 @@ contract Calculator {
         
         console.log('[FARCASTER-SHARE] Uploading to IPFS...');
         
-        // Upload to IPFS
+        // Upload to IPFS with cache-busting headers
         const uploadResponse = await fetch('/api/ipfs-upload', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageDataUrl }),
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Request-ID': `${Date.now()}-${Math.random()}`,
+          },
+          body: JSON.stringify({ imageDataUrl, timestamp: Date.now() }),
         });
         
         console.log('[FARCASTER-SHARE] Upload response status:', uploadResponse.status);
