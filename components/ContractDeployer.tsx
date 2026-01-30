@@ -2223,10 +2223,15 @@ contract Calculator {
 
   // Share resume on Twitter with IPFS image
   const shareOnTwitter = async () => {
-    if (!account) return;
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
     
     try {
       setGeneratingResume(true);
+      console.log('Starting Twitter share...');
+      
       const metrics = getResumeMetrics();
       const resumeData = {
         ...metrics,
@@ -2240,10 +2245,16 @@ contract Calculator {
       const dataStr = JSON.stringify(resumeData);
       localStorage.setItem(`resume-data-${account}`, dataStr);
       sessionStorage.setItem(`resume-data-${account}`, dataStr);
+      console.log('Resume data stored:', resumeData);
 
       // Capture resume image and upload to IPFS
       const resumeElement = document.getElementById('resume-capture');
-      if (resumeElement && typeof window !== 'undefined') {
+      if (!resumeElement) {
+        throw new Error('Resume card element not found on page');
+      }
+
+      console.log('Capturing resume image...');
+      if (typeof window !== 'undefined') {
         const canvas = await html2canvas(resumeElement, {
           backgroundColor: '#fafaf8',
           scale: 2,
@@ -2252,6 +2263,7 @@ contract Calculator {
         });
         
         const imageDataUrl = canvas.toDataURL('image/png');
+        console.log('Image captured, uploading to IPFS...');
         
         // Upload to IPFS
         const uploadResponse = await fetch('/api/ipfs-upload', {
@@ -2261,21 +2273,29 @@ contract Calculator {
         });
         
         if (!uploadResponse.ok) {
-          throw new Error('Failed to upload image to IPFS');
+          const errorData = await uploadResponse.json();
+          console.error('IPFS upload error:', errorData);
+          throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
         }
         
         const { ipfsUrl } = (await uploadResponse.json()) as { ipfsUrl: string };
-        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
+        console.log('Image uploaded to IPFS:', ipfsUrl);
+        
+        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
         const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}`;
         
         const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`;
         
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(resumeUrl)}`;
+        console.log('Opening Twitter with URL:', twitterUrl);
         window.open(twitterUrl, '_blank', 'width=550,height=420');
+        setError('Resume shared on X successfully!');
+        setTimeout(() => setError(null), 2000);
       }
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error sharing on Twitter:', err);
-      setError('Failed to share on Twitter');
+      setError(`Failed to share on X: ${errorMsg}`);
     } finally {
       setGeneratingResume(false);
     }
@@ -2283,10 +2303,15 @@ contract Calculator {
 
   // Share resume on Farcaster with IPFS image
   const shareOnFarcaster = async () => {
-    if (!account) return;
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
     
     try {
       setGeneratingResume(true);
+      console.log('Starting Farcaster share...');
+      
       const metrics = getResumeMetrics();
       const resumeData = {
         ...metrics,
@@ -2300,10 +2325,16 @@ contract Calculator {
       const dataStr = JSON.stringify(resumeData);
       localStorage.setItem(`resume-data-${account}`, dataStr);
       sessionStorage.setItem(`resume-data-${account}`, dataStr);
+      console.log('Resume data stored:', resumeData);
 
       // Capture resume image and upload to IPFS
       const resumeElement = document.getElementById('resume-capture');
-      if (resumeElement && typeof window !== 'undefined') {
+      if (!resumeElement) {
+        throw new Error('Resume card element not found on page');
+      }
+
+      console.log('Capturing resume image...');
+      if (typeof window !== 'undefined') {
         const canvas = await html2canvas(resumeElement, {
           backgroundColor: '#fafaf8',
           scale: 2,
@@ -2312,6 +2343,7 @@ contract Calculator {
         });
         
         const imageDataUrl = canvas.toDataURL('image/png');
+        console.log('Image captured, uploading to IPFS...');
         
         // Upload to IPFS
         const uploadResponse = await fetch('/api/ipfs-upload', {
@@ -2321,21 +2353,29 @@ contract Calculator {
         });
         
         if (!uploadResponse.ok) {
-          throw new Error('Failed to upload image to IPFS');
+          const errorData = await uploadResponse.json();
+          console.error('IPFS upload error:', errorData);
+          throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
         }
         
         const { ipfsUrl } = (await uploadResponse.json()) as { ipfsUrl: string };
-        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || '');
+        console.log('Image uploaded to IPFS:', ipfsUrl);
+        
+        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
         const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}`;
         
         const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
         
         const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
+        console.log('Opening Farcaster with URL:', farcasterUrl);
         window.open(farcasterUrl, '_blank', 'width=550,height=420');
+        setError('Resume shared on Farcaster successfully!');
+        setTimeout(() => setError(null), 2000);
       }
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error sharing on Farcaster:', err);
-      setError('Failed to share on Farcaster');
+      setError(`Failed to share on Farcaster: ${errorMsg}`);
     } finally {
       setGeneratingResume(false);
     }
@@ -4146,17 +4186,37 @@ contract Calculator {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={shareOnTwitter}
-                            className="px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] font-bold text-xs uppercase tracking-wider hover:border-[var(--ink)] transition-colors flex items-center justify-center gap-2"
+                            disabled={generatingResume}
+                            className="px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] font-bold text-xs uppercase tracking-wider hover:border-[var(--ink)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <Twitter className="w-4 h-4" strokeWidth={2} />
-                            Share on X
+                            {generatingResume ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Twitter className="w-4 h-4" strokeWidth={2} />
+                                Share on X
+                              </>
+                            )}
                           </button>
                           <button
                             onClick={shareOnFarcaster}
-                            className="px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] font-bold text-xs uppercase tracking-wider hover:border-[var(--ink)] transition-colors flex items-center justify-center gap-2"
+                            disabled={generatingResume}
+                            className="px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] font-bold text-xs uppercase tracking-wider hover:border-[var(--ink)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <MessageCircle className="w-4 h-4" strokeWidth={2} />
-                            Share on FC
+                            {generatingResume ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <MessageCircle className="w-4 h-4" strokeWidth={2} />
+                                Share on FC
+                              </>
+                            )}
                           </button>
                         </div>
 
