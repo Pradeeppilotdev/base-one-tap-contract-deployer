@@ -2253,17 +2253,36 @@ contract Calculator {
         throw new Error('Resume card element not found on page');
       }
 
-      console.log('Capturing resume image...');
+      console.log('[TWITTER-SHARE] Element found:', { w: resumeElement.offsetWidth, h: resumeElement.offsetHeight });
+      console.log('[TWITTER-SHARE] Starting html2canvas...');
       if (typeof window !== 'undefined') {
-        const canvas = await html2canvas(resumeElement, {
-          backgroundColor: '#fafaf8',
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-        });
+        let canvas;
+        try {
+          canvas = await html2canvas(resumeElement, {
+            backgroundColor: '#fafaf8',
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: true,
+            width: 1080,
+            height: 1350,
+          });
+          console.log('[TWITTER-SHARE] Canvas created:', { w: canvas.width, h: canvas.height });
+        } catch (e) {
+          console.error('[TWITTER-SHARE] html2canvas failed:', e);
+          throw new Error(`html2canvas failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
         
-        const imageDataUrl = canvas.toDataURL('image/png');
-        console.log('Image captured, uploading to IPFS...');
+        let imageDataUrl = '';
+        try {
+          imageDataUrl = canvas.toDataURL('image/png');
+          console.log('[TWITTER-SHARE] Data URL created, size:', (imageDataUrl.length / 1024).toFixed(2), 'KB');
+        } catch (e) {
+          console.error('[TWITTER-SHARE] toDataURL failed:', e);
+          throw new Error(`toDataURL failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        
+        console.log('[TWITTER-SHARE] Uploading to IPFS...');
         
         // Upload to IPFS
         const uploadResponse = await fetch('/api/ipfs-upload', {
@@ -2272,9 +2291,11 @@ contract Calculator {
           body: JSON.stringify({ imageDataUrl }),
         });
         
+        console.log('[TWITTER-SHARE] Upload response status:', uploadResponse.status);
+        
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json();
-          console.error('IPFS upload error:', errorData);
+          console.error('[TWITTER-SHARE] Upload error:', errorData);
           throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
         }
         
@@ -2333,17 +2354,36 @@ contract Calculator {
         throw new Error('Resume card element not found on page');
       }
 
-      console.log('Capturing resume image...');
+      console.log('[FARCASTER-SHARE] Element found:', { w: resumeElement.offsetWidth, h: resumeElement.offsetHeight });
+      console.log('[FARCASTER-SHARE] Starting html2canvas...');
       if (typeof window !== 'undefined') {
-        const canvas = await html2canvas(resumeElement, {
-          backgroundColor: '#fafaf8',
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-        });
+        let canvas;
+        try {
+          canvas = await html2canvas(resumeElement, {
+            backgroundColor: '#fafaf8',
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: true,
+            width: 1080,
+            height: 1350,
+          });
+          console.log('[FARCASTER-SHARE] Canvas created:', { w: canvas.width, h: canvas.height });
+        } catch (e) {
+          console.error('[FARCASTER-SHARE] html2canvas failed:', e);
+          throw new Error(`html2canvas failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
         
-        const imageDataUrl = canvas.toDataURL('image/png');
-        console.log('Image captured, uploading to IPFS...');
+        let imageDataUrl = '';
+        try {
+          imageDataUrl = canvas.toDataURL('image/png');
+          console.log('[FARCASTER-SHARE] Data URL created, size:', (imageDataUrl.length / 1024).toFixed(2), 'KB');
+        } catch (e) {
+          console.error('[FARCASTER-SHARE] toDataURL failed:', e);
+          throw new Error(`toDataURL failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        
+        console.log('[FARCASTER-SHARE] Uploading to IPFS...');
         
         // Upload to IPFS
         const uploadResponse = await fetch('/api/ipfs-upload', {
@@ -2352,9 +2392,11 @@ contract Calculator {
           body: JSON.stringify({ imageDataUrl }),
         });
         
+        console.log('[FARCASTER-SHARE] Upload response status:', uploadResponse.status);
+        
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json();
-          console.error('IPFS upload error:', errorData);
+          console.error('[FARCASTER-SHARE] Upload error:', errorData);
           throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
         }
         
@@ -4302,13 +4344,15 @@ contract Calculator {
         {/* Hidden Resume Card for Image Capture */}
         <div
           id="resume-capture"
-          className="hidden"
           style={{
-            position: 'absolute',
-            left: '-9999px',
-            top: '-9999px',
+            position: 'fixed',
+            left: '-99999px',
+            top: '-99999px',
             width: '1080px',
             minHeight: '1350px',
+            visibility: 'hidden',
+            pointerEvents: 'none',
+            zIndex: '-9999',
           }}
         >
           <div

@@ -63,9 +63,27 @@ export async function POST(request: NextRequest) {
     if (!pinataResponse.ok) {
       const error = await pinataResponse.text();
       console.error('[IPFS-UPLOAD] Pinata upload error:', pinataResponse.status, error);
+      
+      let userFriendlyError = 'Failed to upload to IPFS';
+      
+      // Provide helpful error messages based on status
+      if (pinataResponse.status === 403) {
+        if (error.includes('NO_SCOPES_FOUND')) {
+          userFriendlyError = 'Pinata API key missing required scopes. Enable "pinFileToIPFS" scope in Pinata dashboard.';
+        } else if (error.includes('Unauthorized') || error.includes('authentication')) {
+          userFriendlyError = 'Pinata authentication failed. Check your API key and secret.';
+        } else {
+          userFriendlyError = 'Access denied. Check your Pinata API key permissions.';
+        }
+      } else if (pinataResponse.status === 401) {
+        userFriendlyError = 'Invalid Pinata credentials. Check PINATA_API_KEY and PINATA_SECRET_API_KEY.';
+      } else if (pinataResponse.status === 413) {
+        userFriendlyError = 'Image is too large. Please try a smaller image.';
+      }
+      
       return NextResponse.json(
         { 
-          error: 'Failed to upload to IPFS',
+          error: userFriendlyError,
           status: pinataResponse.status,
           details: error,
         },
