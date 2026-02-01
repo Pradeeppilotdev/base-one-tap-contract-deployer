@@ -4494,34 +4494,37 @@ contract Calculator {
           </p>
         </footer>
 
-        {/* Hidden Resume Card for Image Capture */}
+        {/* Hidden Resume Card for Image Capture - 3:2 Landscape for FC embeds */}
         <div
           id="resume-capture"
           style={{
             position: 'fixed',
             left: '-99999px',
             top: '-99999px',
-            width: '540px',
-            height: 'auto',
+            width: '900px',
+            height: '600px',
             visibility: 'hidden',
             pointerEvents: 'none',
             zIndex: '-9999',
             backgroundColor: '#fafaf8',
             fontFamily: "'Comic Sans MS', cursive",
-            padding: '40px',
+            padding: '32px',
             boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          {/* Header with Profile */}
-          <div style={{ borderBottom: '4px solid #000', paddingBottom: '20px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+          {/* Top Section: Header + Title */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #000', paddingBottom: '16px', marginBottom: '20px' }}>
+            {/* Profile */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               {farcasterUser?.pfpUrl && (
                 <img 
                   src={farcasterUser.pfpUrl} 
                   alt="Profile" 
                   style={{ 
-                    width: '64px', 
-                    height: '64px', 
+                    width: '56px', 
+                    height: '56px', 
                     borderRadius: '50%', 
                     border: '3px solid #000',
                     objectFit: 'cover',
@@ -4529,98 +4532,95 @@ contract Calculator {
                 />
               )}
               <div>
-                <h1 style={{ fontSize: '32px', fontWeight: 900, color: '#000', lineHeight: 1.1, margin: 0 }}>
+                <h1 style={{ fontSize: '26px', fontWeight: 900, color: '#000', lineHeight: 1.1, margin: 0 }}>
                   {farcasterUser?.displayName || 'Base Builder'}
                 </h1>
-                {farcasterUser?.username && (
-                  <p style={{ fontSize: '14px', color: '#666', margin: '4px 0 0 0' }}>
-                    @{farcasterUser.username}
-                  </p>
-                )}
+                <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0 0' }}>
+                  {farcasterUser?.username ? `@${farcasterUser.username}` : ''} • {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : ''}
+                </p>
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
-              {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'Address'}
-            </p>
+            {/* Title */}
+            <h2 style={{ fontSize: '28px', fontWeight: 900, color: '#000', margin: 0, textAlign: 'right' }}>
+              On-Chain Resume
+            </h2>
           </div>
 
-          {/* Title */}
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#000', margin: '0 0 20px 0', textAlign: 'center' }}>
-            On-Chain Resume
-          </h2>
-
-          {/* Metrics Grid - 2x2 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+          {/* Middle Section: 4 Metrics in a row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px', flex: 1 }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Contracts
               </div>
-              <div style={{ fontSize: '40px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {deployedContracts.length}
               </div>
             </div>
 
-            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Transactions
               </div>
-              <div style={{ fontSize: '40px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {deployedContracts.length + (clickCount || 0)}
               </div>
             </div>
 
-            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Days Active
               </div>
-              <div style={{ fontSize: '40px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
               </div>
             </div>
 
-            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Gas Spent
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '32px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
               </div>
             </div>
           </div>
 
-          {/* Reward Strength Badge */}
-          <div style={{ border: '3px solid #000', padding: '16px', marginBottom: '20px', backgroundColor: '#fff' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', margin: '0 0 12px 0' }}>
-              Reward Strength
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '32px', fontWeight: 900, color: '#000' }}>
-                {getRewardStrength()?.level || 'MEDIUM'}
-              </span>
-              <div style={{ height: '20px', flex: 1, border: '3px solid #000', backgroundColor: '#f0f0f0' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    backgroundColor: '#000',
-                    width:
-                      getRewardStrength()?.level === 'HIGH'
-                        ? '100%'
-                        : getRewardStrength()?.level === 'MEDIUM-HIGH'
-                        ? '75%'
-                        : getRewardStrength()?.level === 'MEDIUM'
-                        ? '50%'
-                        : '25%',
-                  }}
-                />
+          {/* Bottom Section: Reward Strength + Footer */}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch' }}>
+            {/* Reward Strength Badge */}
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', flex: 1 }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px 0' }}>
+                Reward Strength
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '28px', fontWeight: 900, color: '#000', whiteSpace: 'nowrap' }}>
+                  {getRewardStrength()?.level || 'MEDIUM'}
+                </span>
+                <div style={{ height: '20px', flex: 1, border: '3px solid #000', backgroundColor: '#f0f0f0', minWidth: '100px' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      backgroundColor: '#000',
+                      width:
+                        getRewardStrength()?.level === 'HIGH'
+                          ? '100%'
+                          : getRewardStrength()?.level === 'MEDIUM-HIGH'
+                          ? '75%'
+                          : getRewardStrength()?.level === 'MEDIUM'
+                          ? '50%'
+                          : '25%',
+                    }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Footer */}
-          <div style={{ borderTop: '3px solid #000', paddingTop: '16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '12px', fontWeight: 700, color: '#666', letterSpacing: '0.05em', margin: 0 }}>
-              Built on Base • On-Chain Activity Proof
-            </p>
+            {/* Footer/Branding */}
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '220px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '0.05em', margin: 0, textAlign: 'center' }}>
+                Built on Base<br/>On-Chain Activity Proof
+              </p>
+            </div>
           </div>
         </div>
       </div>
