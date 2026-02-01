@@ -2533,7 +2533,9 @@ contract Calculator {
       }
       
       const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
-      const resumeUrl = `${window.location.origin}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}&preventDownload=true`;
+      // Add timestamp to bust Farcaster's OG cache
+      const cacheBuster = Date.now();
+      const resumeUrl = `${window.location.origin}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}&t=${cacheBuster}`;
       
       const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
       
