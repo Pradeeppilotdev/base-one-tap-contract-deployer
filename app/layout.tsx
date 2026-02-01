@@ -31,6 +31,18 @@ const miniAppEmbed = {
   developer: "pradeep-pilot"
 };
 
+// Build fc:frame embed for backward compatibility
+const frameEmbed = {
+  ...miniAppEmbed,
+  button: {
+    ...miniAppEmbed.button,
+    action: {
+      ...miniAppEmbed.button.action,
+      type: "launch_frame"
+    }
+  }
+};
+
 // Base metadata - used for main page, child routes override via generateMetadata
 export const metadata: Metadata = {
   title: 'Base Contract Deployer | 1-Tap Deploy',
@@ -49,6 +61,11 @@ export const metadata: Metadata = {
     title: 'Base Contract Deployer | 1-Tap Deploy',
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
     images: ['/opengraph-image'],
+  },
+  // Farcaster Mini App embed metadata - child pages can override
+  other: {
+    'fc:miniapp': JSON.stringify(miniAppEmbed),
+    'fc:frame': JSON.stringify(frameEmbed),
   },
 };
 
@@ -163,19 +180,7 @@ export default function RootLayout({
             `,
           }}
         />
-        {/* Farcaster Mini App Embed Metadata */}
-        <meta name="fc:miniapp" content={JSON.stringify(miniAppEmbed)} />
-        {/* Backward compatibility with fc:frame */}
-        <meta name="fc:frame" content={JSON.stringify({
-          ...miniAppEmbed,
-          button: {
-            ...miniAppEmbed.button,
-            action: {
-              ...miniAppEmbed.button.action,
-              type: "launch_frame"
-            }
-          }
-        })} />
+        {/* fc:miniapp and fc:frame are now in metadata API so child pages can override */}
         
         {/* OG tags are handled by metadata API in each page/layout */}
         {/* Do NOT add hardcoded og:image here - it conflicts with child route metadata */}
