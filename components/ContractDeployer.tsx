@@ -2532,31 +2532,36 @@ contract Calculator {
         throw new Error('Invalid IPFS URL received from server');
       }
       
+      // Build the resume URL with imageUrl param
+      // The /resume page has fc:miniapp meta tag with imageUrl as the embed image
+      const resumeUrl = `${window.location.origin}/resume?imageUrl=${encodeURIComponent(ipfsUrl)}`;
+      
       const text = `Check out my Base On-Chain Resume!\n\n📋 ${metrics.contractCount} Contracts Deployed\n💫 ${metrics.totalTransactions} Total Transactions\n⛽ ${metrics.gasSpentEth} ETH Gas Spent\n📅 ${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility! 🔵`;
       
+      console.log('Resume URL with IPFS image:', resumeUrl);
       console.log('IPFS image URL:', ipfsUrl);
       
       // Use Farcaster SDK composeCast if available (proper way for mini apps)
-      // Embed IPFS image directly - Farcaster will display it as an image
+      // Embed the resume URL - Farcaster will fetch fc:miniapp meta tag with IPFS image
       if (sdk?.actions?.composeCast) {
-        console.log('Using Farcaster SDK composeCast with IPFS image embed');
+        console.log('Using Farcaster SDK composeCast with resume URL');
         try {
           await sdk.actions.composeCast({
             text: text,
-            embeds: [ipfsUrl], // Embed IPFS image directly
+            embeds: [resumeUrl], // Embed resume URL with fc:miniapp meta tag
           });
           setError('Resume shared on Farcaster successfully!');
           setTimeout(() => setError(null), 2000);
         } catch (castError) {
           console.error('composeCast failed:', castError);
           // Fallback to warpcast URL
-          const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(ipfsUrl)}`;
+          const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
           window.open(farcasterUrl, '_blank', 'width=550,height=420');
         }
       } else {
         // Fallback to URL-based share for non-Farcaster environments
         console.log('Fallback: Opening Warpcast URL');
-        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(ipfsUrl)}`;
+        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
         window.open(farcasterUrl, '_blank', 'width=550,height=420');
         setError('Resume shared on Farcaster successfully!');
         setTimeout(() => setError(null), 2000);

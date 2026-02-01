@@ -31,6 +31,34 @@ export async function generateMetadata({
 
   console.log('[RESUME-PAGE-METADATA] OG Image URL:', ogImage);
 
+  // Build the fc:miniapp embed JSON - THIS is what Farcaster uses for the embed preview!
+  const miniAppEmbed = {
+    version: "1",
+    imageUrl: ogImage, // Use the IPFS image as the embed image
+    button: {
+      title: "View Resume",
+      action: {
+        type: "launch_miniapp",
+        url: "https://base-one-tap-contract-deployer.vercel.app/",
+        name: "Base Contract Deployer",
+        splashImageUrl: "https://base-one-tap-contract-deployer.vercel.app/splash.png",
+        splashBackgroundColor: "#1a1a1a"
+      }
+    }
+  };
+
+  // For backward compatibility with fc:frame
+  const frameEmbed = {
+    ...miniAppEmbed,
+    button: {
+      ...miniAppEmbed.button,
+      action: {
+        ...miniAppEmbed.button.action,
+        type: "launch_frame"
+      }
+    }
+  };
+
   return {
     title,
     description,
@@ -53,6 +81,11 @@ export async function generateMetadata({
       title,
       description,
       images: [ogImage],
+    },
+    // Add fc:miniapp and fc:frame meta tags for Farcaster embed
+    other: {
+      'fc:miniapp': JSON.stringify(miniAppEmbed),
+      'fc:frame': JSON.stringify(frameEmbed),
     },
   };
 }
