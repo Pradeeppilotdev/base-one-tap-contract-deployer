@@ -31,6 +31,7 @@ const miniAppEmbed = {
   developer: "pradeep-pilot"
 };
 
+// Base metadata - child routes can override via generateMetadata
 export const metadata: Metadata = {
   title: 'Base Contract Deployer | 1-Tap Deploy',
   description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
