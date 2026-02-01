@@ -1,5 +1,8 @@
 import { Metadata } from 'next';
 
+// Force dynamic rendering so generateMetadata can access searchParams
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   searchParams,
 }: {
@@ -27,6 +30,7 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // Override ALL openGraph from parent
     openGraph: {
       title,
       description,
@@ -39,12 +43,18 @@ export async function generateMetadata({
         },
       ],
       type: 'website',
+      siteName: 'Base On-Chain Resume',
     },
+    // Override ALL twitter from parent
     twitter: {
       card: 'summary_large_image',
       title,
       description,
       images: [ogImage],
+    },
+    // These explicit nulls help ensure parent values don't leak through
+    other: {
+      'fc:frame': '', // Clear Farcaster frame meta for resume page
     },
   };
 }
