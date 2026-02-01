@@ -1,10 +1,19 @@
 import { ImageResponse } from 'next/og';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    
+    // If an IPFS image is provided, redirect to it directly
+    const ipfsImage = searchParams.get('ipfsImage');
+    if (ipfsImage) {
+      console.log('[RESUME-OG] Redirecting to IPFS image:', ipfsImage);
+      return NextResponse.redirect(ipfsImage);
+    }
+    
     const address = searchParams.get('address') || 'User';
     const contractCount = searchParams.get('contracts') || '0';
     const transactions = searchParams.get('transactions') || '0';

@@ -2252,6 +2252,19 @@ contract Calculator {
       if (!resumeElement) {
         throw new Error('Resume card element not found on page');
       }
+      
+      // Add unique hidden element to make each capture unique for IPFS
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      const uniqueMarker = document.createElement('div');
+      uniqueMarker.id = 'unique-marker-temp';
+      uniqueMarker.textContent = uniqueId;
+      uniqueMarker.style.cssText = 'position:absolute;bottom:5px;right:5px;font-size:10px;color:#999999;font-family:monospace;pointer-events:none;z-index:9999;';
+      resumeElement.appendChild(uniqueMarker);
+      console.log('[TWITTER-SHARE] Added unique marker to HTML:', uniqueId);
+      
+      // CRITICAL: Wait for DOM to fully render the marker
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('[TWITTER-SHARE] DOM updated, marker should be visible');
 
       console.log('[TWITTER-SHARE] Element found:', { w: resumeElement.offsetWidth, h: resumeElement.offsetHeight });
       console.log('[TWITTER-SHARE] Starting html2canvas...');
@@ -2270,15 +2283,35 @@ contract Calculator {
           console.log('[TWITTER-SHARE] Canvas created:', { w: canvas.width, h: canvas.height });
         } catch (e) {
           console.error('[TWITTER-SHARE] html2canvas failed:', e);
+          // Clean up marker on error
+          if (uniqueMarker && uniqueMarker.parentNode) {
+            uniqueMarker.remove();
+          }
           throw new Error(`html2canvas failed: ${e instanceof Error ? e.message : String(e)}`);
         }
         
         let imageDataUrl = '';
+        let imageChecksum = '';
         try {
           imageDataUrl = canvas.toDataURL('image/png');
+          // Generate checksum to verify image data changes
+          const imageBuffer = await fetch(imageDataUrl).then(r => r.blob()).then(b => b.arrayBuffer());
+          const hashBuffer = await crypto.subtle.digest('SHA-256', imageBuffer);
+          imageChecksum = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
           console.log('[TWITTER-SHARE] Data URL created, size:', (imageDataUrl.length / 1024).toFixed(2), 'KB');
+          console.log('[TWITTER-SHARE] Image checksum:', imageChecksum);
+          
+          // NOW remove marker after we have the data URL
+          if (uniqueMarker && uniqueMarker.parentNode) {
+            uniqueMarker.remove();
+            console.log('[TWITTER-SHARE] Removed unique marker from HTML');
+          }
         } catch (e) {
-          console.error('[TWITTER-SHARE] toDataURL failed:', e);
+          // Clean up marker on error
+          if (uniqueMarker && uniqueMarker.parentNode) {
+            uniqueMarker.remove();
+          }
+          console.error('[TWITTER-SHARE] toDataURL/checksum failed:', e);
           throw new Error(`toDataURL failed: ${e instanceof Error ? e.message : String(e)}`);
         }
         
@@ -2294,7 +2327,7 @@ contract Calculator {
             'Expires': '0',
             'X-Request-ID': `${Date.now()}-${Math.random()}`,
           },
-          body: JSON.stringify({ imageDataUrl, timestamp: Date.now() }),
+          body: JSON.stringify({ imageDataUrl, timestamp: Date.now(), checksum: imageChecksum }),
         });
         
         console.log('[TWITTER-SHARE] Upload response status:', uploadResponse.status);
@@ -2305,11 +2338,18 @@ contract Calculator {
           throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
         }
         
-        const { ipfsUrl } = (await uploadResponse.json()) as { ipfsUrl: string };
+        const uploadData = (await uploadResponse.json()) as { ipfsUrl: string; hash?: string };
+        const { ipfsUrl } = uploadData;
         console.log('Image uploaded to IPFS:', ipfsUrl);
+        console.log('[TWITTER-SHARE] IPFS hash:', uploadData.hash);
+        console.log('[TWITTER-SHARE] Local checksum:', imageChecksum);
+        
+        if (!ipfsUrl || ipfsUrl.trim().length === 0) {
+          throw new Error('Invalid IPFS URL received from server');
+        }
         
         const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
-        const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}`;
+        const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}&preventDownload=true`;
         
         const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!\n\n#Base #Web3`;
         
@@ -2355,77 +2395,153 @@ contract Calculator {
       console.log('Resume data stored:', resumeData);
 
       // Capture resume image and upload to IPFS
-      const resumeElement = document.getElementById('resume-capture');
+      const resumeElement = document.getElementById('resume-capture') as HTMLElement | null;
       if (!resumeElement) {
         throw new Error('Resume card element not found on page');
       }
 
-      console.log('[FARCASTER-SHARE] Element found:', { w: resumeElement.offsetWidth, h: resumeElement.offsetHeight });
+      // Store original styles
+      const originalStyles = {
+        visibility: resumeElement.style.visibility,
+        position: resumeElement.style.position,
+        left: resumeElement.style.left,
+        top: resumeElement.style.top,
+        zIndex: resumeElement.style.zIndex,
+      };
+      
+      // Make element visible for capture (fixes hidden element issues)
+      resumeElement.style.visibility = 'visible';
+      resumeElement.style.position = 'fixed';
+      resumeElement.style.left = '0';
+      resumeElement.style.top = '0';
+      resumeElement.style.zIndex = '99999';
+      
+      // Wait for render
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      console.log('[FARCASTER-SHARE] Element visible for capture:', { w: resumeElement.offsetWidth, h: resumeElement.offsetHeight });
       console.log('[FARCASTER-SHARE] Starting html2canvas...');
-      if (typeof window !== 'undefined') {
-        let canvas;
-        try {
-          canvas = await html2canvas(resumeElement, {
-            backgroundColor: '#fafaf8',
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            logging: true,
-            width: 1080,
-            height: 1350,
-          });
-          console.log('[FARCASTER-SHARE] Canvas created:', { w: canvas.width, h: canvas.height });
-        } catch (e) {
-          console.error('[FARCASTER-SHARE] html2canvas failed:', e);
-          throw new Error(`html2canvas failed: ${e instanceof Error ? e.message : String(e)}`);
-        }
-        
-        let imageDataUrl = '';
-        try {
-          imageDataUrl = canvas.toDataURL('image/png');
-          console.log('[FARCASTER-SHARE] Data URL created, size:', (imageDataUrl.length / 1024).toFixed(2), 'KB');
-        } catch (e) {
-          console.error('[FARCASTER-SHARE] toDataURL failed:', e);
-          throw new Error(`toDataURL failed: ${e instanceof Error ? e.message : String(e)}`);
-        }
-        
-        console.log('[FARCASTER-SHARE] Uploading to IPFS...');
-        
-        // Upload to IPFS with cache-busting headers
-        const uploadResponse = await fetch('/api/ipfs-upload', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'X-Request-ID': `${Date.now()}-${Math.random()}`,
-          },
-          body: JSON.stringify({ imageDataUrl, timestamp: Date.now() }),
+      
+      let canvas: HTMLCanvasElement;
+      try {
+        canvas = await html2canvas(resumeElement, {
+          backgroundColor: '#fafaf8',
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          width: 1080,
+          height: 1350,
         });
-        
-        console.log('[FARCASTER-SHARE] Upload response status:', uploadResponse.status);
-        
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json();
-          console.error('[FARCASTER-SHARE] Upload error:', errorData);
-          throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
-        }
-        
-        const { ipfsUrl } = (await uploadResponse.json()) as { ipfsUrl: string };
-        console.log('Image uploaded to IPFS:', ipfsUrl);
-        
-        const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
-        const resumeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}`;
-        
-        const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
-        
-        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
-        console.log('Opening Farcaster with URL:', farcasterUrl);
-        window.open(farcasterUrl, '_blank', 'width=550,height=420');
-        setError('Resume shared on Farcaster successfully!');
-        setTimeout(() => setError(null), 2000);
+      } finally {
+        // Restore original styles immediately after capture
+        resumeElement.style.visibility = originalStyles.visibility;
+        resumeElement.style.position = originalStyles.position;
+        resumeElement.style.left = originalStyles.left;
+        resumeElement.style.top = originalStyles.top;
+        resumeElement.style.zIndex = originalStyles.zIndex;
       }
+      
+      console.log('[FARCASTER-SHARE] Canvas created:', { w: canvas.width, h: canvas.height });
+      
+      // Get canvas context - MUST succeed
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Failed to get canvas 2D context');
+      }
+      
+      // Generate unique identifier
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+      const seed = Date.now();
+      
+      // METHOD 1: Draw a visible rectangle with unique color
+      const uniqueColor = seed % 200 + 50; // 50-250 range for visibility
+      ctx.fillStyle = `rgb(${uniqueColor}, ${uniqueColor}, ${uniqueColor})`;
+      ctx.fillRect(canvas.width - 200, canvas.height - 60, 190, 50);
+      
+      // METHOD 2: Draw visible text on the rectangle
+      ctx.font = 'bold 14px Arial';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'right';
+      ctx.fillText(uniqueId, canvas.width - 15, canvas.height - 30);
+      
+      // METHOD 3: Directly modify pixel data using getImageData/putImageData
+      // This is the GUARANTEED way to change canvas content
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+      
+      // Modify 1000 random pixels across the image
+      for (let i = 0; i < 1000; i++) {
+        const randomPixel = Math.floor(Math.random() * (pixels.length / 4)) * 4;
+        pixels[randomPixel] = (pixels[randomPixel] + seed + i) % 256;     // R
+        pixels[randomPixel + 1] = (pixels[randomPixel + 1] + seed) % 256; // G
+        pixels[randomPixel + 2] = (pixels[randomPixel + 2] + i) % 256;    // B
+        // Alpha channel (pixels[randomPixel + 3]) left unchanged
+      }
+      
+      // Put the modified pixel data back
+      ctx.putImageData(imageData, 0, 0);
+      
+      console.log('[FARCASTER-SHARE] Modified canvas with unique ID:', uniqueId);
+      
+      // VERIFY the modification worked by reading back some pixels
+      const verifyData = ctx.getImageData(canvas.width - 50, canvas.height - 50, 10, 10);
+      console.log('[FARCASTER-SHARE] Verify pixels (should change each time):', 
+        Array.from(verifyData.data.slice(0, 16)).join(','));
+      
+      // Convert to data URL
+      const imageDataUrl = canvas.toDataURL('image/png');
+      
+      // Generate checksum to verify image uniqueness
+      const imageBuffer = await fetch(imageDataUrl).then(r => r.blob()).then(b => b.arrayBuffer());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', imageBuffer);
+      const imageChecksum = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      console.log('[FARCASTER-SHARE] Data URL created, size:', (imageDataUrl.length / 1024).toFixed(2), 'KB');
+      console.log('[FARCASTER-SHARE] Image checksum (SHOULD BE DIFFERENT EACH TIME):', imageChecksum);
+      
+      console.log('[FARCASTER-SHARE] Uploading to IPFS...');
+      
+      // Upload to IPFS
+      const uploadResponse = await fetch('/api/ipfs-upload', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Request-ID': `${Date.now()}-${Math.random()}`,
+        },
+        body: JSON.stringify({ imageDataUrl, timestamp: Date.now(), checksum: imageChecksum }),
+      });
+      
+      console.log('[FARCASTER-SHARE] Upload response status:', uploadResponse.status);
+      
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        console.error('[FARCASTER-SHARE] Upload error:', errorData);
+        throw new Error(`Failed to upload image: ${errorData.error || 'Unknown error'}`);
+      }
+      
+      const uploadData = (await uploadResponse.json()) as { ipfsUrl: string; hash?: string };
+      const { ipfsUrl } = uploadData;
+      console.log('Image uploaded to IPFS:', ipfsUrl);
+      console.log('[FARCASTER-SHARE] IPFS hash:', uploadData.hash);
+      console.log('[FARCASTER-SHARE] Local checksum:', imageChecksum);
+      
+      if (!ipfsUrl || ipfsUrl.trim().length === 0) {
+        throw new Error('Invalid IPFS URL received from server');
+      }
+      
+      const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
+      const resumeUrl = `${window.location.origin}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}&preventDownload=true`;
+      
+      const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
+      
+      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
+      console.log('Opening Farcaster with URL:', farcasterUrl);
+      window.open(farcasterUrl, '_blank', 'width=550,height=420');
+      setError('Resume shared on Farcaster successfully!');
+      setTimeout(() => setError(null), 2000);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error sharing on Farcaster:', err);
@@ -3473,12 +3589,13 @@ contract Calculator {
                     {deployedContracts.length}
                   </span>
                   {showHistory && (
-                    <button
+                    <div
+                      role="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setContractSortOrder(contractSortOrder === 'newest' ? 'oldest' : 'newest');
                       }}
-                      className="p-1 hover:bg-[var(--light)] rounded transition-colors"
+                      className="p-1 hover:bg-[var(--light)] rounded transition-colors cursor-pointer"
                       title={contractSortOrder === 'newest' ? 'Showing newest first' : 'Showing oldest first'}
                     >
                       {contractSortOrder === 'newest' ? (
@@ -3486,7 +3603,7 @@ contract Calculator {
                       ) : (
                         <ChevronDown className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
                       )}
-                    </button>
+                    </div>
                   )}
                 </div>
               )}

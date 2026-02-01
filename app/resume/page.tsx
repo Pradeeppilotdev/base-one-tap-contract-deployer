@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 
 interface ResumeData {
   address: string;
@@ -56,7 +57,17 @@ export default function ResumePage() {
     const strengthLevel = userData.rewardStrength?.level || 'MEDIUM';
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
     const imageParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('image') : null;
-    const ogImageUrl = imageParam || `${baseUrl}/api/resume-og?address=${userData.address}&contracts=${userData.contractCount}&transactions=${userData.totalTransactions}&gas=${userData.gasSpentEth}&days=${userData.uniqueDays}&strength=${strengthLevel}`;
+    
+    // ALWAYS use IPFS image if provided, otherwise generate one
+    let ogImageUrl = imageParam;
+    if (ogImageUrl) {
+      // Ensure the IPFS URL is properly decoded
+      ogImageUrl = decodeURIComponent(ogImageUrl);
+      console.log('[RESUME-PAGE] Using IPFS image for OG tags:', ogImageUrl);
+    } else {
+      ogImageUrl = `${baseUrl}/api/resume-og?address=${userData.address}&contracts=${userData.contractCount}&transactions=${userData.totalTransactions}&gas=${userData.gasSpentEth}&days=${userData.uniqueDays}&strength=${strengthLevel}`;
+      console.log('[RESUME-PAGE] No IPFS image, generating via API:', ogImageUrl);
+    }
     
     const title = `${userData.displayName || userData.username || 'Developer'}'s Base On-Chain Resume`;
     const description = `${userData.contractCount} Contracts Deployed | ${userData.totalTransactions} Transactions | ${userData.gasSpentEth} ETH Gas | ${userData.uniqueDays} Days Active`;
@@ -120,10 +131,33 @@ export default function ResumePage() {
   }
 
   const strengthLevel = userData.rewardStrength?.level || 'MEDIUM';
+  
+  // Get IPFS image from URL params
+  const ipfsImageUrl = typeof window !== 'undefined' 
+    ? decodeURIComponent(new URLSearchParams(window.location.search).get('image') || '')
+    : '';
 
   return (
     <div className="min-h-screen bg-[var(--paper)] p-4">
       <div className="max-w-2xl mx-auto">
+        {/* Display IPFS Image if available */}
+        {ipfsImageUrl && (
+          <div className="mb-6 border-4 border-[var(--ink)] overflow-hidden">
+            <img 
+              src={ipfsImageUrl} 
+              alt="Base On-Chain Resume"
+              className="w-full h-auto"
+              onError={(e) => {
+                console.error('[RESUME-PAGE] IPFS image failed to load:', ipfsImageUrl);
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+              onLoad={() => {
+                console.log('[RESUME-PAGE] IPFS image loaded successfully:', ipfsImageUrl);
+              }}
+            />
+          </div>
+        )}
+        
         {/* Resume Card */}
         <div
           id="resume-capture"
