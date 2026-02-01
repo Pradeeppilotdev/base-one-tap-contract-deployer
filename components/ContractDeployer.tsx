@@ -2539,8 +2539,12 @@ contract Calculator {
       
       const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
       
-      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
+      // Embed IPFS image directly + resume URL
+      // The image embed shows the resume card, the URL embed links to the page
+      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(ipfsUrl)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
       console.log('Opening Farcaster with URL:', farcasterUrl);
+      console.log('IPFS image embed:', ipfsUrl);
+      console.log('Resume page embed:', resumeUrl);
       window.open(farcasterUrl, '_blank', 'width=550,height=420');
       setError('Resume shared on Farcaster successfully!');
       setTimeout(() => setError(null), 2000);
