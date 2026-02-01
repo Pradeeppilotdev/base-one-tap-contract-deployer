@@ -31,8 +31,7 @@ const miniAppEmbed = {
   developer: "pradeep-pilot"
 };
 
-// Base metadata WITHOUT og:image - child routes define their own images
-// This prevents duplicate og:image tags that confuse social crawlers
+// Base metadata - used for main page, child routes override via generateMetadata
 export const metadata: Metadata = {
   title: 'Base Contract Deployer | 1-Tap Deploy',
   description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
@@ -40,15 +39,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Base Contract Deployer | 1-Tap Deploy',
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
-    // images intentionally omitted - main page and child routes define their own
+    images: ['/opengraph-image'],
     type: 'website',
     siteName: 'Base Contract Deployer',
+    url: appUrl,
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Base Contract Deployer | 1-Tap Deploy',
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
-    // images intentionally omitted
+    images: ['/opengraph-image'],
   },
 };
 
@@ -177,16 +177,8 @@ export default function RootLayout({
           }
         })} />
         
-        {/* Open Graph */}
-        <meta property="og:title" content="Base Contract Deployer | 1-Tap Deploy" />
-        <meta property="og:description" content="Deploy smart contracts to Base blockchain with one tap. No code needed!" />
-        <meta property="og:image" content={`${appUrl}/opengraph-image`} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={appUrl} />
-        <meta property="og:site_name" content="Base Contract Deployer" />
+        {/* OG tags are handled by metadata API in each page/layout */}
+        {/* Do NOT add hardcoded og:image here - it conflicts with child route metadata */}
       </head>
       <body className="bg-[#f5f5f0]">
         <WagmiProvider>
