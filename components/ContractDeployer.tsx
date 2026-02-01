@@ -2430,8 +2430,8 @@ contract Calculator {
           useCORS: true,
           allowTaint: true,
           logging: false,
-          width: 1080,
-          height: 1350,
+          // Let html2canvas capture the actual element size
+          // No fixed width/height - captures content as-is
         });
       } finally {
         // Restore original styles immediately after capture
@@ -4501,75 +4501,103 @@ contract Calculator {
             position: 'fixed',
             left: '-99999px',
             top: '-99999px',
-            width: '1080px',
-            minHeight: '1350px',
+            width: '540px',
+            height: 'auto',
             visibility: 'hidden',
             pointerEvents: 'none',
             zIndex: '-9999',
             backgroundColor: '#fafaf8',
             fontFamily: "'Comic Sans MS', cursive",
-            padding: '32px',
+            padding: '40px',
+            boxSizing: 'border-box',
           }}
         >
-          {/* Header */}
-          <div style={{ borderBottom: '4px solid #000', paddingBottom: '24px', marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1.2 }}>
-              Base On-Chain Resume
-            </h1>
-            <p style={{ fontSize: '14px', color: '#666', marginTop: '16px' }}>
+          {/* Header with Profile */}
+          <div style={{ borderBottom: '4px solid #000', paddingBottom: '20px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+              {farcasterUser?.pfpUrl && (
+                <img 
+                  src={farcasterUser.pfpUrl} 
+                  alt="Profile" 
+                  style={{ 
+                    width: '64px', 
+                    height: '64px', 
+                    borderRadius: '50%', 
+                    border: '3px solid #000',
+                    objectFit: 'cover',
+                  }} 
+                />
+              )}
+              <div>
+                <h1 style={{ fontSize: '32px', fontWeight: 900, color: '#000', lineHeight: 1.1, margin: 0 }}>
+                  {farcasterUser?.displayName || 'Base Builder'}
+                </h1>
+                {farcasterUser?.username && (
+                  <p style={{ fontSize: '14px', color: '#666', margin: '4px 0 0 0' }}>
+                    @{farcasterUser.username}
+                  </p>
+                )}
+              </div>
+            </div>
+            <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
               {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'Address'}
             </p>
           </div>
 
-          {/* Metrics Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+          {/* Title */}
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#000', margin: '0 0 20px 0', textAlign: 'center' }}>
+            On-Chain Resume
+          </h2>
+
+          {/* Metrics Grid - 2x2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Contracts
               </div>
-              <div style={{ fontSize: '60px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '40px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {deployedContracts.length}
               </div>
             </div>
 
-            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Transactions
               </div>
-              <div style={{ fontSize: '60px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '40px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {deployedContracts.length + (clickCount || 0)}
               </div>
             </div>
 
-            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Days Active
               </div>
-              <div style={{ fontSize: '60px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '40px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
               </div>
             </div>
 
-            <div style={{ border: '4px solid #000', padding: '24px', backgroundColor: '#fafaf8' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Gas Spent
               </div>
-              <div style={{ fontSize: '36px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
                 {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
               </div>
             </div>
           </div>
 
           {/* Reward Strength Badge */}
-          <div style={{ border: '4px solid #000', padding: '24px', marginBottom: '32px', backgroundColor: '#fafaf8' }}>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px' }}>
+          <div style={{ border: '3px solid #000', padding: '16px', marginBottom: '20px', backgroundColor: '#fff' }}>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', margin: '0 0 12px 0' }}>
               Reward Strength
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ fontSize: '48px', fontWeight: 900, color: '#000' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '32px', fontWeight: 900, color: '#000' }}>
                 {getRewardStrength()?.level || 'MEDIUM'}
               </span>
-              <div style={{ height: '24px', flex: 1, border: '4px solid #000', backgroundColor: '#f0f0f0' }}>
+              <div style={{ height: '20px', flex: 1, border: '3px solid #000', backgroundColor: '#f0f0f0' }}>
                 <div
                   style={{
                     height: '100%',
@@ -4589,9 +4617,9 @@ contract Calculator {
           </div>
 
           {/* Footer */}
-          <div style={{ borderTop: '4px solid #000', paddingTop: '24px', textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#666', letterSpacing: '0.05em' }}>
-              Built on Base | On-Chain Activity Proof
+          <div style={{ borderTop: '3px solid #000', paddingTop: '16px', textAlign: 'center' }}>
+            <p style={{ fontSize: '12px', fontWeight: 700, color: '#666', letterSpacing: '0.05em', margin: 0 }}>
+              Built on Base • On-Chain Activity Proof
             </p>
           </div>
         </div>
