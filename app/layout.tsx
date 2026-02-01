@@ -31,7 +31,8 @@ const miniAppEmbed = {
   developer: "pradeep-pilot"
 };
 
-// Base metadata - child routes can override via generateMetadata
+// Base metadata WITHOUT og:image - child routes define their own images
+// This prevents duplicate og:image tags that confuse social crawlers
 export const metadata: Metadata = {
   title: 'Base Contract Deployer | 1-Tap Deploy',
   description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Base Contract Deployer | 1-Tap Deploy',
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
-    images: ['/opengraph-image'],
+    // images intentionally omitted - main page and child routes define their own
     type: 'website',
     siteName: 'Base Contract Deployer',
   },
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Base Contract Deployer | 1-Tap Deploy',
     description: 'Deploy smart contracts to Base blockchain with one tap. No code needed!',
-    images: ['/opengraph-image'],
+    // images intentionally omitted
   },
 };
 
