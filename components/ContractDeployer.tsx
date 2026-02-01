@@ -2532,22 +2532,42 @@ contract Calculator {
         throw new Error('Invalid IPFS URL received from server');
       }
       
-      const displayNameEncoded = encodeURIComponent(farcasterUser?.displayName || 'Developer');
-      // Add timestamp to bust Farcaster's OG cache
-      const cacheBuster = Date.now();
-      const resumeUrl = `${window.location.origin}/resume?address=${account}&contracts=${metrics.contractCount}&transactions=${metrics.totalTransactions}&gas=${metrics.gasSpentEth}&days=${metrics.uniqueDays}&strength=${metrics.rewardStrength?.level || 'MEDIUM'}&displayName=${displayNameEncoded}&image=${encodeURIComponent(ipfsUrl)}&t=${cacheBuster}`;
+      // Build share URL with imageUrl param (like the reference project)
+      // This allows the OG tags to pick up the IPFS image
+      const params = new URLSearchParams({ 
+        imageUrl: ipfsUrl,
+        address: account,
+        contracts: metrics.contractCount.toString(),
+        transactions: metrics.totalTransactions.toString(),
+        gas: metrics.gasSpentEth,
+        days: metrics.uniqueDays.toString(),
+        strength: metrics.rewardStrength?.level || 'MEDIUM',
+        displayName: farcasterUser?.displayName || 'Developer',
+      });
+      const shareUrl = `${window.location.origin}/resume?${params.toString()}`;
       
       const text = `Check out my Base On-Chain Resume\n\n${metrics.contractCount} Contracts Deployed\n${metrics.totalTransactions} Total Transactions\n${metrics.gasSpentEth} ETH Gas Spent\n${metrics.uniqueDays} Days Active\n\nBuilding on-chain credibility!`;
       
-      // Embed IPFS image directly + resume URL
-      // The image embed shows the resume card, the URL embed links to the page
-      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(ipfsUrl)}&embeds[]=${encodeURIComponent(resumeUrl)}`;
-      console.log('Opening Farcaster with URL:', farcasterUrl);
-      console.log('IPFS image embed:', ipfsUrl);
-      console.log('Resume page embed:', resumeUrl);
-      window.open(farcasterUrl, '_blank', 'width=550,height=420');
-      setError('Resume shared on Farcaster successfully!');
-      setTimeout(() => setError(null), 2000);
+      console.log('Share URL:', shareUrl);
+      console.log('IPFS image:', ipfsUrl);
+      
+      // Use Farcaster SDK composeCast if available (proper way for mini apps)
+      if (sdk?.actions?.composeCast) {
+        console.log('Using Farcaster SDK composeCast');
+        await sdk.actions.composeCast({
+          text: text,
+          embeds: [shareUrl],
+        });
+        setError('Resume shared on Farcaster successfully!');
+        setTimeout(() => setError(null), 2000);
+      } else {
+        // Fallback to URL-based share for non-Farcaster environments
+        console.log('Fallback: Opening Warpcast URL');
+        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(shareUrl)}`;
+        window.open(farcasterUrl, '_blank', 'width=550,height=420');
+        setError('Resume shared on Farcaster successfully!');
+        setTimeout(() => setError(null), 2000);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       console.error('Error sharing on Farcaster:', err);

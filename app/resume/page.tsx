@@ -18,7 +18,8 @@ export async function generateMetadata({
   const gas = (params.gas as string) || '0.0000';
   const days = (params.days as string) || '0';
   const strength = (params.strength as string) || 'MEDIUM';
-  const imageUrl = params.image as string;
+  // Accept both 'imageUrl' (new) and 'image' (old) parameters
+  const imageUrl = (params.imageUrl as string) || (params.image as string);
 
   const title = `${displayName}'s Base On-Chain Resume`;
   const description = `${contracts} Contracts Deployed | ${transactions} Transactions | ${gas} ETH Gas | ${days} Days Active`;
