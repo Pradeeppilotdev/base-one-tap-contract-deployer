@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PINATA_API_KEY = process.env.PINATA_API_KEY || '';
 const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY || '';
+// Use dedicated Pinata gateway for faster loading (falls back to public gateway)
+const PINATA_GATEWAY = process.env.PINATA_GATEWAY || 'aqua-historical-chinchilla-769.mypinata.cloud';
 
 export async function POST(request: NextRequest) {
   try {
@@ -130,11 +132,13 @@ export async function POST(request: NextRequest) {
     }
 
     const pinataData = (await pinataResponse.json()) as { IpfsHash: string };
-    const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${pinataData.IpfsHash}`;
+    // Use dedicated gateway for faster loading in Farcaster casts
+    const ipfsUrl = `https://${PINATA_GATEWAY}/ipfs/${pinataData.IpfsHash}`;
     
     console.log('[IPFS-UPLOAD] ========== UPLOAD SUCCESSFUL ==========');
     console.log('[IPFS-UPLOAD] IPFS Hash:', pinataData.IpfsHash);
     console.log('[IPFS-UPLOAD] IPFS URL:', ipfsUrl);
+    console.log('[IPFS-UPLOAD] Using dedicated gateway:', PINATA_GATEWAY);
     console.log('[IPFS-UPLOAD] ==========================================');
 
     return NextResponse.json({
