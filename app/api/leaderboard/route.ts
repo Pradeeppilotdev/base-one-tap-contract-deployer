@@ -105,6 +105,32 @@ export async function GET(request: NextRequest) {
           }
         }
         
+        // Determine highest achievement based on contract count
+        let highestAchievement = null;
+        if (fidEntry.contractCount >= 1000) {
+          highestAchievement = { name: 'Legendary Builder', icon: 'Gem', milestone: 1000 };
+        } else if (fidEntry.contractCount >= 750) {
+          highestAchievement = { name: 'Web3 Visionary', icon: 'Sparkles', milestone: 750 };
+        } else if (fidEntry.contractCount >= 500) {
+          highestAchievement = { name: 'Blockchain Pioneer', icon: 'Crown', milestone: 500 };
+        } else if (fidEntry.contractCount >= 300) {
+          highestAchievement = { name: 'Unstoppable Force', icon: 'Rocket', milestone: 300 };
+        } else if (fidEntry.contractCount >= 200) {
+          highestAchievement = { name: 'Mega Creator', icon: 'Zap', milestone: 200 };
+        } else if (fidEntry.contractCount >= 100) {
+          highestAchievement = { name: 'Contract Deity', icon: 'Gem', milestone: 100 };
+        } else if (fidEntry.contractCount >= 50) {
+          highestAchievement = { name: 'Base Builder', icon: 'Rocket', milestone: 50 };
+        } else if (fidEntry.contractCount >= 20) {
+          highestAchievement = { name: 'Deployment Legend', icon: 'Crown', milestone: 20 };
+        } else if (fidEntry.contractCount >= 10) {
+          highestAchievement = { name: 'Contract Master', icon: 'Trophy', milestone: 10 };
+        } else if (fidEntry.contractCount >= 5) {
+          highestAchievement = { name: 'Power User', icon: 'Zap', milestone: 5 };
+        } else if (fidEntry.contractCount >= 1) {
+          highestAchievement = { name: 'First Deploy', icon: 'Sparkles', milestone: 1 };
+        }
+        
         // Only include users with at least one contract or referral
         if (fidEntry.contractCount > 0 || fidEntry.referralCount > 0) {
           usersData.push({
@@ -116,7 +142,8 @@ export async function GET(request: NextRequest) {
             referralCount: fidEntry.referralCount,
             referralPoints: fidEntry.referralPoints,
             clicks: fidEntry.clicks,
-            firstDeployedAt: fidEntry.firstDeployedAt
+            firstDeployedAt: fidEntry.firstDeployedAt,
+            highestAchievement: highestAchievement
           });
         }
       }

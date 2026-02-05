@@ -3864,8 +3864,28 @@ contract Calculator {
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <div className="text-xs font-semibold text-[var(--ink)] truncate">
-                                    {user.displayName || user.username || 'User'}
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-semibold text-[var(--ink)] truncate">
+                                      {user.displayName || user.username || 'User'}
+                                    </span>
+                                    {user.highestAchievement && (() => {
+                                      const IconComponent = {
+                                        'Sparkles': Sparkles,
+                                        'Zap': Zap,
+                                        'Trophy': Trophy,
+                                        'Crown': Crown,
+                                        'Rocket': Rocket,
+                                        'Gem': Gem
+                                      }[user.highestAchievement.icon] || Sparkles;
+                                      return (
+                                        <span 
+                                          className="flex-shrink-0" 
+                                          title={`${user.highestAchievement.name} (${user.highestAchievement.milestone}+ contracts)`}
+                                        >
+                                          <IconComponent className="w-3.5 h-3.5 text-[var(--ink)]" strokeWidth={2.5} />
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                   {user.username && (
                                     <div className="text-xs text-[var(--graphite)] truncate">
