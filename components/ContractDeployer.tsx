@@ -3869,14 +3869,15 @@ contract Calculator {
                                       {user.displayName || user.username || 'User'}
                                     </span>
                                     {user.highestAchievement && (() => {
-                                      const IconComponent = {
+                                      const iconMap: Record<string, React.ComponentType<any>> = {
                                         'Sparkles': Sparkles,
                                         'Zap': Zap,
                                         'Trophy': Trophy,
                                         'Crown': Crown,
                                         'Rocket': Rocket,
                                         'Gem': Gem
-                                      }[user.highestAchievement.icon] || Sparkles;
+                                      };
+                                      const IconComponent = iconMap[user.highestAchievement.icon] || Sparkles;
                                       return (
                                         <span 
                                           className="flex-shrink-0" 
