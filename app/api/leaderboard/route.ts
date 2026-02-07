@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         } else if (fidEntry.contractCount >= 750) {
           highestAchievement = { name: 'Web3 Visionary', icon: 'Sparkles', milestone: 750 };
         } else if (fidEntry.contractCount >= 500) {
-          highestAchievement = { name: 'Blockchain Pioneer', icon: 'Crown', milestone: 500 };
+          highestAchievement = { name: 'Blockchain Pioneer', icon: 'Flame', milestone: 500 };
         } else if (fidEntry.contractCount >= 300) {
           highestAchievement = { name: 'Unstoppable Force', icon: 'Rocket', milestone: 300 };
         } else if (fidEntry.contractCount >= 200) {

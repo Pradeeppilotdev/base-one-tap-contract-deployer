@@ -26,6 +26,7 @@ import {
   Rocket,
   Gem,
   Star,
+  Flame,
   X,
   Download,
   Twitter,
@@ -3875,7 +3876,8 @@ contract Calculator {
                                         'Trophy': Trophy,
                                         'Crown': Crown,
                                         'Rocket': Rocket,
-                                        'Gem': Gem
+                                        'Gem': Gem,
+                                        'Flame': Flame
                                       };
                                       const IconComponent = iconMap[user.highestAchievement.icon] || Sparkles;
                                       return (
