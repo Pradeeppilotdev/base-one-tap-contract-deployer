@@ -2942,10 +2942,7 @@ contract NumberStore {
                     <div className="p-3 border-2 border-[var(--ink)]">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
-                        <span
-                          className="tier-glow-text text-sm font-black tracking-widest"
-                          style={{ color: barColor, '--tier-color': barColor, '--tier-dur': tierDur } as React.CSSProperties}
-                        >{tier}</span>
+                        <span className="text-sm font-black tracking-widest" style={{ color: barColor }}>{tier}</span>
                       </div>
                       <div className="h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
                         <div
