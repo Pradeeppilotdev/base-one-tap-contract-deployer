@@ -2928,49 +2928,79 @@ contract NumberStore {
                 </div>
                 
                 {/* Potential Reward Strength Indicator */}
-                <div className="p-3 border-2 border-[var(--ink)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
-                    <span className={`text-sm font-black px-2 py-1 ${
-                      (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
-                        ? 'text-green-600'
-                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
-                        ? 'text-lime-600'
-                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
-                        ? 'text-yellow-600'
-                        : 'text-red-500'
-                    }`}>
-                      {(deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
-                        ? 'HIGH'
-                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
-                        ? 'MEDIUM-HIGH'
-                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
-                        ? 'MEDIUM'
-                        : 'LOW'}
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
-                    <div 
-                      className={`h-full transition-all ${
-                        (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
-                          ? 'bg-green-500'
-                          : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
-                          ? 'bg-lime-500'
-                          : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
-                          ? 'bg-yellow-500'
-                          : 'bg-red-400'
-                      }`}
-                      style={{ width: `${Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-[var(--graphite)] mt-2">
-                    {(deployedContracts.length >= 30 && clickCount >= 50)
-                      ? 'Excellent! You have HIGH reward strength. Keep it up!'
-                      : (deployedContracts.length >= 15 && clickCount >= 25)
-                      ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
-                      : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
-                  </p>
-                </div>
+                {(() => {
+                  const uniqueDays = new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size;
+                  const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
+                  const isHigh = deployedContracts.length >= 30 && clickCount >= 50 && uniqueDays >= 10 && contractTypes >= 4;
+                  const isMedHigh = !isHigh && deployedContracts.length >= 15 && clickCount >= 25 && uniqueDays >= 7;
+                  const isMed = !isHigh && !isMedHigh && (deployedContracts.length >= 5 || clickCount >= 10 || uniqueDays >= 3);
+                  const tier = isHigh ? 'HIGH' : isMedHigh ? 'MEDIUM-HIGH' : isMed ? 'MEDIUM' : 'LOW';
+                  const barColor = isHigh ? '#16a34a' : isMedHigh ? '#ea580c' : isMed ? '#ca8a04' : '#ef4444';
+                  const boltColor = isHigh ? '#4ade80' : isMedHigh ? '#fb923c' : isMed ? '#fde047' : '#fca5a5';
+                  const pct = Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + uniqueDays * 15 + contractTypes * 20) / 10);
+                  // More bolts = higher tier
+                  const barBolts = isHigh
+                    ? [{ top: '-14px', left: '20%', dur: '0.8s', delay: '0s', rot: '-15deg', size: '14px' }, { top: '8px', left: '45%', dur: '1.0s', delay: '0.25s', rot: '10deg', size: '12px' }, { top: '-14px', left: '68%', dur: '0.7s', delay: '0.5s', rot: '-5deg', size: '14px' }, { top: '8px', left: '85%', dur: '0.9s', delay: '0.15s', rot: '20deg', size: '11px' }]
+                    : isMedHigh
+                    ? [{ top: '-13px', left: '25%', dur: '1.0s', delay: '0s', rot: '-10deg', size: '13px' }, { top: '7px', left: '55%', dur: '1.1s', delay: '0.4s', rot: '15deg', size: '12px' }, { top: '-13px', left: '78%', dur: '0.9s', delay: '0.2s', rot: '-20deg', size: '11px' }]
+                    : isMed
+                    ? [{ top: '-12px', left: '30%', dur: '1.2s', delay: '0s', rot: '-8deg', size: '12px' }, { top: '6px', left: '65%', dur: '1.3s', delay: '0.5s', rot: '12deg', size: '11px' }]
+                    : [{ top: '-11px', left: '40%', dur: '1.4s', delay: '0s', rot: '5deg', size: '11px' }];
+                  const wordBolts = isHigh
+                    ? [{ delay: '0s', dur: '0.9s' }, { delay: '0.3s', dur: '0.7s' }, { delay: '0.6s', dur: '1.0s' }]
+                    : isMedHigh
+                    ? [{ delay: '0s', dur: '1.0s' }, { delay: '0.4s', dur: '0.8s' }]
+                    : [{ delay: '0s', dur: '1.2s' }];
+                  return (
+                    <div className="p-3 border-2 border-[var(--ink)]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
+                        {/* Tier word with flanking lightning bolts */}
+                        <span className="relative inline-flex items-center gap-0.5">
+                          {wordBolts.map((b, i) => (
+                            <span key={`wl-${i}`} className="tier-word-bolt text-sm" style={{ '--glow': boltColor, '--dur': b.dur, '--delay': b.delay } as React.CSSProperties}>ϟ</span>
+                          ))}
+                          <span className="text-sm font-black" style={{ color: barColor }}>{tier}</span>
+                          {wordBolts.map((b, i) => (
+                            <span key={`wr-${i}`} className="tier-word-bolt text-sm" style={{ '--glow': boltColor, '--dur': b.dur, '--delay': `${parseFloat(b.delay) + 0.2}s` } as React.CSSProperties}>ϟ</span>
+                          ))}
+                        </span>
+                      </div>
+                      {/* Bar with lightning bolts above/below */}
+                      <div className="relative mt-3 mb-3">
+                        <div className="h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-visible relative">
+                          <div
+                            className="h-full transition-all duration-700 relative"
+                            style={{ width: `${pct}%`, backgroundColor: barColor }}
+                          />
+                        </div>
+                        {/* Bolts scattered along the bar */}
+                        {barBolts.map((b, i) => (
+                          <span
+                            key={`bb-${i}`}
+                            className="strength-bolt"
+                            style={{
+                              '--glow': boltColor,
+                              fontSize: b.size,
+                              top: b.top,
+                              left: b.left,
+                              '--dur': b.dur,
+                              '--delay': b.delay,
+                              '--rot': b.rot,
+                            } as React.CSSProperties}
+                          >ϟ</span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[var(--ink)] mt-1">
+                        {isHigh
+                          ? 'Keep it up! You are an on-chain legend!'
+                          : isMedHigh
+                          ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
+                          : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
+                      </p>
+                    </div>
+                  );
+                })()}
               </>
             ) : walletHealthPage === 2 ? (
               /* Activity Diversity Section - Page 2 */
