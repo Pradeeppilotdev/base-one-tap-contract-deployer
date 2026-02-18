@@ -3557,61 +3557,85 @@ contract NumberStore {
             )}
           </div>
 
-          {/* Contract Selection */}
+          {/* Contract Selection - Swipeable Carousel */}
           <div className="mb-6">
             <p className="block text-sm font-bold text-[var(--ink)] mb-3 uppercase tracking-wider">
               Select Contract
             </p>
-            <div className="space-y-3">
-              {Object.entries(CONTRACT_TEMPLATES).map(([key, template]) => {
-                const Icon = template.icon;
-                const isSelected = selectedContract === key;
-                const handleSelect = () => {
-                  setSelectedContract(key as keyof typeof CONTRACT_TEMPLATES);
-                  setInputValue('');
-                  setError(null);
-                };
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={handleSelect}
-                    className={`
-                      w-full p-4 text-left transition-all border-2
-                      ${isSelected 
-                        ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]' 
-                        : 'border-[var(--pencil)] bg-[var(--paper)] hover:border-[var(--ink)]'
-                      }
-                    `}
+            {(() => {
+              const entries = Object.entries(CONTRACT_TEMPLATES);
+              const PAGE_SIZE = 3;
+              const totalPages = Math.ceil(entries.length / PAGE_SIZE);
+              const activePage = Math.floor(entries.findIndex(([k]) => k === selectedContract) / PAGE_SIZE);
+              const [carouselPage, setCarouselPage] = React.useState(activePage >= 0 ? activePage : 0);
+              const dragStart = React.useRef<number | null>(null);
+
+              const goTo = (p: number) => setCarouselPage(Math.max(0, Math.min(totalPages - 1, p)));
+
+              const onPointerDown = (e: React.PointerEvent) => { dragStart.current = e.clientX; };
+              const onPointerUp = (e: React.PointerEvent) => {
+                if (dragStart.current === null) return;
+                const diff = dragStart.current - e.clientX;
+                if (Math.abs(diff) > 40) goTo(carouselPage + (diff > 0 ? 1 : -1));
+                dragStart.current = null;
+              };
+
+              const pageEntries = entries.slice(carouselPage * PAGE_SIZE, carouselPage * PAGE_SIZE + PAGE_SIZE);
+
+              return (
+                <div>
+                  <div
+                    className="space-y-3 select-none"
+                    onPointerDown={onPointerDown}
+                    onPointerUp={onPointerUp}
                   >
-                    <div className="flex items-center gap-4">
-                      <div 
-                        className={`
-                          w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                          ${isSelected 
-                            ? 'border-[var(--paper)] bg-[var(--paper)]' 
-                            : 'border-[var(--ink)] bg-transparent'
-                          }
-                        `}
-                      >
-                        {isSelected && (
-                          <div className="w-3 h-3 rounded-full bg-[var(--ink)]" />
-                        )}
-                      </div>
-                      <Icon className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-[var(--paper)]' : 'text-[var(--ink)]'}`} strokeWidth={2} />
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`font-bold text-base ${isSelected ? 'text-[var(--paper)]' : 'text-[var(--ink)]'}`}>
-                          {template.name}
-                        </h3>
-                        <p className={`text-sm mt-0.5 ${isSelected ? 'text-[var(--light)]' : 'text-[var(--graphite)]'}`}>
-                          {template.description}
-                        </p>
-                      </div>
+                    {pageEntries.map(([key, template]) => {
+                      const Icon = template.icon;
+                      const isSelected = selectedContract === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { setSelectedContract(key as keyof typeof CONTRACT_TEMPLATES); setInputValue(''); setError(null); }}
+                          className={`
+                            w-full p-4 text-left transition-all border-2
+                            ${isSelected
+                              ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]'
+                              : 'border-[var(--pencil)] bg-[var(--paper)] hover:border-[var(--ink)]'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'border-[var(--paper)] bg-[var(--paper)]' : 'border-[var(--ink)] bg-transparent'}`}>
+                              {isSelected && <div className="w-3 h-3 rounded-full bg-[var(--ink)]" />}
+                            </div>
+                            <Icon className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-[var(--paper)]' : 'text-[var(--ink)]'}`} strokeWidth={2} />
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`font-bold text-base ${isSelected ? 'text-[var(--paper)]' : 'text-[var(--ink)]'}`}>{template.name}</h3>
+                              <p className={`text-sm mt-0.5 ${isSelected ? 'text-[var(--light)]' : 'text-[var(--graphite)]'}`}>{template.description}</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Dot pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => goTo(i)}
+                          className={`transition-all rounded-full ${i === carouselPage ? 'w-4 h-2 bg-[var(--ink)]' : 'w-2 h-2 bg-[var(--pencil)]'}`}
+                          aria-label={`Page ${i + 1}`}
+                        />
+                      ))}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Input Field */}
