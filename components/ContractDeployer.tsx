@@ -2931,35 +2931,39 @@ contract NumberStore {
                 {(() => {
                   const rs = getRewardStrength();
                   const pct = Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10);
-                  const tipSparks = [
-                    { tx: '6px',  ty: '-10px', delay: '0s',   dur: '1.0s' },
-                    { tx: '8px',  ty: '10px',  delay: '0.35s', dur: '1.2s' },
-                    { tx: '10px', ty: '0px',   delay: '0.7s',  dur: '0.9s' },
+                  // ✦ spark positions around level text (top-left, top-right, bottom-left, bottom-right, top-center)
+                  const textSparks: { top?: string; left?: string; right?: string; bottom?: string; delay: string }[] = [
+                    { top: '-8px',  left: '-8px',  delay: '0s'    },
+                    { top: '-8px',  right: '-8px', delay: '0.4s'  },
+                    { bottom: '-8px', left: '-4px', delay: '0.2s' },
+                    { bottom: '-8px', right: '-4px', delay: '0.6s' },
+                    { top: '-10px', left: '50%',   delay: '0.3s'  },
                   ];
-                  const textSparks = [
-                    { tx: '-12px', ty: '-14px', delay: '0s',   dur: '1.1s' },
-                    { tx: '14px',  ty: '-12px', delay: '0.3s', dur: '1.3s' },
-                    { tx: '-14px', ty: '12px',  delay: '0.6s', dur: '1.0s' },
-                    { tx: '12px',  ty: '14px',  delay: '0.15s', dur: '1.2s' },
+                  // ✦ sparks clustered at bar end
+                  const barSparks: { top: string; delay: string }[] = [
+                    { top: '-10px', delay: '0s'   },
+                    { top: '10px',  delay: '0.3s' },
+                    { top: '-4px',  delay: '0.6s' },
                   ];
                   return (
                     <div className={`p-3 border-2 border-[var(--ink)] ${rs.color}`}>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold opacity-80">Potential Reward Strength</span>
-                        {/* Level text with a few sparks */}
-                        <span className="relative inline-flex items-center">
+                        <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
+                        {/* Level text with ✦ sparks at corners */}
+                        <span className="relative inline-flex items-center px-1">
                           {textSparks.map((sp, i) => (
                             <span
                               key={i}
                               className="spark"
                               style={{
-                                background: rs.sparkColor,
-                                top: '50%', left: '50%',
-                                '--tx': sp.tx, '--ty': sp.ty,
+                                color: rs.sparkColor,
+                                top: sp.top,
+                                left: sp.left,
+                                right: sp.right,
+                                bottom: sp.bottom,
                                 animationDelay: sp.delay,
-                                animationDuration: sp.dur,
                               } as React.CSSProperties}
-                            />
+                            >✦</span>
                           ))}
                           <span className="text-lg font-black tracking-widest relative z-10">{rs.level}</span>
                         </span>
@@ -2970,23 +2974,22 @@ contract NumberStore {
                           className="h-full transition-all duration-700 relative"
                           style={{ width: `${pct}%`, backgroundColor: rs.barColor }}
                         >
-                          {/* Small sparks at bar tip */}
-                          {tipSparks.map((sp, i) => (
+                          {/* ✦ sparks at bar tip */}
+                          {barSparks.map((sp, i) => (
                             <span
                               key={i}
                               className="spark"
                               style={{
-                                background: rs.sparkColor,
-                                right: '-2px', top: '50%',
-                                '--tx': sp.tx, '--ty': sp.ty,
+                                color: rs.sparkColor,
+                                right: '-8px',
+                                top: sp.top,
                                 animationDelay: sp.delay,
-                                animationDuration: sp.dur,
                               } as React.CSSProperties}
-                            />
+                            >✦</span>
                           ))}
                         </div>
                       </div>
-                      <p className="text-xs opacity-70 mt-1">
+                      <p className="text-xs text-[var(--ink)] opacity-80 mt-1">
                         {rs.level === 'HIGH'
                           ? `Keep it up! You are an on-chain legend!`
                           : rs.level === 'MEDIUM-HIGH'

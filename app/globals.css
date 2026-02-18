@@ -548,11 +548,11 @@ button {
 }
 .spark {
   position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
   pointer-events: none;
-  animation: spark-fly 1.1s ease-out infinite;
+  animation: spark-pulse 1.2s ease-in-out infinite;
+  user-select: none;
 }
 .spark-pulse {
   animation: spark-pulse 1.4s ease-in-out infinite;
