@@ -2263,13 +2263,13 @@ contract NumberStore {
     const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
 
     if (deployedContracts.length >= 30 && clickCount >= 50 && uniqueDays >= 10 && contractTypes >= 4) {
-      return { level: 'HIGH', color: 'bg-green-100 text-green-800', barColor: '#16a34a', sparkColor: '#16a34a' };
+      return { level: 'HIGH', color: 'bg-green-100 text-green-700' };
     } else if (deployedContracts.length >= 15 && clickCount >= 25 && uniqueDays >= 7) {
-      return { level: 'MEDIUM-HIGH', color: 'bg-orange-100 text-orange-800', barColor: '#ea580c', sparkColor: '#ea580c' };
+      return { level: 'MEDIUM-HIGH', color: 'bg-lime-100 text-lime-700' };
     } else if (deployedContracts.length >= 5 || clickCount >= 10 || uniqueDays >= 3) {
-      return { level: 'MEDIUM', color: 'bg-yellow-100 text-yellow-800', barColor: '#ca8a04', sparkColor: '#ca8a04' };
+      return { level: 'MEDIUM', color: 'bg-yellow-100 text-yellow-700' };
     }
-    return { level: 'LOW', color: 'bg-zinc-100 text-zinc-600', barColor: '#71717a', sparkColor: '#71717a' };
+    return { level: 'LOW', color: 'bg-red-100 text-red-700' };
   };
 
   // Download resume as image
@@ -2928,77 +2928,49 @@ contract NumberStore {
                 </div>
                 
                 {/* Potential Reward Strength Indicator */}
-                {(() => {
-                  const rs = getRewardStrength();
-                  const pct = Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10);
-                  // ✦ spark positions around level text (top-left, top-right, bottom-left, bottom-right, top-center)
-                  const textSparks: { top?: string; left?: string; right?: string; bottom?: string; delay: string }[] = [
-                    { top: '-8px',  left: '-8px',  delay: '0s'    },
-                    { top: '-8px',  right: '-8px', delay: '0.4s'  },
-                    { bottom: '-8px', left: '-4px', delay: '0.2s' },
-                    { bottom: '-8px', right: '-4px', delay: '0.6s' },
-                    { top: '-10px', left: '50%',   delay: '0.3s'  },
-                  ];
-                  // ✦ sparks clustered at bar end
-                  const barSparks: { top: string; delay: string }[] = [
-                    { top: '-10px', delay: '0s'   },
-                    { top: '10px',  delay: '0.3s' },
-                    { top: '-4px',  delay: '0.6s' },
-                  ];
-                  return (
-                    <div className={`p-3 border-2 border-[var(--ink)] ${rs.color}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
-                        {/* Level text with ✦ sparks at corners */}
-                        <span className="relative inline-flex items-center px-1">
-                          {textSparks.map((sp, i) => (
-                            <span
-                              key={i}
-                              className="spark"
-                              style={{
-                                color: rs.sparkColor,
-                                top: sp.top,
-                                left: sp.left,
-                                right: sp.right,
-                                bottom: sp.bottom,
-                                animationDelay: sp.delay,
-                              } as React.CSSProperties}
-                            >✦</span>
-                          ))}
-                          <span className="text-lg font-black tracking-widest relative z-10">{rs.level}</span>
-                        </span>
-                      </div>
-                      {/* Bar */}
-                      <div className="relative h-3 bg-[var(--paper)] border border-[var(--pencil)] overflow-visible mb-2">
-                        <div
-                          className="h-full transition-all duration-700 relative"
-                          style={{ width: `${pct}%`, backgroundColor: rs.barColor }}
-                        >
-                          {/* ✦ sparks at bar tip */}
-                          {barSparks.map((sp, i) => (
-                            <span
-                              key={i}
-                              className="spark"
-                              style={{
-                                color: rs.sparkColor,
-                                right: '-8px',
-                                top: sp.top,
-                                animationDelay: sp.delay,
-                              } as React.CSSProperties}
-                            >✦</span>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-xs text-[var(--ink)] opacity-80 mt-1">
-                        {rs.level === 'HIGH'
-                          ? `Keep it up! You are an on-chain legend!`
-                          : rs.level === 'MEDIUM-HIGH'
-                          ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
-                          : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
-                      </p>
-                    </div>
-                  );
-                })()}
+                <div className="p-3 border-2 border-[var(--ink)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
+                    <span className={`text-sm font-black px-2 py-1 ${
+                      (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                        ? 'text-green-600'
+                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                        ? 'text-lime-600'
+                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                        ? 'text-yellow-600'
+                        : 'text-red-500'
+                    }`}>
+                      {(deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                        ? 'HIGH'
+                        : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                        ? 'MEDIUM-HIGH'
+                        : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                        ? 'MEDIUM'
+                        : 'LOW'}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${
+                        (deployedContracts.length >= 30 && clickCount >= 50 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 10 && new Set(deployedContracts.map(c => c.contractType)).size >= 4)
+                          ? 'bg-green-500'
+                          : (deployedContracts.length >= 15 && clickCount >= 25 && new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 7)
+                          ? 'bg-lime-500'
+                          : (deployedContracts.length >= 5 || clickCount >= 10 || new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size >= 3)
+                          ? 'bg-yellow-500'
+                          : 'bg-red-400'
+                      }`}
+                      style={{ width: `${Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--graphite)] mt-2">
+                    {(deployedContracts.length >= 30 && clickCount >= 50)
+                      ? 'Excellent! You have HIGH reward strength. Keep it up!'
+                      : (deployedContracts.length >= 15 && clickCount >= 25)
+                      ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
+                      : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
+                  </p>
+                </div>
               </>
             ) : walletHealthPage === 2 ? (
               /* Activity Diversity Section - Page 2 */
