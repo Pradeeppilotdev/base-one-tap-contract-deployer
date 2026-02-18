@@ -2263,13 +2263,13 @@ contract NumberStore {
     const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
 
     if (deployedContracts.length >= 30 && clickCount >= 50 && uniqueDays >= 10 && contractTypes >= 4) {
-      return { level: 'HIGH', color: 'bg-violet-950 text-violet-200', bar: 'from-violet-500 via-fuchsia-400 to-cyan-400', sparks: ['#e879f9','#a855f7','#38bdf8','#f0abfc'] };
+      return { level: 'HIGH', color: 'bg-green-100 text-green-800', barColor: '#16a34a', sparkColor: '#16a34a' };
     } else if (deployedContracts.length >= 15 && clickCount >= 25 && uniqueDays >= 7) {
-      return { level: 'MEDIUM-HIGH', color: 'bg-orange-950 text-orange-200', bar: 'from-orange-500 via-amber-400 to-yellow-300', sparks: ['#fb923c','#fbbf24','#fde047','#f97316'] };
+      return { level: 'MEDIUM-HIGH', color: 'bg-orange-100 text-orange-800', barColor: '#ea580c', sparkColor: '#ea580c' };
     } else if (deployedContracts.length >= 5 || clickCount >= 10 || uniqueDays >= 3) {
-      return { level: 'MEDIUM', color: 'bg-yellow-100 text-yellow-800', bar: 'from-yellow-400 via-amber-300 to-yellow-200', sparks: ['#fbbf24','#f59e0b','#fde68a','#d97706'] };
+      return { level: 'MEDIUM', color: 'bg-yellow-100 text-yellow-800', barColor: '#ca8a04', sparkColor: '#ca8a04' };
     }
-    return { level: 'LOW', color: 'bg-zinc-800 text-zinc-300', bar: 'from-zinc-500 via-zinc-400 to-zinc-300', sparks: ['#a1a1aa','#71717a','#d4d4d8','#52525b'] };
+    return { level: 'LOW', color: 'bg-zinc-100 text-zinc-600', barColor: '#71717a', sparkColor: '#71717a' };
   };
 
   // Download resume as image
@@ -2931,27 +2931,29 @@ contract NumberStore {
                 {(() => {
                   const rs = getRewardStrength();
                   const pct = Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20) / 10);
-                  const SPARK_POSITIONS = [
-                    { tx: '-18px', ty: '-22px', delay: '0s',    dur: '1.1s' },
-                    { tx: '18px',  ty: '-20px', delay: '0.2s',  dur: '1.3s' },
-                    { tx: '-22px', ty: '10px',  delay: '0.4s',  dur: '0.9s' },
-                    { tx: '22px',  ty: '8px',   delay: '0.6s',  dur: '1.2s' },
-                    { tx: '-10px', ty: '22px',  delay: '0.15s', dur: '1.0s' },
-                    { tx: '12px',  ty: '20px',  delay: '0.5s',  dur: '1.4s' },
+                  const tipSparks = [
+                    { tx: '6px',  ty: '-10px', delay: '0s',   dur: '1.0s' },
+                    { tx: '8px',  ty: '10px',  delay: '0.35s', dur: '1.2s' },
+                    { tx: '10px', ty: '0px',   delay: '0.7s',  dur: '0.9s' },
+                  ];
+                  const textSparks = [
+                    { tx: '-12px', ty: '-14px', delay: '0s',   dur: '1.1s' },
+                    { tx: '14px',  ty: '-12px', delay: '0.3s', dur: '1.3s' },
+                    { tx: '-14px', ty: '12px',  delay: '0.6s', dur: '1.0s' },
+                    { tx: '12px',  ty: '14px',  delay: '0.15s', dur: '1.2s' },
                   ];
                   return (
-                    <div className={`p-3 border-2 border-[var(--ink)] ${rs.color} relative overflow-hidden`}>
+                    <div className={`p-3 border-2 border-[var(--ink)] ${rs.color}`}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-bold opacity-80">Potential Reward Strength</span>
-                        {/* Sparky level badge */}
+                        {/* Level text with a few sparks */}
                         <span className="relative inline-flex items-center">
-                          {SPARK_POSITIONS.map((sp, i) => (
+                          {textSparks.map((sp, i) => (
                             <span
                               key={i}
                               className="spark"
                               style={{
-                                background: rs.sparks[i % rs.sparks.length],
-                                boxShadow: `0 0 4px 2px ${rs.sparks[i % rs.sparks.length]}`,
+                                background: rs.sparkColor,
                                 top: '50%', left: '50%',
                                 '--tx': sp.tx, '--ty': sp.ty,
                                 animationDelay: sp.delay,
@@ -2959,30 +2961,26 @@ contract NumberStore {
                               } as React.CSSProperties}
                             />
                           ))}
-                          <span className="spark-pulse text-lg font-black tracking-widest px-2 py-0.5 rounded relative z-10" style={{ textShadow: `0 0 10px ${rs.sparks[0]}` }}>
-                            {rs.level}
-                          </span>
+                          <span className="text-lg font-black tracking-widest relative z-10">{rs.level}</span>
                         </span>
                       </div>
                       {/* Bar */}
-                      <div className="relative h-3 bg-black/20 border border-white/10 overflow-visible rounded-sm mb-2">
+                      <div className="relative h-3 bg-[var(--paper)] border border-[var(--pencil)] overflow-visible mb-2">
                         <div
-                          className={`h-full bg-gradient-to-r ${rs.bar} strength-bar-shimmer rounded-sm transition-all duration-700 relative`}
-                          style={{ width: `${pct}%` }}
+                          className="h-full transition-all duration-700 relative"
+                          style={{ width: `${pct}%`, backgroundColor: rs.barColor }}
                         >
-                          {/* Tip sparks on bar end */}
-                          {[0,1,2].map(i => (
+                          {/* Small sparks at bar tip */}
+                          {tipSparks.map((sp, i) => (
                             <span
                               key={i}
                               className="spark"
                               style={{
-                                background: rs.sparks[i % rs.sparks.length],
-                                boxShadow: `0 0 4px 2px ${rs.sparks[i % rs.sparks.length]}`,
+                                background: rs.sparkColor,
                                 right: '-2px', top: '50%',
-                                '--tx': i % 2 === 0 ? '8px' : '-4px',
-                                '--ty': i === 0 ? '-10px' : i === 1 ? '10px' : '-4px',
-                                animationDelay: `${i * 0.3}s`,
-                                animationDuration: `${0.9 + i * 0.2}s`,
+                                '--tx': sp.tx, '--ty': sp.ty,
+                                animationDelay: sp.delay,
+                                animationDuration: sp.dur,
                               } as React.CSSProperties}
                             />
                           ))}
@@ -2990,7 +2988,7 @@ contract NumberStore {
                       </div>
                       <p className="text-xs opacity-70 mt-1">
                         {rs.level === 'HIGH'
-                          ? 'MAX POWER — You are an on-chain legend!'
+                          ? `Keep it up! You are an on-chain legend!`
                           : rs.level === 'MEDIUM-HIGH'
                           ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
                           : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
