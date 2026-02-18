@@ -533,7 +533,7 @@ button {
   animation: fade-out 0.3s ease-in forwards;
 }
 
-/* Reward Strength lightning animations */
+/* Reward Strength animations */
 @keyframes bolt-flicker {
   0%, 100% { opacity: 0; transform: scale(0.6) rotate(var(--rot, 0deg)); filter: none; }
   15%       { opacity: 1; transform: scale(1.2) rotate(var(--rot, 0deg)); filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 0 10px var(--glow)); }
@@ -545,22 +545,27 @@ button {
   0%, 100% { opacity: 0.15; filter: none; transform: scale(0.85); }
   50%       { opacity: 1; filter: drop-shadow(0 0 5px var(--glow)) drop-shadow(0 0 12px var(--glow)); transform: scale(1.15); }
 }
-.strength-bolt {
-  position: absolute;
-  pointer-events: none;
-  user-select: none;
-  line-height: 1;
-  color: #111;
-  font-weight: 900;
-  animation: bolt-flicker var(--dur, 1.2s) ease-in-out infinite;
-  animation-delay: var(--delay, 0s);
+@keyframes strength-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
-.tier-word-bolt {
+@keyframes tier-glow {
+  0%, 100% { opacity: 0.75; filter: none; }
+  50%       { opacity: 1; filter: drop-shadow(0 0 6px var(--tier-color)) drop-shadow(0 0 12px var(--tier-color)); letter-spacing: 0.12em; }
+}
+.strength-shimmer-bar {
+  background-image: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255,255,255,0.45) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: strength-shimmer 1.8s linear infinite;
+}
+.tier-glow-text {
   display: inline-block;
-  color: #111;
-  font-weight: 900;
-  animation: bolt-glow-pulse var(--dur, 1s) ease-in-out infinite;
-  animation-delay: var(--delay, 0s);
+  animation: tier-glow var(--tier-dur, 1.6s) ease-in-out infinite;
 }
 
 /* Custom scrollbar for doodle theme */
