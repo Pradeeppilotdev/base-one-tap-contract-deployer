@@ -30,8 +30,11 @@ import {
   X,
   Download,
   Twitter,
-  MessageCircle
+  MessageCircle,
+  Moon,
+  Sun
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { encodeFunctionData, decodeEventLog, createPublicClient, http } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
@@ -395,6 +398,7 @@ const ACHIEVEMENTS: Achievement[] = [
 ];
 
 function ContractDeployer() {
+  const { theme, setTheme } = useTheme();
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [selectedContract, setSelectedContract] = useState<keyof typeof CONTRACT_TEMPLATES>('string');
@@ -2792,6 +2796,15 @@ contract NumberStore {
               title="Share app"
             >
               <Share2 className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors"
+              title="Toggle dark mode"
+            >
+              {theme === 'dark'
+                ? <Sun className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                : <Moon className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />}
             </button>
             {isInFarcaster && !isAppAdded && (
               <button

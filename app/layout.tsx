@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { WagmiProvider } from '@/providers/WagmiProvider';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -75,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* CRITICAL: Block eth_createAccessList BEFORE any SDK loads */}
         <script
@@ -185,10 +186,12 @@ export default function RootLayout({
         {/* OG tags are handled by metadata API in each page/layout */}
         {/* Do NOT add hardcoded og:image here - it conflicts with child route metadata */}
       </head>
-      <body className="bg-[#f5f5f0]">
-        <WagmiProvider>
-          {children}
-        </WagmiProvider>
+      <body className="bg-[var(--paper)]">
+        <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+          <WagmiProvider>
+            {children}
+          </WagmiProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

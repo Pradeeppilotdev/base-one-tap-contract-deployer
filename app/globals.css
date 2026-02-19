@@ -37,6 +37,17 @@
   --highlight: #f5f5f5;
 }
 
+.dark {
+  --ink: #f0f0f0;
+  --paper: #0f0f0f;
+  --sketch: #e0e0e0;
+  --pencil: #b0b0b0;
+  --graphite: #888888;
+  --shade: #666666;
+  --light: #1e1e1e;
+  --highlight: #161616;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -365,6 +376,17 @@ button {
       rgba(0, 0, 0, 0.025) 90px,
       rgba(0, 0, 0, 0.025) 91px
     );
+}
+
+.dark .pencil-sketch-bg {
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(255,255,255,0.05) 30px, rgba(255,255,255,0.05) 31px),
+    repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.03) 40px, rgba(255,255,255,0.03) 41px),
+    repeating-linear-gradient(-45deg, transparent, transparent 50px, rgba(255,255,255,0.025) 50px, rgba(255,255,255,0.025) 51px),
+    radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(255,255,255,0.04) 0%, transparent 50%),
+    repeating-linear-gradient(30deg, transparent, transparent 70px, rgba(255,255,255,0.02) 70px, rgba(255,255,255,0.02) 71px),
+    repeating-linear-gradient(-30deg, transparent, transparent 90px, rgba(255,255,255,0.015) 90px, rgba(255,255,255,0.015) 91px);
 }
 
 /* Google Sans title - bold doodle style */
