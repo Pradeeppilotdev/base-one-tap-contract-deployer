@@ -325,7 +325,7 @@ const CONTRACT_TEMPLATES = {
     inputType: "number",
     inputLabel: "Your Lucky Number",
     inputPlaceholder: "Enter any number (e.g. 42)",
-    icon: Hash
+    icon: Flame
   }
 };
 
@@ -3561,13 +3561,17 @@ contract NumberStore {
 
               const goTo = (p: number) => setCarouselPage(Math.max(0, Math.min(totalPages - 1, p)));
 
-              const onPointerDown = (e: React.PointerEvent) => { dragStart.current = e.clientX; };
+              const onPointerDown = (e: React.PointerEvent) => {
+                dragStart.current = e.clientX;
+                e.currentTarget.setPointerCapture(e.pointerId);
+              };
               const onPointerUp = (e: React.PointerEvent) => {
                 if (dragStart.current === null) return;
                 const diff = dragStart.current - e.clientX;
                 if (Math.abs(diff) > 40) goTo(carouselPage + (diff > 0 ? 1 : -1));
                 dragStart.current = null;
               };
+              const onPointerCancel = () => { dragStart.current = null; };
 
               const pageEntries = entries.slice(carouselPage * PAGE_SIZE, carouselPage * PAGE_SIZE + PAGE_SIZE);
 
@@ -3575,8 +3579,10 @@ contract NumberStore {
                 <div>
                   <div
                     className="space-y-3 select-none"
+                    style={{ touchAction: 'pan-y' }}
                     onPointerDown={onPointerDown}
                     onPointerUp={onPointerUp}
+                    onPointerCancel={onPointerCancel}
                   >
                     {pageEntries.map(([key, template]) => {
                       const Icon = template.icon;
