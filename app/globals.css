@@ -585,9 +585,19 @@ button {
   background-size: 200% 100%;
   animation: strength-shimmer 1.8s linear infinite;
 }
-.tier-glow-text {
-  display: inline-block;
-  animation: tier-glow var(--tier-dur, 1.6s) ease-in-out infinite;
+@keyframes bar-lightning {
+  0%,100% { opacity: 0; }
+  8%       { opacity: 0.9; }
+  12%      { opacity: 0.1; }
+  16%      { opacity: 0.85; }
+  20%      { opacity: 0; }
+  55%      { opacity: 0; }
+  58%      { opacity: 0.7; }
+  62%      { opacity: 0; }
+}
+.bar-lightning {
+  animation: bar-lightning var(--ldur, 2s) ease-in-out infinite;
+  animation-delay: var(--ldelay, 0s);
 }
 
 /* Custom scrollbar for doodle theme */

@@ -2957,11 +2957,29 @@ contract NumberStore {
                         <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
                         <span className="text-sm font-black tracking-widest" style={{ color: barColor }}>{tier}</span>
                       </div>
-                      <div className="h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
+                      <div className="h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden relative">
                         <div
-                          className="strength-shimmer-bar h-full transition-all duration-700"
+                          className="strength-shimmer-bar h-full transition-all duration-700 relative"
                           style={{ width: `${pct}%`, backgroundColor: barColor }}
-                        />
+                        >
+                          {/* Lightning bolt SVG inside bar */}
+                          <svg
+                            className="bar-lightning absolute inset-0 w-full h-full"
+                            style={{ '--ldur': tierDur, '--ldelay': '0s', color: 'rgba(255,255,255,0.9)' } as React.CSSProperties}
+                            viewBox="0 0 100 8" preserveAspectRatio="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <polyline points="0,4 15,1 25,7 38,1 50,7 62,1 74,7 85,2 100,4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                          </svg>
+                          <svg
+                            className="bar-lightning absolute inset-0 w-full h-full"
+                            style={{ '--ldur': tierDur, '--ldelay': `${parseFloat(tierDur) * 0.5}s`, color: 'rgba(255,255,255,0.7)' } as React.CSSProperties}
+                            viewBox="0 0 100 8" preserveAspectRatio="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <polyline points="0,5 12,2 22,6 36,2 48,6 60,2 72,6 86,3 100,5" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
                       </div>
                       <p className="text-xs text-[var(--graphite)] mt-2">
                         {isHigh
