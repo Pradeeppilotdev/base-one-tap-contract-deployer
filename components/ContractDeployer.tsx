@@ -387,11 +387,11 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: 'twenty', name: 'Deployment Legend', description: 'Deploy 20 contracts', icon: Crown, milestone: 20, unlocked: false },
   { id: 'fifty', name: 'Base Builder', description: 'Deploy 50 contracts', icon: Rocket, milestone: 50, unlocked: false },
   { id: 'hundred', name: 'Contract Deity', description: 'Deploy 100 contracts', icon: Gem, milestone: 100, unlocked: false },
-  { id: 'twohundred', name: 'Mega Creator', description: 'Deploy 200 contracts', icon: Zap, milestone: 200, unlocked: false },
-  { id: 'threehundred', name: 'Unstoppable Force', description: 'Deploy 300 contracts', icon: Rocket, milestone: 300, unlocked: false },
-  { id: 'fivehundred', name: 'Blockchain Pioneer', description: 'Deploy 500 contracts', icon: Crown, milestone: 500, unlocked: false },
-  { id: 'sevenhundredfifty', name: 'Web3 Visionary', description: 'Deploy 750 contracts', icon: Sparkles, milestone: 750, unlocked: false },
-  { id: 'thousand', name: 'Legendary Builder', description: 'Deploy 1000 contracts', icon: Gem, milestone: 1000, unlocked: false },
+  { id: 'twohundred', name: 'Mega Creator', description: 'Deploy 200 contracts', icon: Flame, milestone: 200, unlocked: false },
+  { id: 'threehundred', name: 'Unstoppable Force', description: 'Deploy 300 contracts', icon: Star, milestone: 300, unlocked: false },
+  { id: 'fivehundred', name: 'Blockchain Pioneer', description: 'Deploy 500 contracts', icon: Hash, milestone: 500, unlocked: false },
+  { id: 'sevenhundredfifty', name: 'Web3 Visionary', description: 'Deploy 750 contracts', icon: Box, milestone: 750, unlocked: false },
+  { id: 'thousand', name: 'Legendary Builder', description: 'Deploy 1000 contracts', icon: FileCode2, milestone: 1000, unlocked: false },
 ];
 
 function ContractDeployer() {
