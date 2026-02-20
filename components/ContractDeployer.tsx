@@ -3716,7 +3716,14 @@ contract NumberStore {
 
               const onPointerDown = (e: React.PointerEvent) => {
                 dragStart.current = e.clientX;
-                e.currentTarget.setPointerCapture(e.pointerId);
+                // Do NOT capture here — let clicks reach child buttons normally
+              };
+              const onPointerMove = (e: React.PointerEvent) => {
+                if (dragStart.current === null) return;
+                // Only capture once actual drag intent is detected (>10px movement)
+                if (Math.abs(dragStart.current - e.clientX) > 10 && !e.currentTarget.hasPointerCapture(e.pointerId)) {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }
               };
               const onPointerUp = (e: React.PointerEvent) => {
                 if (dragStart.current === null) return;
@@ -3734,6 +3741,7 @@ contract NumberStore {
                     className="space-y-3 select-none"
                     style={{ touchAction: 'pan-y' }}
                     onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
                     onPointerCancel={onPointerCancel}
                   >
