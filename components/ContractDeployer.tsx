@@ -463,6 +463,11 @@ function ContractDeployer() {
   const [contractSortOrder, setContractSortOrder] = useState<'newest' | 'oldest'>('newest'); // Latest first by default
   const [showResume, setShowResume] = useState(false);
   const [generatingResume, setGeneratingResume] = useState(false);
+  const [showDeployConfirm, setShowDeployConfirm] = useState(false);
+  const [gasEstimateWei, setGasEstimateWei] = useState<string | null>(null);
+  const [estimatingGas, setEstimatingGas] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [appLoading, setAppLoading] = useState(true);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -721,6 +726,8 @@ function ContractDeployer() {
             console.error('Failed to parse stored contracts:', e);
           }
         }
+      } finally {
+        setAppLoading(false);
       }
     };
 
@@ -2276,6 +2283,83 @@ contract NumberStore {
     return { level: 'LOW', color: 'bg-red-100 text-red-700' };
   };
 
+  // Current deploy streak (consecutive days)
+  const getCurrentStreak = (): number => {
+    if (deployedContracts.length === 0) return 0;
+    const days = Array.from(new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())))
+      .map(d => new Date(d).setHours(0, 0, 0, 0))
+      .sort((a, b) => b - a);
+    const today = new Date().setHours(0, 0, 0, 0);
+    const yesterday = today - 86400000;
+    if (days[0] !== today && days[0] !== yesterday) return 0;
+    let streak = 1;
+    for (let i = 1; i < days.length; i++) {
+      if (days[i - 1] - days[i] === 86400000) streak++;
+      else break;
+    }
+    return streak;
+  };
+
+  // Pre-estimate gas before deploying
+  const requestDeployConfirm = async () => {
+    if (!account) { setError('Please connect your wallet first'); return; }
+    const provider = getProvider();
+    if (!provider) { setError('No wallet provider available'); return; }
+    const template = CONTRACT_TEMPLATES[selectedContract];
+    if (template.hasInput && !inputValue.trim()) {
+      const inputType = 'inputType' in template ? template.inputType : 'value';
+      setError(`Please enter a ${inputType === 'string' ? 'string value' : 'number'}`);
+      return;
+    }
+    setEstimatingGas(true);
+    setGasEstimateWei(null);
+    try {
+      let bytecode = template.bytecode;
+      if (!bytecode.startsWith('0x')) bytecode = '0x' + bytecode;
+      let deploymentBytecode = bytecode;
+      if (template.hasInput && inputValue.trim()) {
+        try {
+          const encodedParams = encodeConstructorParams(template, inputValue);
+          deploymentBytecode = '0x' + bytecode.slice(2) + encodedParams;
+        } catch {}
+      }
+      const callData = encodeFunctionData({
+        abi: FACTORY_ABI,
+        functionName: 'deployContractWithParams',
+        args: [deploymentBytecode as `0x${string}`]
+      });
+      const currentNetwork = getCurrentNetwork();
+      const estimatedGas = await provider.request({
+        method: 'eth_estimateGas',
+        params: [{ from: account as `0x${string}`, to: currentNetwork.factoryAddress as `0x${string}`, data: callData }]
+      });
+      const gasPrice = await provider.request({ method: 'eth_gasPrice', params: [] }) as string;
+      const gasCostWei = (BigInt(estimatedGas) * BigInt(gasPrice) * BigInt(12) / BigInt(10)).toString();
+      setGasEstimateWei(gasCostWei);
+    } catch {
+      setGasEstimateWei(null);
+    }
+    setEstimatingGas(false);
+    setShowDeployConfirm(true);
+  };
+
+  // Export history as CSV
+  const exportHistoryCSV = () => {
+    if (deployedContracts.length === 0) return;
+    const header = 'Contract Name,Type,Address,Tx Hash,Deployed At,Input Value,Gas Spent (Wei)';
+    const rows = deployedContracts.map(c =>
+      [c.contractName, c.contractType, c.address, c.txHash, new Date(c.timestamp).toISOString(), c.inputValue || '', c.gasSpent || '0'].join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `base-contracts-${account?.slice(0, 8) || 'export'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Download resume as image
   const downloadResumeAsImage = () => {
     if (!account) return;
@@ -2991,6 +3075,24 @@ contract NumberStore {
                     </div>
                   );
                 })()}
+
+                {/* Deploy Streak */}
+                {(() => {
+                  const streak = getCurrentStreak();
+                  return (
+                    <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Flame className="w-4 h-4 text-orange-500" strokeWidth={2} />
+                        <span className="text-sm font-bold text-[var(--ink)]">Deploy Streak</span>
+                      </div>
+                      {streak > 0 ? (
+                        <span className="text-sm font-black text-orange-500">{streak} day{streak !== 1 ? 's' : ''}</span>
+                      ) : (
+                        <span className="text-xs text-[var(--graphite)]">No streak yet</span>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             ) : walletHealthPage === 2 ? (
               /* Activity Diversity Section - Page 2 */
@@ -3683,8 +3785,8 @@ contract NumberStore {
 
           {/* Deploy Button */}
           <button
-            onClick={deployContract}
-            disabled={!account || deploying || chainId !== getCurrentNetwork().chainId}
+            onClick={requestDeployConfirm}
+            disabled={!account || deploying || estimatingGas || chainId !== getCurrentNetwork().chainId}
             className="ink-button w-full py-4 px-6 text-lg"
           >
             {deploying ? (
@@ -3692,6 +3794,11 @@ contract NumberStore {
                 <span className="loading-dot"></span>
                 <span className="loading-dot"></span>
                 <span className="loading-dot"></span>
+              </span>
+            ) : estimatingGas ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Estimating Gas...
               </span>
             ) : chainId !== getCurrentNetwork().chainId ? (
               `Switch to ${getCurrentNetwork().name}`
@@ -3795,6 +3902,14 @@ contract NumberStore {
                       )}
                     </div>
                   )}
+                  <div
+                    role="button"
+                    onClick={(e) => { e.stopPropagation(); exportHistoryCSV(); }}
+                    className="p-1 hover:bg-[var(--light)] rounded transition-colors cursor-pointer"
+                    title="Export history as CSV"
+                  >
+                    <Download className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                  </div>
                 </div>
               )}
             </div>
@@ -3807,7 +3922,19 @@ contract NumberStore {
           
           {showHistory && (
             <div className="border-t-2 border-[var(--ink)]">
-              {deployedContracts.length === 0 ? (
+              {appLoading ? (
+                <div className="p-4 space-y-3">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="animate-pulse flex items-center gap-3">
+                      <div className="w-8 h-8 bg-[var(--pencil)] rounded opacity-40" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-[var(--pencil)] rounded opacity-40 w-3/4" />
+                        <div className="h-2 bg-[var(--pencil)] rounded opacity-25 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : deployedContracts.length === 0 ? (
                 <div className="p-6 text-center">
                   <FileCode2 className="w-8 h-8 text-[var(--shade)] mx-auto mb-3" strokeWidth={1.5} />
                   <p className="text-[var(--graphite)] text-sm">No contracts deployed yet</p>
@@ -4191,6 +4318,37 @@ contract NumberStore {
                           <Copy className="w-4 h-4" strokeWidth={2} />
                         </button>
                       </div>
+                    </div>
+
+                    {/* Referral Share Link */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-[var(--ink)] mb-2">
+                        Your Referral Link
+                      </label>
+                      {(() => {
+                        const refLink = `${typeof window !== 'undefined' ? window.location.origin : ''}?ref=${userReferralInfo.referralCode || `ref-${farcasterUser.fid}`}`;
+                        return (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={refLink}
+                              readOnly
+                              className="flex-1 px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--light)] text-[var(--graphite)] font-mono text-xs"
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(refLink);
+                                setError('Referral link copied!');
+                                setTimeout(() => setError(null), 2000);
+                              }}
+                              className="px-4 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)] transition-colors"
+                              title="Copy referral link"
+                            >
+                              <Copy className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Referral Stats */}
@@ -4615,6 +4773,66 @@ contract NumberStore {
           </div>
         )}
 
+        {/* Deploy Confirmation Modal */}
+        {showDeployConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeployConfirm(false)}></div>
+            <div className="relative bg-[var(--paper)] border-4 border-[var(--ink)] rounded-2xl shadow-2xl p-6 max-w-sm w-full">
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[var(--ink)] rounded-tl-2xl"></div>
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[var(--ink)] rounded-tr-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[var(--ink)] rounded-bl-2xl"></div>
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[var(--ink)] rounded-br-2xl"></div>
+
+              <h3 className="text-lg font-black text-[var(--ink)] mb-4 uppercase tracking-wide">Confirm Deploy</h3>
+
+              <div className="space-y-2 mb-4 text-sm">
+                <div className="flex justify-between border-b border-[var(--pencil)] pb-1">
+                  <span className="text-[var(--graphite)]">Contract</span>
+                  <span className="font-bold text-[var(--ink)]">{CONTRACT_TEMPLATES[selectedContract]?.name ?? selectedContract}</span>
+                </div>
+                {inputValue && (
+                  <div className="flex justify-between border-b border-[var(--pencil)] pb-1">
+                    <span className="text-[var(--graphite)]">Input Value</span>
+                    <span className="font-bold text-[var(--ink)] truncate max-w-[60%]">{inputValue}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-b border-[var(--pencil)] pb-1">
+                  <span className="text-[var(--graphite)]">Network</span>
+                  <span className="font-bold text-[var(--ink)]">{getCurrentNetwork().name}</span>
+                </div>
+                {gasEstimateWei && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--graphite)]">Est. Gas Cost</span>
+                    <span className="font-bold text-[var(--ink)]">
+                      {(Number(gasEstimateWei) / 1e18).toFixed(6)} ETH
+                      {ethPrice > 0 && (
+                        <span className="text-[var(--graphite)] font-normal ml-1">
+                          (~${(Number(gasEstimateWei) / 1e18 * ethPrice).toFixed(4)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeployConfirm(false)}
+                  className="flex-1 py-2 px-4 border-2 border-[var(--ink)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--light)] transition-colors rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowDeployConfirm(false); deployContract(); }}
+                  className="flex-1 py-2 px-4 bg-[var(--ink)] text-[var(--paper)] font-bold text-sm hover:opacity-90 transition-opacity rounded"
+                >
+                  Deploy
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Achievement Celebration Modal */}
         {newAchievement && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
@@ -4625,6 +4843,22 @@ contract NumberStore {
               <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[var(--ink)] rounded-tr-2xl"></div>
               <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[var(--ink)] rounded-bl-2xl"></div>
               <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[var(--ink)] rounded-br-2xl"></div>
+
+              {/* Confetti burst */}
+              {!achievementClosing && [...Array(18)].map((_, i) => (
+                <div
+                  key={i}
+                  className="confetti-piece pointer-events-none"
+                  style={{
+                    left: `${(i / 18) * 100}%`,
+                    backgroundColor: ['#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#ec4899','#f97316','#06b6d4','#84cc16'][i % 9],
+                    animationDelay: `${i * 0.06}s`,
+                    borderRadius: i % 3 === 0 ? '50%' : '2px',
+                    width: i % 2 === 0 ? '7px' : '5px',
+                    height: i % 2 === 0 ? '7px' : '10px',
+                  }}
+                />
+              ))}
               
               {/* Badge icon with glow effect */}
               <div className="relative mb-4">
