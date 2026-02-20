@@ -587,9 +587,22 @@ function ContractDeployer() {
               });
               
               const data = await response.json();
-              if (data.result?.gasUsed && data.result?.effectiveGasPrice) {
+              // effectiveGasPrice can be null on OP Stack — fall back to gasPrice from the tx
+              let receiptGasPrice = data.result?.effectiveGasPrice;
+              if (data.result?.gasUsed && !receiptGasPrice) {
+                try {
+                  const txResponse = await fetch(currentNetwork.rpcUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_getTransactionByHash', params: [contract.txHash], id: 1 })
+                  });
+                  const txData = await txResponse.json();
+                  receiptGasPrice = txData.result?.gasPrice;
+                } catch (_) { /* best-effort */ }
+              }
+              if (data.result?.gasUsed && receiptGasPrice) {
                 const gasUsedBigInt = BigInt(data.result.gasUsed);
-                const gasPriceBigInt = BigInt(data.result.effectiveGasPrice);
+                const gasPriceBigInt = BigInt(receiptGasPrice);
                 const gasSpent = (gasUsedBigInt * gasPriceBigInt).toString();
                 
                 return { txHash: contract.txHash, gasSpent };
@@ -2105,6 +2118,7 @@ contract NumberStore {
             // which is tied to their FID, not the connected wallet address
             // Transaction receipts don't have 'from', so we need to fetch the transaction
             let actualDeployerAddress = account?.toLowerCase();
+            let txGasPrice: string | undefined;
             try {
               const currentNetwork = getCurrentNetwork();
               const txResponse = await fetch(currentNetwork.rpcUrl, {
@@ -2121,6 +2135,10 @@ contract NumberStore {
               if (txData.result?.from) {
                 actualDeployerAddress = txData.result.from.toLowerCase();
               }
+              // Capture gasPrice as fallback for when effectiveGasPrice is missing (OP Stack)
+              if (txData.result?.gasPrice) {
+                txGasPrice = txData.result.gasPrice;
+              }
             } catch (txErr) {
               console.warn('Could not fetch transaction to get deployer address, using account:', txErr);
             }
@@ -2129,11 +2147,13 @@ contract NumberStore {
             // Use the actual deployer address from the transaction (account abstraction address)
             
             // Calculate gas spent (gasUsed * gasPrice)
+            // effectiveGasPrice can be null on OP Stack chains — fall back to gasPrice from tx
             let gasSpent = '0';
-            if (receipt?.gasUsed && receipt?.effectiveGasPrice) {
+            const effectiveGasPrice = receipt?.effectiveGasPrice || txGasPrice;
+            if (receipt?.gasUsed && effectiveGasPrice) {
               try {
                 const gasUsedBigInt = BigInt(receipt.gasUsed);
-                const gasPriceBigInt = BigInt(receipt.effectiveGasPrice);
+                const gasPriceBigInt = BigInt(effectiveGasPrice);
                 gasSpent = (gasUsedBigInt * gasPriceBigInt).toString();
                 
                 // Update total gas spent
