@@ -372,10 +372,26 @@ const formatGasSpent = (weiAmount: string, priceInUsd: number = 2500) => {
     const wei = BigInt(weiAmount);
     const eth = Number(wei) / 1e18;
     
+    // Use smart formatting: show more decimals for very small amounts
+    // This ensures we don't show "0.0000 ETH" when there's actually gas spent
+    let ethShort: string;
+    if (eth === 0) {
+      ethShort = '0.0000';
+    } else if (eth < 0.0001) {
+      // For very small amounts (< $0.25 at $2500/ETH), use 6 decimals
+      ethShort = eth.toFixed(6);
+    } else if (eth < 0.01) {
+      // For small amounts, use 5 decimals
+      ethShort = eth.toFixed(5);
+    } else {
+      // For larger amounts, use 4 decimals
+      ethShort = eth.toFixed(4);
+    }
+    
     return {
       wei: weiAmount,
       eth: eth.toFixed(6),
-      ethShort: eth.toFixed(4),
+      ethShort: ethShort,
       usd: (eth * priceInUsd).toFixed(2) // Real-time ETH price
     };
   } catch (e) {
@@ -1075,6 +1091,54 @@ function ContractDeployer() {
         const isSuccess = status === '0x1' || status === '0x01' || status === 1 || status === true;
         
         if (isSuccess) {
+          // Calculate gas spent for this click transaction (gasUsed * gasPrice)
+          // Track gas spent from click interactions, not just contract deployments
+          let clickGasSpent = '0';
+          try {
+            // Get effectiveGasPrice from receipt, or fetch gasPrice from transaction as fallback
+            let gasPrice = receipt.effectiveGasPrice;
+            
+            // OP Stack chains (like Base) can have null effectiveGasPrice - fetch from tx as fallback
+            if (receipt.gasUsed && !gasPrice) {
+              try {
+                const currentNetwork = getCurrentNetwork();
+                const txResponse = await fetch(currentNetwork.rpcUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'eth_getTransactionByHash',
+                    params: [hash],
+                    id: 1
+                  })
+                });
+                const txData = await txResponse.json();
+                gasPrice = txData.result?.gasPrice;
+              } catch (txErr) {
+                console.warn('Could not fetch transaction gasPrice for click:', txErr);
+              }
+            }
+            
+            if (receipt.gasUsed && gasPrice) {
+              const gasUsedBigInt = BigInt(receipt.gasUsed);
+              const gasPriceBigInt = BigInt(gasPrice);
+              clickGasSpent = (gasUsedBigInt * gasPriceBigInt).toString();
+              
+              // Update total gas spent to include click interaction gas
+              setTotalGasSpent(prevGas => {
+                const prev = BigInt(prevGas || '0');
+                const current = prev + BigInt(clickGasSpent);
+                return current.toString();
+              });
+              
+              console.log(`Click gas tracked: ${clickGasSpent} wei`);
+            } else {
+              console.warn('Could not calculate gas for click - missing gasUsed or gasPrice');
+            }
+          } catch (gasErr) {
+            console.warn('Could not calculate gas spent for click:', gasErr);
+          }
+          
           // Refresh click count from on-chain
           const currentNetwork = getCurrentNetwork();
           const chain = network === 'mainnet' ? base : baseSepolia;
