@@ -484,6 +484,9 @@ function ContractDeployer() {
   const [estimatingGas, setEstimatingGas] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [appLoading, setAppLoading] = useState(true);
+  const [showActivityFeed, setShowActivityFeed] = useState(false);
+  const [activityFeed, setActivityFeed] = useState<any[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -1013,6 +1016,40 @@ function ContractDeployer() {
     const interval = setInterval(() => fetchEthPrice(), 5 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch global activity feed
+  const fetchActivityFeed = async () => {
+    try {
+      setLoadingActivity(true);
+      const response = await fetch('/api/global-activity?limit=20');
+      if (response.ok) {
+        const data = await response.json();
+        setActivityFeed(data.activities || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch activity feed:', error);
+    } finally {
+      setLoadingActivity(false);
+    }
+  };
+
+  // Load activity feed when component mounts and user opens it
+  useEffect(() => {
+    if (showActivityFeed && activityFeed.length === 0) {
+      fetchActivityFeed();
+    }
+  }, [showActivityFeed]);
+
+  // Refresh activity feed every 30 seconds when visible
+  useEffect(() => {
+    if (!showActivityFeed) return;
+    
+    const interval = setInterval(() => {
+      fetchActivityFeed();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [showActivityFeed]);
 
   // Handle click counter button click
   const handleClickCounter = async () => {
@@ -3957,6 +3994,146 @@ contract NumberStore {
                 View on BaseScan
                 <ExternalLink className="w-4 h-4" strokeWidth={2} />
               </a>
+            </div>
+          )}
+        </div>
+
+        {/* Global Activity Feed */}
+        <div className="sketch-card">
+          <button
+            onClick={() => {
+              setShowActivityFeed(!showActivityFeed);
+              if (!showActivityFeed && activityFeed.length === 0) {
+                fetchActivityFeed();
+              }
+            }}
+            className="w-full p-4 flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Sparkles className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                {activityFeed.length > 0 && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-[var(--ink)] rounded-full animate-pulse" />
+                )}
+              </div>
+              <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider">
+                Live Activity Feed
+              </h3>
+            </div>
+            {showActivityFeed ? (
+              <ChevronUp className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+            )}
+          </button>
+          
+          {showActivityFeed && (
+            <div className="border-t-2 border-[var(--ink)]">
+              {loadingActivity && activityFeed.length === 0 ? (
+                <div className="p-4 space-y-3">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="animate-pulse flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[var(--pencil)] rounded-full opacity-40" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-[var(--pencil)] rounded opacity-40 w-2/3" />
+                        <div className="h-2 bg-[var(--pencil)] rounded opacity-25 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : activityFeed.length === 0 ? (
+                <div className="p-6 text-center">
+                  <Sparkles className="w-8 h-8 text-[var(--shade)] mx-auto mb-3" strokeWidth={1.5} />
+                  <p className="text-[var(--graphite)] text-sm">No recent activity</p>
+                  <p className="text-[var(--graphite)] text-xs mt-1">Be the first to deploy!</p>
+                </div>
+              ) : (
+                <div className="max-h-[500px] overflow-y-auto">
+                  <div className="p-3 bg-[var(--highlight)] border-b-2 border-[var(--pencil)] sticky top-0 z-10">
+                    <p className="text-xs text-[var(--graphite)] uppercase tracking-wider font-bold flex items-center gap-2">
+                      <Flame className="w-3 h-3" strokeWidth={2} />
+                      Recent deployments from all users
+                    </p>
+                  </div>
+                  <div className="divide-y-2 divide-[var(--light)]">
+                    {activityFeed.map((activity, index) => {
+                      const timeSince = Date.now() - activity.timestamp;
+                      const minutesAgo = Math.floor(timeSince / 60000);
+                      const hoursAgo = Math.floor(timeSince / 3600000);
+                      const daysAgo = Math.floor(timeSince / 86400000);
+                      
+                      let timeText = 'Just now';
+                      if (daysAgo > 0) timeText = `${daysAgo}d ago`;
+                      else if (hoursAgo > 0) timeText = `${hoursAgo}h ago`;
+                      else if (minutesAgo > 0) timeText = `${minutesAgo}m ago`;
+                      
+                      if (activity.type === 'deployment') {
+                        const template = CONTRACT_TEMPLATES[activity.contractType as keyof typeof CONTRACT_TEMPLATES];
+                        const Icon = template?.icon || FileCode2;
+                        
+                        return (
+                          <div key={`${activity.txHash}-${index}`} className="p-3 hover:bg-[var(--highlight)] transition-colors">
+                            <div className="flex items-start gap-3">
+                              {/* User Avatar */}
+                              <div className="flex-shrink-0">
+                                {activity.pfpUrl ? (
+                                  <img 
+                                    src={activity.pfpUrl} 
+                                    alt={activity.displayName}
+                                    className="w-10 h-10 rounded-full border-2 border-[var(--ink)]"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full border-2 border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
+                                    <User className="w-5 h-5 text-[var(--graphite)]" strokeWidth={2} />
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Activity Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <p className="font-bold text-[var(--ink)] text-sm truncate">
+                                      {activity.displayName}
+                                    </p>
+                                    {activity.username && (
+                                      <p className="text-xs text-[var(--graphite)] truncate">
+                                        @{activity.username}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[var(--graphite)] whitespace-nowrap">{timeText}</p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="p-1.5 border-2 border-[var(--ink)] bg-[var(--paper)]">
+                                    <Icon className="w-3 h-3 text-[var(--ink)]" strokeWidth={2} />
+                                  </div>
+                                  <p className="text-sm text-[var(--ink)]">
+                                    Deployed <span className="font-bold">{activity.contractName}</span>
+                                  </p>
+                                </div>
+                                
+                                <a
+                                  href={`${NETWORKS.mainnet.blockExplorer}/address/${activity.contractAddress}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-mono text-[var(--graphite)] hover:text-[var(--ink)] transition-colors flex items-center gap-1"
+                                >
+                                  {activity.contractAddress.slice(0, 6)}...{activity.contractAddress.slice(-4)}
+                                  <ExternalLink className="w-3 h-3" strokeWidth={2} />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      return null;
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
