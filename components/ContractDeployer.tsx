@@ -3280,7 +3280,7 @@ contract NumberStore {
                   </div>
                 )}
                 
-                {/* Reward Strength - Compact */}
+                {/* Reward Strength - Detailed with Shimmer & Lightning */}
                 {(() => {
                   const uniqueDays = new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size;
                   const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
@@ -3290,6 +3290,7 @@ contract NumberStore {
                   const tier = isHigh ? 'HIGH' : isMedHigh ? 'MED-HIGH' : isMed ? 'MEDIUM' : 'LOW';
                   const barColor = isHigh ? '#16a34a' : isMedHigh ? '#ea580c' : isMed ? '#ca8a04' : '#ef4444';
                   const pct = Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + uniqueDays * 15 + contractTypes * 20) / 10);
+                  const tierDur = isHigh ? '1.0s' : isMedHigh ? '1.3s' : isMed ? '1.6s' : '2.0s';
                   
                   return (
                     <div className="p-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
@@ -3297,22 +3298,28 @@ contract NumberStore {
                         <span className="text-xs font-bold text-[var(--ink)]">Reward Strength</span>
                         <span className="text-xs font-black tracking-widest" style={{ color: barColor }}>{tier}</span>
                       </div>
-                      <div className="h-1.5 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden relative">
-                        <div 
-                          className="h-full transition-all duration-500 relative overflow-hidden"
-                          style={{ 
-                            width: `${pct}%`,
-                            backgroundColor: barColor
-                          }}
+                      <div className="h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden relative">
+                        <div
+                          className="strength-shimmer-bar h-full transition-all duration-700 relative"
+                          style={{ width: `${pct}%`, backgroundColor: barColor }}
                         >
-                          <div 
-                            className="absolute inset-0 w-[200%] h-full opacity-30"
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='6'%3E%3Cpath d='M2 3 L4 1 L3 3 L5 3 L3 5 L4 3 Z' fill='white'/%3E%3C/svg%3E")`,
-                              backgroundRepeat: 'repeat',
-                              animation: 'lightning-slide 1s linear infinite'
-                            }}
-                          />
+                          {/* Lightning bolt SVG inside bar - jagged random pitch */}
+                          <svg
+                            className="bar-lightning absolute inset-0 w-full h-full"
+                            style={{ '--ldur': tierDur, '--ldelay': '0s', color: 'rgba(255,255,255,0.9)' } as React.CSSProperties}
+                            viewBox="0 0 100 8" preserveAspectRatio="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <polyline points="0,4 5,1 8,7 13,0 17,6 22,2 26,8 31,1 34,5 38,0 42,7 46,3 50,8 54,1 57,6 61,0 65,7 68,2 72,8 76,1 79,6 83,2 87,7 90,1 93,5 96,3 100,4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
+                          </svg>
+                          <svg
+                            className="bar-lightning absolute inset-0 w-full h-full"
+                            style={{ '--ldur': tierDur, '--ldelay': `${parseFloat(tierDur) * 0.45}s`, color: 'rgba(255,255,255,0.75)' } as React.CSSProperties}
+                            viewBox="0 0 100 8" preserveAspectRatio="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <polyline points="0,5 4,2 7,8 11,1 15,7 19,0 23,6 27,2 30,8 35,1 39,6 43,0 47,7 51,3 55,8 59,0 63,6 66,1 70,7 73,2 77,8 81,0 85,6 88,2 92,7 95,3 100,5" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round"/>
+                          </svg>
                         </div>
                       </div>
                     </div>
