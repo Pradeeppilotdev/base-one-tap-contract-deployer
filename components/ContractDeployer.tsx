@@ -3264,19 +3264,19 @@ contract NumberStore {
                 {currentStreak > 0 && (
                   <div className="p-2 border-2 border-[var(--ink)] bg-gradient-to-r from-orange-50 to-red-50 mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Flame 
-                        className={`w-4 h-4 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
+                      <Zap 
+                        className={`w-4 h-4 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-gray-600'}`} 
                         strokeWidth={2}
                         fill={streakStatus === 'active' ? 'currentColor' : 'none'}
                       />
                       <div>
-                        <span className="text-xs font-bold text-[var(--ink)]">{currentStreak} day streak</span>
+                        <span className="text-xs font-bold text-black">{currentStreak} day streak</span>
                         {streakStatus === 'at-risk' && (
                           <span className="text-[10px] text-yellow-700 ml-2">⚠️ At risk!</span>
                         )}
                       </div>
                     </div>
-                    <span className="text-[10px] text-[var(--graphite)]">Record: {longestStreak}</span>
+                    <span className="text-[10px] text-gray-700">Record: {longestStreak}</span>
                   </div>
                 )}
                 
