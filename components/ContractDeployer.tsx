@@ -487,6 +487,11 @@ function ContractDeployer() {
   const [showActivityFeed, setShowActivityFeed] = useState(false);
   const [activityFeed, setActivityFeed] = useState<any[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState<number>(0);
+  const [longestStreak, setLongestStreak] = useState<number>(0);
+  const [streakStatus, setStreakStatus] = useState<'active' | 'at-risk' | 'broken'>('active');
+  const [showStreakMilestone, setShowStreakMilestone] = useState(false);
+  const [streakMilestone, setStreakMilestone] = useState<number>(0);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -523,6 +528,30 @@ function ContractDeployer() {
           // Load referral points from backend
           if (data.referralPoints !== undefined) {
             setReferralPoints(data.referralPoints);
+          }
+          
+          // Load streak data from backend
+          if (data.currentStreak !== undefined) {
+            setCurrentStreak(data.currentStreak);
+          }
+          if (data.longestStreak !== undefined) {
+            setLongestStreak(data.longestStreak);
+          }
+          
+          // Calculate streak status
+          if (data.lastActiveDate) {
+            const lastActive = new Date(data.lastActiveDate);
+            const now = new Date();
+            const diffTime = now.getTime() - lastActive.getTime();
+            const hoursSinceActive = diffTime / (1000 * 60 * 60);
+            
+            if (hoursSinceActive < 24) {
+              setStreakStatus('active');
+            } else if (hoursSinceActive < 48) {
+              setStreakStatus('at-risk'); // Over 24h but under 48h
+            } else {
+              setStreakStatus('broken');
+            }
           }
           
           // Load clicks from backend
@@ -1033,6 +1062,28 @@ function ContractDeployer() {
     }
   };
 
+  // Check and celebrate streak milestones
+  const checkStreakMilestone = (newStreak: number, oldStreak: number) => {
+    const milestones = [3, 7, 14, 30, 50, 100, 365];
+    
+    // Find if we just crossed a milestone
+    for (const milestone of milestones) {
+      if (newStreak >= milestone && oldStreak < milestone) {
+        setStreakMilestone(milestone);
+        setShowStreakMilestone(true);
+        setShowConfetti(true);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          setShowStreakMilestone(false);
+          setShowConfetti(false);
+        }, 5000);
+        
+        break; // Only celebrate one milestone at a time
+      }
+    }
+  };
+
   // Load activity feed when component mounts and user opens it
   useEffect(() => {
     if (showActivityFeed && activityFeed.length === 0) {
@@ -1202,7 +1253,7 @@ function ContractDeployer() {
           // Save on-chain clicks to backend
           if (account && onChainClicks > 0) {
             try {
-              await fetch('/api/user-data', {
+              const response = await fetch('/api/user-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1214,6 +1265,40 @@ function ContractDeployer() {
                   pfpUrl: farcasterUser?.pfpUrl
                 })
               });
+              
+              // Reload streak data after click
+              if (response.ok) {
+                const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+                if (reloadResponse.ok) {
+                  const reloadData = await reloadResponse.json();
+                  if (reloadData.currentStreak !== undefined) {
+                    const oldStreak = currentStreak;
+                    setCurrentStreak(reloadData.currentStreak);
+                    // Check for milestone
+                    if (reloadData.currentStreak > oldStreak) {
+                      checkStreakMilestone(reloadData.currentStreak, oldStreak);
+                    }
+                  }
+                  if (reloadData.longestStreak !== undefined) {
+                    setLongestStreak(reloadData.longestStreak);
+                  }
+                  // Update streak status
+                  if (reloadData.lastActiveDate) {
+                    const lastActive = new Date(reloadData.lastActiveDate);
+                    const now = new Date();
+                    const diffTime = now.getTime() - lastActive.getTime();
+                    const hoursSinceActive = diffTime / (1000 * 60 * 60);
+                    
+                    if (hoursSinceActive < 24) {
+                      setStreakStatus('active');
+                    } else if (hoursSinceActive < 48) {
+                      setStreakStatus('at-risk');
+                    } else {
+                      setStreakStatus('broken');
+                    }
+                  }
+                }
+              }
             } catch (err) {
               console.error('Failed to save clicks to backend:', err);
             }
@@ -1399,6 +1484,33 @@ function ContractDeployer() {
                 // Reload referral points after saving contract
                 if (reloadData.referralPoints !== undefined) {
                   setReferralPoints(reloadData.referralPoints);
+                }
+                // Reload streak data after saving contract
+                if (reloadData.currentStreak !== undefined) {
+                  const oldStreak = currentStreak;
+                  setCurrentStreak(reloadData.currentStreak);
+                  // Check for milestone
+                  if (reloadData.currentStreak > oldStreak) {
+                    checkStreakMilestone(reloadData.currentStreak, oldStreak);
+                  }
+                }
+                if (reloadData.longestStreak !== undefined) {
+                  setLongestStreak(reloadData.longestStreak);
+                }
+                // Update streak status
+                if (reloadData.lastActiveDate) {
+                  const lastActive = new Date(reloadData.lastActiveDate);
+                  const now = new Date();
+                  const diffTime = now.getTime() - lastActive.getTime();
+                  const hoursSinceActive = diffTime / (1000 * 60 * 60);
+                  
+                  if (hoursSinceActive < 24) {
+                    setStreakStatus('active');
+                  } else if (hoursSinceActive < 48) {
+                    setStreakStatus('at-risk');
+                  } else {
+                    setStreakStatus('broken');
+                  }
                 }
               }
             }
@@ -2386,7 +2498,9 @@ contract NumberStore {
       gasSpentEth: gasInEth.toFixed(4),
       gasSpentUsd: gasInUsd.toFixed(2),
       totalClicks: clickCount,
-      rewardStrength: getRewardStrength()
+      rewardStrength: getRewardStrength(),
+      currentStreak,
+      longestStreak
     };
   };
 
@@ -3022,6 +3136,28 @@ contract NumberStore {
             )}
           </div>
 
+          {/* Center - Daily Streak Counter */}
+          {account && currentStreak > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
+              <div className="relative">
+                <Flame 
+                  className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
+                  strokeWidth={2}
+                  fill={streakStatus === 'active' ? 'currentColor' : 'none'}
+                />
+                {streakStatus === 'at-risk' && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[var(--ink)] leading-none">{currentStreak} Day{currentStreak !== 1 ? 's' : ''}</span>
+                <span className="text-[10px] text-[var(--graphite)] leading-none mt-0.5">
+                  {streakStatus === 'active' ? 'Streak' : streakStatus === 'at-risk' ? 'At Risk!' : 'Broken'}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Right side - User Profile */}
           {farcasterUser && (
             <button
@@ -3126,6 +3262,55 @@ contract NumberStore {
                     <p className="text-xs text-[var(--graphite)]">{loadingPrice ? 'Updating...' : 'Via CoinMarketCap'}</p>
                   </div>
                 </div>
+                
+                {/* Daily Streak Widget */}
+                {currentStreak > 0 && (
+                  <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)] mb-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Flame 
+                          className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
+                          strokeWidth={2}
+                          fill={streakStatus === 'active' ? 'currentColor' : 'none'}
+                        />
+                        <span className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">Daily Streak</span>
+                      </div>
+                      {streakStatus === 'at-risk' && (
+                        <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded border border-yellow-500">
+                          ⚠️ At Risk!
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-3 bg-[var(--light)] border-2 border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)] mb-1">Current Streak</p>
+                        <p className="text-2xl font-bold text-[var(--ink)]">{currentStreak}</p>
+                        <p className="text-xs text-[var(--graphite)]">day{currentStreak !== 1 ? 's' : ''} in a row</p>
+                      </div>
+                      <div className="p-3 bg-[var(--light)] border-2 border-[var(--pencil)]">
+                        <p className="text-xs text-[var(--graphite)] mb-1">Longest Streak</p>
+                        <p className="text-2xl font-bold text-[var(--ink)]">{longestStreak}</p>
+                        <p className="text-xs text-[var(--graphite)]">day{longestStreak !== 1 ? 's' : ''} record</p>
+                      </div>
+                    </div>
+                    {streakStatus === 'at-risk' && (
+                      <div className="mt-2 p-2 bg-yellow-50 border-2 border-yellow-500 text-yellow-900">
+                        <p className="text-xs font-bold">🚨 Your streak is at risk!</p>
+                        <p className="text-xs mt-1">Deploy a contract or interact on-chain today to save your {currentStreak}-day streak!</p>
+                      </div>
+                    )}
+                    {streakStatus === 'active' && currentStreak >= 7 && (
+                      <div className="mt-2 p-2 bg-green-50 border-2 border-green-500 text-green-900">
+                        <p className="text-xs font-bold">🎉 Amazing streak!</p>
+                        <p className="text-xs mt-1">
+                          {currentStreak >= 30 ? 'You\'re on fire! 30+ days of consistent building!' :
+                           currentStreak >= 14 ? 'Two weeks of building! Keep it up!' :
+                           'One week streak! You\'re building momentum!'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 {/* Wallet Balance Widget */}
                 <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)] mb-3">
@@ -4957,6 +5142,24 @@ contract NumberStore {
                             <div className="text-2xl font-black text-[var(--ink)]">{metrics.gasSpentEth}</div>
                             <div className="text-xs text-[var(--shade)]">ETH</div>
                           </div>
+
+                          {/* Current Streak */}
+                          {metrics.currentStreak > 0 && (
+                            <div className="p-3 border-2 border-[var(--pencil)] bg-gradient-to-br from-orange-50 to-red-50 text-center">
+                              <div className="text-xs text-[var(--graphite)] mb-1 font-bold uppercase tracking-wider">🔥 Streak</div>
+                              <div className="text-3xl font-black text-orange-600">{metrics.currentStreak}</div>
+                              <div className="text-xs text-orange-700">Day{metrics.currentStreak !== 1 ? 's' : ''}</div>
+                            </div>
+                          )}
+
+                          {/* Longest Streak */}
+                          {metrics.longestStreak > 0 && (
+                            <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--paper)] text-center">
+                              <div className="text-xs text-[var(--graphite)] mb-1 font-bold uppercase tracking-wider">Best Streak</div>
+                              <div className="text-3xl font-black text-[var(--ink)]">{metrics.longestStreak}</div>
+                              <div className="text-xs text-[var(--shade)]">Record</div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Reward Strength */}
@@ -5174,6 +5377,64 @@ contract NumberStore {
           </div>
         )}
 
+        {/* Streak Milestone Celebration Modal */}
+        {showStreakMilestone && streakMilestone > 0 && (
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+            onClick={() => setShowStreakMilestone(false)}
+          >
+            <div 
+              className="relative p-8 border-4 border-[var(--ink)] bg-[var(--paper)] shadow-2xl max-w-md w-full text-center animate-bounce-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowStreakMilestone(false)}
+                className="absolute top-3 right-3 p-1 hover:bg-[var(--light)] rounded transition-colors"
+              >
+                <X className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              </button>
+              
+              {/* Streak Icon */}
+              <div className="mb-4">
+                <div className="relative inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full border-4 border-[var(--paper)] shadow-lg">
+                  <Flame className="w-10 h-10 text-white" strokeWidth={2.5} fill="currentColor" />
+                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[var(--ink)] rounded-full border-2 border-[var(--paper)] flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">{streakMilestone}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Streak text */}
+              <div className="mb-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--shade)] mb-2">
+                  🔥 Streak Milestone Achieved! 🔥
+                </div>
+                <h3 className="text-2xl font-black text-[var(--ink)] mb-2 google-sans-title">
+                  {streakMilestone} Day Streak!
+                </h3>
+                <p className="text-base text-[var(--graphite)] font-medium">
+                  {streakMilestone === 3 ? 'You\'re building momentum! 3 days of consistent activity!' :
+                   streakMilestone === 7 ? 'One week of building! You\'re on fire! 🔥' :
+                   streakMilestone === 14 ? 'Two weeks straight! Incredible dedication!' :
+                   streakMilestone === 30 ? '30 days of building! You\'re unstoppable! 🚀' :
+                   streakMilestone === 50 ? '50 day streak! Legendary commitment!' :
+                   streakMilestone === 100 ? '100 DAYS! You\'re a blockchain champion! 👑' :
+                   streakMilestone === 365 ? 'ONE FULL YEAR! You\'re a Web3 legend! 🌟' :
+                   `${streakMilestone} days of consistent building!`}
+                </p>
+              </div>
+              
+              {/* Milestone badge */}
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-red-100 border-2 border-[var(--ink)] rounded-full">
+                <Flame className="w-4 h-4 text-orange-600" strokeWidth={2.5} fill="currentColor" />
+                <span className="text-sm font-bold text-[var(--ink)]">
+                  Keep the streak alive!
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* Footer */}
         <footer className="mt-8 text-center">
@@ -5237,8 +5498,14 @@ contract NumberStore {
             </h2>
           </div>
 
-          {/* Middle Section: 4 Metrics in a row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px', flex: 1 }}>
+          {/* Middle Section: Metrics in a row */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: currentStreak > 0 ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)', 
+            gap: '16px', 
+            marginBottom: '20px', 
+            flex: 1 
+          }}>
             <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Contracts
@@ -5257,23 +5524,41 @@ contract NumberStore {
               </div>
             </div>
 
-            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                Days Active
+            {currentStreak > 0 && (
+              <div style={{ border: '3px solid #000', padding: '16px', background: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                  🔥 Streak
+                </div>
+                <div style={{ fontSize: '48px', fontWeight: 900, color: '#ea580c', lineHeight: 1 }}>
+                  {currentStreak}
+                </div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#c2410c', marginTop: '4px' }}>
+                  day{currentStreak !== 1 ? 's' : ''}
+                </div>
               </div>
-              <div style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
-                {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
-              </div>
-            </div>
+            )}
 
-            <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                Gas Spent
-              </div>
-              <div style={{ fontSize: '32px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
-                {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
-              </div>
-            </div>
+            {!currentStreak && (
+              <>
+                <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                    Days Active
+                  </div>
+                  <div style={{ fontSize: '48px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+                    {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
+                  </div>
+                </div>
+
+                <div style={{ border: '3px solid #000', padding: '16px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                    Gas Spent
+                  </div>
+                  <div style={{ fontSize: '32px', fontWeight: 900, color: '#000', lineHeight: 1 }}>
+                    {formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Bottom Section: Reward Strength + Footer */}

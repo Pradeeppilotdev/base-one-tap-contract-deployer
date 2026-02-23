@@ -12,6 +12,10 @@ interface UserData {
   referralPoints?: number;
   clicks?: number;
   lastUpdated: number;
+  // Streak tracking
+  currentStreak?: number;
+  longestStreak?: number;
+  lastActiveDate?: string; // Format: YYYY-MM-DD
 }
 
 // Get user data document reference
@@ -174,6 +178,44 @@ export async function POST(request: NextRequest) {
         // Clicks not provided but exists in DB - preserve existing value
         userData.clicks = existingData.clicks;
       }
+
+      // Handle Daily Streak tracking
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      const lastActiveDate = existingData?.lastActiveDate;
+      let currentStreak = existingData?.currentStreak || 0;
+      let longestStreak = existingData?.longestStreak || 0;
+
+      // Calculate streak
+      if (lastActiveDate) {
+        const lastDate = new Date(lastActiveDate);
+        const todayDate = new Date(today);
+        const diffTime = todayDate.getTime() - lastDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+          // Same day - maintain current streak
+          // No change needed
+        } else if (diffDays === 1) {
+          // Consecutive day - increment streak
+          currentStreak += 1;
+          // Update longest streak if current exceeds it
+          if (currentStreak > longestStreak) {
+            longestStreak = currentStreak;
+          }
+        } else {
+          // Missed day(s) - reset streak to 1
+          currentStreak = 1;
+        }
+      } else {
+        // First time tracking - start streak at 1
+        currentStreak = 1;
+        longestStreak = 1;
+      }
+
+      // Update streak data
+      userData.currentStreak = currentStreak;
+      userData.longestStreak = longestStreak;
+      userData.lastActiveDate = today;
 
       // Save to Firestore (merge: true to preserve other fields if any)
       await setDoc(userDocRef, userData, { merge: true });
