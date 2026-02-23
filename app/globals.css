@@ -600,6 +600,11 @@ button {
   animation-delay: var(--ldelay, 0s);
 }
 
+@keyframes lightning-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-20px); }
+}
+
 /* Custom scrollbar for doodle theme */
 .overflow-y-auto::-webkit-scrollbar {
   width: 8px;

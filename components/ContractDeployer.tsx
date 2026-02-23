@@ -3299,18 +3299,20 @@ contract NumberStore {
                       </div>
                       <div className="h-1.5 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden relative">
                         <div 
-                          className="h-full transition-all duration-500 relative"
+                          className="h-full transition-all duration-500 relative overflow-hidden"
                           style={{ 
                             width: `${pct}%`,
                             backgroundColor: barColor
                           }}
                         >
-                          <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
-                            <pattern id="lightning-pattern" x="0" y="0" width="20" height="6" patternUnits="userSpaceOnUse">
-                              <path d="M2 3 L4 1 L3 3 L5 3 L3 5 L4 3 Z" fill="white" />
-                            </pattern>
-                            <rect width="100%" height="100%" fill="url(#lightning-pattern)" />
-                          </svg>
+                          <div 
+                            className="absolute inset-0 w-[200%] h-full opacity-30"
+                            style={{
+                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='6'%3E%3Cpath d='M2 3 L4 1 L3 3 L5 3 L3 5 L4 3 Z' fill='white'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: 'repeat',
+                              animation: 'lightning-slide 1s linear infinite'
+                            }}
+                          />
                         </div>
                       </div>
                     </div>
