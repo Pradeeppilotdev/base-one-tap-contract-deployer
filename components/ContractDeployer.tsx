@@ -3265,8 +3265,8 @@ contract NumberStore {
                   <div className="p-2 border-2 border-[var(--ink)] bg-gradient-to-r from-orange-50 to-red-50 mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap 
-                        className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-600' : streakStatus === 'at-risk' ? 'text-yellow-600' : 'text-gray-700'}`} 
-                        strokeWidth={2.5}
+                        className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-400' : streakStatus === 'at-risk' ? 'text-yellow-400' : 'text-gray-400'}`} 
+                        strokeWidth={2}
                         fill={streakStatus === 'active' ? 'currentColor' : 'none'}
                       />
                       <div>
@@ -3297,14 +3297,21 @@ contract NumberStore {
                         <span className="text-xs font-bold text-[var(--ink)]">Reward Strength</span>
                         <span className="text-xs font-black tracking-widest" style={{ color: barColor }}>{tier}</span>
                       </div>
-                      <div className="h-1.5 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
+                      <div className="h-1.5 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden relative">
                         <div 
-                          className="h-full transition-all duration-500"
+                          className="h-full transition-all duration-500 relative"
                           style={{ 
                             width: `${pct}%`,
                             backgroundColor: barColor
                           }}
-                        />
+                        >
+                          <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
+                            <pattern id="lightning-pattern" x="0" y="0" width="20" height="6" patternUnits="userSpaceOnUse">
+                              <path d="M2 3 L4 1 L3 3 L5 3 L3 5 L4 3 Z" fill="white" />
+                            </pattern>
+                            <rect width="100%" height="100%" fill="url(#lightning-pattern)" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   );
