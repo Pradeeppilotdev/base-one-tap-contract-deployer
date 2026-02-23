@@ -3230,172 +3230,82 @@ contract NumberStore {
               <div className="border-t-2 border-[var(--ink)] p-5">
                 {walletHealthPage === 1 ? (
               <>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Contracts Deployed</p>
-                    <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length}</p>
+                {/* Main Stats Grid - Compact 3x2 */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-[10px] text-[var(--graphite)] mb-0.5 uppercase tracking-wide">Contracts</p>
+                    <p className="text-lg font-bold text-[var(--ink)]">{deployedContracts.length}</p>
                   </div>
-                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Unique Days Active</p>
-                    <p className="text-xl font-bold text-[var(--ink)]">
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-[10px] text-[var(--graphite)] mb-0.5 uppercase tracking-wide">Transactions</p>
+                    <p className="text-lg font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
+                  </div>
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-[10px] text-[var(--graphite)] mb-0.5 uppercase tracking-wide">Days Active</p>
+                    <p className="text-lg font-bold text-[var(--ink)]">
                       {new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size}
                     </p>
                   </div>
-                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Total Transactions</p>
-                    <p className="text-xl font-bold text-[var(--ink)]">{deployedContracts.length + clickCount}</p>
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-[10px] text-[var(--graphite)] mb-0.5 uppercase tracking-wide">Gas Spent</p>
+                    <p className="text-sm font-bold text-[var(--ink)]">{formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH</p>
                   </div>
-                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Gas Spent</p>
-                    <p className="text-lg font-bold text-[var(--ink)]">{formatGasSpent(totalGasSpent, ethPrice).ethShort} ETH</p>
-                    <p className="text-xs text-[var(--graphite)]">${formatGasSpent(totalGasSpent, ethPrice).usd}</p>
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-[10px] text-[var(--graphite)] mb-0.5 uppercase tracking-wide">Balance</p>
+                    <p className="text-sm font-bold text-[var(--ink)]">{formatBalance(walletBalance, ethPrice).ethShort} ETH</p>
                   </div>
-                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">Activity Score</p>
-                    <p className="text-xl font-bold text-[var(--ink)]">
-                      {Math.min(1000, deployedContracts.length * 10 + clickCount * 3 + new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size * 15 + new Set(deployedContracts.map(c => c.contractType)).size * 20)}/1000
-                    </p>
-                  </div>
-                  <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)]">
-                    <p className="text-xs text-[var(--graphite)] mb-1">ETH Price (Live)</p>
-                    <p className="text-xl font-bold text-[var(--ink)]">${ethPrice.toFixed(2)}</p>
-                    <p className="text-xs text-[var(--graphite)]">{loadingPrice ? 'Updating...' : 'Via CoinMarketCap'}</p>
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)]">
+                    <p className="text-[10px] text-[var(--graphite)] mb-0.5 uppercase tracking-wide">ETH Price</p>
+                    <p className="text-sm font-bold text-[var(--ink)]">${ethPrice.toFixed(0)}</p>
                   </div>
                 </div>
-                
-                {/* Daily Streak Widget */}
+
+                {/* Streak - Compact Inline */}
                 {currentStreak > 0 && (
-                  <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)] mb-3">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Flame 
-                          className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
-                          strokeWidth={2}
-                          fill={streakStatus === 'active' ? 'currentColor' : 'none'}
-                        />
-                        <span className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">Daily Streak</span>
-                      </div>
-                      {streakStatus === 'at-risk' && (
-                        <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded border border-yellow-500">
-                          ⚠️ At Risk!
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-3 bg-[var(--light)] border-2 border-[var(--pencil)]">
-                        <p className="text-xs text-[var(--graphite)] mb-1">Current Streak</p>
-                        <p className="text-2xl font-bold text-[var(--ink)]">{currentStreak}</p>
-                        <p className="text-xs text-[var(--graphite)]">day{currentStreak !== 1 ? 's' : ''} in a row</p>
-                      </div>
-                      <div className="p-3 bg-[var(--light)] border-2 border-[var(--pencil)]">
-                        <p className="text-xs text-[var(--graphite)] mb-1">Longest Streak</p>
-                        <p className="text-2xl font-bold text-[var(--ink)]">{longestStreak}</p>
-                        <p className="text-xs text-[var(--graphite)]">day{longestStreak !== 1 ? 's' : ''} record</p>
+                  <div className="p-2 border-2 border-[var(--ink)] bg-gradient-to-r from-orange-50 to-red-50 mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Flame 
+                        className={`w-4 h-4 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
+                        strokeWidth={2}
+                        fill={streakStatus === 'active' ? 'currentColor' : 'none'}
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-[var(--ink)]">{currentStreak} day streak</span>
+                        {streakStatus === 'at-risk' && (
+                          <span className="text-[10px] text-yellow-700 ml-2">⚠️ At risk!</span>
+                        )}
                       </div>
                     </div>
-                    {streakStatus === 'at-risk' && (
-                      <div className="mt-2 p-2 bg-yellow-50 border-2 border-yellow-500 text-yellow-900">
-                        <p className="text-xs font-bold">🚨 Your streak is at risk!</p>
-                        <p className="text-xs mt-1">Deploy a contract or interact on-chain today to save your {currentStreak}-day streak!</p>
-                      </div>
-                    )}
-                    {streakStatus === 'active' && currentStreak >= 7 && (
-                      <div className="mt-2 p-2 bg-green-50 border-2 border-green-500 text-green-900">
-                        <p className="text-xs font-bold">🎉 Amazing streak!</p>
-                        <p className="text-xs mt-1">
-                          {currentStreak >= 30 ? 'You\'re on fire! 30+ days of consistent building!' :
-                           currentStreak >= 14 ? 'Two weeks of building! Keep it up!' :
-                           'One week streak! You\'re building momentum!'}
-                        </p>
-                      </div>
-                    )}
+                    <span className="text-[10px] text-[var(--graphite)]">Record: {longestStreak}</span>
                   </div>
                 )}
                 
-                {/* Wallet Balance Widget */}
-                <div className="p-3 border-2 border-[var(--ink)] bg-[var(--paper)] mb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-[var(--ink)]">Wallet Balance</span>
-                    {loadingBalance && <span className="text-xs text-[var(--graphite)]">Loading...</span>}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
-                      <p className="text-xs text-[var(--graphite)]">ETH</p>
-                      <p className="text-lg font-bold text-[var(--ink)]">{formatBalance(walletBalance, ethPrice).ethShort}</p>
-                    </div>
-                    <div className="p-2 bg-[var(--light)] border border-[var(--pencil)]">
-                      <p className="text-xs text-[var(--graphite)]">USD</p>
-                      <p className="text-lg font-bold text-[var(--ink)]">${formatBalance(walletBalance, ethPrice).usd}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Potential Reward Strength Indicator */}
+                {/* Reward Strength - Compact */}
                 {(() => {
                   const uniqueDays = new Set(deployedContracts.map(c => new Date(c.timestamp).toDateString())).size;
                   const contractTypes = new Set(deployedContracts.map(c => c.contractType)).size;
                   const isHigh = deployedContracts.length >= 30 && clickCount >= 50 && uniqueDays >= 10 && contractTypes >= 4;
                   const isMedHigh = !isHigh && deployedContracts.length >= 15 && clickCount >= 25 && uniqueDays >= 7;
                   const isMed = !isHigh && !isMedHigh && (deployedContracts.length >= 5 || clickCount >= 10 || uniqueDays >= 3);
-                  const tier = isHigh ? 'HIGH' : isMedHigh ? 'MEDIUM-HIGH' : isMed ? 'MEDIUM' : 'LOW';
+                  const tier = isHigh ? 'HIGH' : isMedHigh ? 'MED-HIGH' : isMed ? 'MEDIUM' : 'LOW';
                   const barColor = isHigh ? '#16a34a' : isMedHigh ? '#ea580c' : isMed ? '#ca8a04' : '#ef4444';
                   const pct = Math.min(100, (deployedContracts.length * 10 + clickCount * 3 + uniqueDays * 15 + contractTypes * 20) / 10);
-                  const tierDur = isHigh ? '1.0s' : isMedHigh ? '1.3s' : isMed ? '1.6s' : '2.0s';
+                  
                   return (
-                    <div className="p-3 border-2 border-[var(--ink)]">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-[var(--ink)]">Potential Reward Strength</span>
-                        <span className="text-sm font-black tracking-widest" style={{ color: barColor }}>{tier}</span>
+                    <div className="p-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-[var(--ink)]">Reward Strength</span>
+                        <span className="text-xs font-black tracking-widest" style={{ color: barColor }}>{tier}</span>
                       </div>
-                      <div className="h-2 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden relative">
-                        <div
-                          className="strength-shimmer-bar h-full transition-all duration-700 relative"
-                          style={{ width: `${pct}%`, backgroundColor: barColor }}
-                        >
-                          {/* Lightning bolt SVG inside bar — jagged random pitch */}
-                          <svg
-                            className="bar-lightning absolute inset-0 w-full h-full"
-                            style={{ '--ldur': tierDur, '--ldelay': '0s', color: 'rgba(255,255,255,0.9)' } as React.CSSProperties}
-                            viewBox="0 0 100 8" preserveAspectRatio="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <polyline points="0,4 5,1 8,7 13,0 17,6 22,2 26,8 31,1 34,5 38,0 42,7 46,3 50,8 54,1 57,6 61,0 65,7 68,2 72,8 76,1 79,6 83,2 87,7 90,1 93,5 96,3 100,4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
-                          </svg>
-                          <svg
-                            className="bar-lightning absolute inset-0 w-full h-full"
-                            style={{ '--ldur': tierDur, '--ldelay': `${parseFloat(tierDur) * 0.45}s`, color: 'rgba(255,255,255,0.75)' } as React.CSSProperties}
-                            viewBox="0 0 100 8" preserveAspectRatio="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <polyline points="0,5 4,2 7,8 11,1 15,7 19,0 23,6 27,2 30,8 35,1 39,6 43,0 47,7 51,3 55,8 59,0 63,6 66,1 70,7 73,2 77,8 81,0 85,6 88,2 92,7 95,3 100,5" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" strokeLinecap="round"/>
-                          </svg>
-                        </div>
+                      <div className="h-1.5 bg-[var(--light)] border border-[var(--pencil)] overflow-hidden">
+                        <div 
+                          className="h-full transition-all duration-500"
+                          style={{ 
+                            width: `${pct}%`,
+                            backgroundColor: barColor
+                          }}
+                        />
                       </div>
-                      <p className="text-xs text-[var(--graphite)] mt-2">
-                        {isHigh
-                          ? 'Keep it up! You are an on-chain legend!'
-                          : isMedHigh
-                          ? `Almost there! Need ${Math.max(0, 50 - clickCount)} more clicks for HIGH`
-                          : `Need: ${Math.max(0, 15 - deployedContracts.length)} more deploys, ${Math.max(0, 25 - clickCount)} more clicks for MEDIUM-HIGH`}
-                      </p>
-                    </div>
-                  );
-                })()}
-
-                {/* Deploy Streak */}
-                {(() => {
-                  const streak = getCurrentStreak();
-                  return (
-                    <div className="p-3 border-2 border-[var(--pencil)] bg-[var(--light)] flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Flame className="w-4 h-4 text-orange-500" strokeWidth={2} />
-                        <span className="text-sm font-bold text-[var(--ink)]">Deploy Streak</span>
-                      </div>
-                      {streak > 0 ? (
-                        <span className="text-sm font-black text-orange-500">{streak} day{streak !== 1 ? 's' : ''}</span>
-                      ) : (
-                        <span className="text-xs text-[var(--graphite)]">No streak yet</span>
-                      )}
                     </div>
                   );
                 })()}
