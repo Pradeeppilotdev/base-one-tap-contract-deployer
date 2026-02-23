@@ -3265,8 +3265,8 @@ contract NumberStore {
                   <div className="p-2 border-2 border-[var(--ink)] bg-gradient-to-r from-orange-50 to-red-50 mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap 
-                        className={`w-4 h-4 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-gray-600'}`} 
-                        strokeWidth={2}
+                        className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-600' : streakStatus === 'at-risk' ? 'text-yellow-600' : 'text-gray-700'}`} 
+                        strokeWidth={2.5}
                         fill={streakStatus === 'active' ? 'currentColor' : 'none'}
                       />
                       <div>
