@@ -32,7 +32,9 @@ import {
   Twitter,
   MessageCircle,
   Moon,
-  Sun
+  Sun,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -492,6 +494,112 @@ function ContractDeployer() {
   const [streakStatus, setStreakStatus] = useState<'active' | 'at-risk' | 'broken'>('active');
   const [showStreakMilestone, setShowStreakMilestone] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number>(0);
+  
+  // Sound effects state
+  const [soundsEnabled, setSoundsEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sounds-enabled');
+      return stored !== null ? stored === 'true' : true; // Default: enabled
+    }
+    return true;
+  });
+
+  // Sound effects using Web Audio API for better performance
+  const playSound = (type: 'click' | 'success' | 'achievement' | 'error') => {
+    if (!soundsEnabled) return;
+    
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Different sound profiles for each type
+      switch (type) {
+        case 'click':
+          oscillator.frequency.value = 800;
+          gainNode.gain.value = 0.1;
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.05);
+          break;
+        case 'success':
+          // Two-tone success chime
+          oscillator.frequency.value = 523.25; // C5
+          gainNode.gain.value = 0.2;
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.1);
+          
+          setTimeout(() => {
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.frequency.value = 659.25; // E5
+            gain2.gain.value = 0.2;
+            osc2.start();
+            osc2.stop(audioContext.currentTime + 0.15);
+          }, 100);
+          break;
+        case 'achievement':
+          // Three-tone fanfare
+          [523.25, 659.25, 783.99].forEach((freq, i) => {
+            setTimeout(() => {
+              const osc = audioContext.createOscillator();
+              const gain = audioContext.createGain();
+              osc.connect(gain);
+              gain.connect(audioContext.destination);
+              osc.frequency.value = freq;
+              gain.gain.value = 0.15;
+              osc.start();
+              osc.stop(audioContext.currentTime + 0.2);
+            }, i * 100);
+          });
+          break;
+        case 'error':
+          oscillator.frequency.value = 200;
+          gainNode.gain.value = 0.15;
+          oscillator.type = 'sawtooth';
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.1);
+          break;
+      }
+      
+      // Haptic feedback on mobile
+      if ('vibrate' in navigator) {
+        switch (type) {
+          case 'click':
+            navigator.vibrate(10);
+            break;
+          case 'success':
+            navigator.vibrate([50, 50, 100]);
+            break;
+          case 'achievement':
+            navigator.vibrate([50, 50, 50, 50, 150]);
+            break;
+          case 'error':
+            navigator.vibrate(100);
+            break;
+        }
+      }
+    } catch (err) {
+      console.warn('Audio playback failed:', err);
+    }
+  };
+
+  // Toggle sounds and save preference
+  const toggleSounds = () => {
+    const newValue = !soundsEnabled;
+    setSoundsEnabled(newValue);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sounds-enabled', String(newValue));
+    }
+    // Play a test sound when enabling
+    if (newValue) {
+      setTimeout(() => playSound('click'), 100);
+    }
+  };
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -1305,6 +1413,7 @@ function ContractDeployer() {
           }
           
           setError('Clicked on-chain!');
+          playSound('click');
           setTimeout(() => setError(null), 1000);
         } else {
           setError('Transaction failed');
@@ -1317,6 +1426,7 @@ function ContractDeployer() {
     } catch (err: any) {
       console.error('Failed to click:', err);
       setError(err.message || 'Failed to record click');
+      playSound('error');
       setTimeout(() => setError(null), 1000);
     } finally {
       setClicking(false);
@@ -1350,6 +1460,7 @@ function ContractDeployer() {
             // Use setTimeout to ensure state is updated
             setTimeout(() => {
               setNewAchievement(newlyUnlocked);
+              playSound('achievement');
               setAchievementClosing(false);
               // Auto-hide after 2.5 seconds with fade out
               setTimeout(() => {
@@ -2075,6 +2186,7 @@ contract NumberStore {
     } catch (err: any) {
       console.error('Farcaster wallet error:', err);
       setError(err.message || 'Failed to connect Farcaster wallet');
+      playSound('error');
     }
   };
 
@@ -2105,6 +2217,7 @@ contract NumberStore {
       }
     } catch (err: any) {
       setError(err.message);
+      playSound('error');
     }
   };
 
@@ -2313,6 +2426,7 @@ contract NumberStore {
           
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
+            playSound('success');
             setSuccessFading(false);
             
             // Trigger fade-out after 1.5 seconds, then clear after animation completes
@@ -2466,6 +2580,7 @@ contract NumberStore {
         setError('Transaction cancelled');
       } else {
         setError(err.message || 'Deployment failed');
+        playSound('error');
       }
       setTimeout(() => setError(null), 1000);
     } finally {
@@ -3124,6 +3239,15 @@ contract NumberStore {
               {theme === 'dark'
                 ? <Sun className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
                 : <Moon className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />}
+            </button>
+            <button
+              onClick={() => { toggleSounds(); playSound('click'); }}
+              className="p-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors"
+              title={soundsEnabled ? 'Disable sounds' : 'Enable sounds'}
+            >
+              {soundsEnabled
+                ? <Volume2 className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                : <VolumeX className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />}
             </button>
             {isInFarcaster && !isAppAdded && (
               <button
