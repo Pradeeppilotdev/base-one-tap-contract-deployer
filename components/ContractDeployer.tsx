@@ -40,6 +40,20 @@ import { useTheme } from 'next-themes';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { encodeFunctionData, decodeEventLog, createPublicClient, http } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
+import { Attribution } from 'ox/erc8021';
+
+// ERC-8021 Builder Code Attribution
+// Appending this suffix to all transaction calldata attributes onchain activity to this app.
+// Builder Code: bc_rb8bel1s (registered at base.dev)
+const BUILDER_CODE_SUFFIX = Attribution.toDataSuffix({
+  codes: ['bc_rb8bel1s'],
+});
+
+// Helper: append Builder Code suffix to calldata hex string
+const appendBuilderCode = (data: string): string => {
+  const suffix = BUILDER_CODE_SUFFIX.startsWith('0x') ? BUILDER_CODE_SUFFIX.slice(2) : BUILDER_CODE_SUFFIX;
+  return data + suffix;
+};
 
 // Type for Farcaster user context
 interface FarcasterUser {
@@ -1240,11 +1254,11 @@ function ContractDeployer() {
         throw new Error('No wallet provider available');
       }
 
-      // Send transaction
+      // Send transaction (with ERC-8021 Builder Code attribution suffix)
       const txParams = {
         from: account,
         to: clickCounterAddress,
-        data: data,
+        data: appendBuilderCode(data),
         value: '0x0',
       };
 
@@ -2352,11 +2366,11 @@ contract NumberStore {
       const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
-      // Send transaction to factory contract (regular transaction, not contract creation)
+      // Send transaction to factory contract (with ERC-8021 Builder Code attribution suffix)
       const txParams: any = {
         from: account as `0x${string}`,
         to: factoryAddress as `0x${string}`,
-        data: callData,
+        data: appendBuilderCode(callData),
         gas: gasEstimate,
         value: '0x0'
       };

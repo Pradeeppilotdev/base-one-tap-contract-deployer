@@ -4,6 +4,8 @@ import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 
 // Wagmi config for Farcaster Mini App
 // Uses the Farcaster MiniApp connector for wallet integration
+// NOTE: Builder Code (ERC-8021) attribution is applied manually in ContractDeployer.tsx
+// via appendBuilderCode() since transactions use raw provider.request, not wagmi hooks.
 export const config = createConfig({
   chains: [base, baseSepolia],
   transports: {
