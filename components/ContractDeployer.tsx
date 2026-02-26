@@ -3235,15 +3235,15 @@ contract NumberStore {
       <div className="max-w-xl mx-auto pt-6 pb-12">
         
         {/* Top Bar - User Profile & Actions */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between gap-2 mb-6 overflow-hidden">
           {/* Left side - Share & Add buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={shareApp}
               className="p-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors"
               title="Share app"
             >
-              <Share2 className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+              <Share2 className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
             </button>
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -3251,8 +3251,8 @@ contract NumberStore {
               title="Toggle dark mode"
             >
               {theme === 'dark'
-                ? <Sun className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-                : <Moon className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />}
+                ? <Sun className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                : <Moon className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />}
             </button>
             <button
               onClick={() => { toggleSounds(); playSound('click'); }}
@@ -3260,8 +3260,8 @@ contract NumberStore {
               title={soundsEnabled ? 'Disable sounds' : 'Enable sounds'}
             >
               {soundsEnabled
-                ? <Volume2 className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
-                : <VolumeX className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />}
+                ? <Volume2 className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                : <VolumeX className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />}
             </button>
             {isInFarcaster && !isAppAdded && (
               <button
@@ -3269,17 +3269,17 @@ contract NumberStore {
                 className="p-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors"
                 title="Add to your apps"
               >
-                <Plus className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                <Plus className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
               </button>
             )}
           </div>
 
           {/* Center - Daily Streak Counter */}
           {account && currentStreak > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)]">
+            <div className="flex items-center gap-1.5 px-2 py-1.5 border-2 border-[var(--ink)] bg-[var(--paper)] shrink-0">
               <div className="relative">
                 <Flame 
-                  className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
+                  className={`w-4 h-4 ${streakStatus === 'active' ? 'text-orange-500' : streakStatus === 'at-risk' ? 'text-yellow-500' : 'text-[var(--graphite)]'}`} 
                   strokeWidth={2}
                   fill={streakStatus === 'active' ? 'currentColor' : 'none'}
                 />
@@ -3288,9 +3288,9 @@ contract NumberStore {
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-[var(--ink)] leading-none">{currentStreak} Day{currentStreak !== 1 ? 's' : ''}</span>
-                <span className="text-[10px] text-[var(--graphite)] leading-none mt-0.5">
-                  {streakStatus === 'active' ? 'Streak' : streakStatus === 'at-risk' ? 'At Risk!' : 'Broken'}
+                <span className="text-[11px] font-bold text-[var(--ink)] leading-none">{currentStreak}d</span>
+                <span className="text-[9px] text-[var(--graphite)] leading-none mt-0.5">
+                  {streakStatus === 'active' ? 'Streak' : streakStatus === 'at-risk' ? 'Risk!' : 'Broken'}
                 </span>
               </div>
             </div>
@@ -3300,25 +3300,25 @@ contract NumberStore {
           {farcasterUser && (
             <button
               onClick={handleProfileClick}
-              className="flex items-center gap-3 px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-2 py-1.5 border-2 border-[var(--ink)] bg-[var(--paper)] hover:bg-[var(--light)] transition-colors cursor-pointer min-w-0 shrink"
             >
               {farcasterUser.pfpUrl ? (
                 <img 
                   src={farcasterUser.pfpUrl} 
                   alt={farcasterUser.displayName || farcasterUser.username || 'User'}
-                  className="w-8 h-8 rounded-full border border-[var(--ink)]"
+                  className="w-7 h-7 rounded-full border border-[var(--ink)] shrink-0"
                   crossOrigin="anonymous"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full border border-[var(--ink)] bg-[var(--light)] flex items-center justify-center">
-                  <User className="w-4 h-4 text-[var(--ink)]" strokeWidth={2} />
+                <div className="w-7 h-7 rounded-full border border-[var(--ink)] bg-[var(--light)] flex items-center justify-center shrink-0">
+                  <User className="w-3.5 h-3.5 text-[var(--ink)]" strokeWidth={2} />
                 </div>
               )}
-              <div className="text-right">
-                <p className="text-sm font-bold text-[var(--ink)] leading-tight">
+              <div className="text-right min-w-0">
+                <p className="text-xs font-bold text-[var(--ink)] leading-tight truncate max-w-[90px]">
                   {farcasterUser.displayName || farcasterUser.username || 'User'}
                 </p>
-                <p className="text-xs text-[var(--graphite)]">
+                <p className="text-[10px] text-[var(--graphite)] truncate max-w-[90px]">
                   @{farcasterUser.username || `fid:${farcasterUser.fid}`}
                 </p>
               </div>

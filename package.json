@@ -34,7 +34,7 @@
     "wagmi": "^2.19.5"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@nomicfoundation/hardhat-toolbox": "^6.0.0",
     "@nomicfoundation/hardhat-verify": "^3.0.8",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
