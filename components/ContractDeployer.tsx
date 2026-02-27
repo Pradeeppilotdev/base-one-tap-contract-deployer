@@ -518,12 +518,52 @@ function ContractDeployer() {
     return true;
   });
 
-  // Sound effects using Web Audio API — richer layered sounds
+  // Persistent AudioContext + preloaded click MP3 buffer
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const clickBufferRef = useRef<AudioBuffer | null>(null);
+
+  // Initialize AudioContext and preload click sound on first user interaction
+  const ensureAudioContext = (): AudioContext => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Preload click MP3
+      fetch('/click.mp3')
+        .then(res => res.arrayBuffer())
+        .then(buf => audioCtxRef.current!.decodeAudioData(buf))
+        .then(decoded => { clickBufferRef.current = decoded; })
+        .catch(err => console.warn('Failed to preload click sound:', err));
+    }
+    // Resume if suspended (browser autoplay policy)
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
+
+  // Unlock audio on very first user interaction so sounds work immediately
+  useEffect(() => {
+    const unlock = () => {
+      ensureAudioContext();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('click', unlock);
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('click', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('click', unlock);
+    };
+  }, []);
+
+  // Sound effects — click uses MP3, others use Web Audio synthesis
   const playSound = (type: 'click' | 'success' | 'achievement' | 'error') => {
     if (!soundsEnabled) return;
     
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = ensureAudioContext();
       const now = ctx.currentTime;
 
       // Helper: create a tone with envelope
@@ -533,15 +573,15 @@ function ContractDeployer() {
         osc.type = waveform;
         osc.frequency.setValueAtTime(freq, now + start);
         gain.gain.setValueAtTime(0, now + start);
-        gain.gain.linearRampToValueAtTime(vol, now + start + 0.008); // fast attack
-        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur); // natural decay
+        gain.gain.linearRampToValueAtTime(vol, now + start + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now + start);
         osc.stop(now + start + dur);
       };
 
-      // Helper: short noise burst (percussive "tack" texture)
+      // Helper: short noise burst
       const noiseBurst = (start: number, dur: number, vol: number) => {
         const bufferSize = Math.floor(ctx.sampleRate * dur);
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -565,29 +605,38 @@ function ContractDeployer() {
 
       switch (type) {
         case 'click':
-          // "Tadak" — snappy two-hit percussive tap
-          noiseBurst(0, 0.04, 0.12);         // first hit
-          tone(1200, 0, 0.06, 0.08);          // bright transient
-          noiseBurst(0.06, 0.03, 0.08);       // second tap
-          tone(900, 0.06, 0.05, 0.06);        // lower follow-up
+          // Play the MP3 click sound
+          if (clickBufferRef.current) {
+            const src = ctx.createBufferSource();
+            src.buffer = clickBufferRef.current;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.5;
+            src.connect(gain);
+            gain.connect(ctx.destination);
+            src.start(0);
+          } else {
+            // Fallback if MP3 hasn't loaded yet — quick percussive tap
+            noiseBurst(0, 0.04, 0.10);
+            tone(1000, 0, 0.05, 0.06);
+          }
           break;
         case 'success':
           // Warm rising chord — C5, E5, G5 with shimmer
-          noiseBurst(0, 0.02, 0.06);           // initial pop
-          tone(523.25, 0.01, 0.25, 0.12);      // C5
-          tone(659.25, 0.06, 0.25, 0.10);      // E5
-          tone(783.99, 0.12, 0.30, 0.10);      // G5
-          tone(1046.5, 0.15, 0.20, 0.05, 'triangle'); // C6 sparkle
+          noiseBurst(0, 0.02, 0.06);
+          tone(523.25, 0.01, 0.25, 0.12);
+          tone(659.25, 0.06, 0.25, 0.10);
+          tone(783.99, 0.12, 0.30, 0.10);
+          tone(1046.5, 0.15, 0.20, 0.05, 'triangle');
           break;
         case 'achievement':
           // Triumphant fanfare — arpeggiated major chord + octave
-          noiseBurst(0, 0.03, 0.08);             // kick
-          tone(523.25, 0.02, 0.30, 0.12);        // C5
-          tone(659.25, 0.10, 0.28, 0.11);        // E5
-          tone(783.99, 0.18, 0.28, 0.11);        // G5
-          tone(1046.5, 0.26, 0.35, 0.13);        // C6 peak
-          tone(1318.5, 0.30, 0.25, 0.06, 'triangle'); // E6 shimmer
-          noiseBurst(0.28, 0.05, 0.04);          // final sparkle
+          noiseBurst(0, 0.03, 0.08);
+          tone(523.25, 0.02, 0.30, 0.12);
+          tone(659.25, 0.10, 0.28, 0.11);
+          tone(783.99, 0.18, 0.28, 0.11);
+          tone(1046.5, 0.26, 0.35, 0.13);
+          tone(1318.5, 0.30, 0.25, 0.06, 'triangle');
+          noiseBurst(0.28, 0.05, 0.04);
           break;
         case 'error':
           // Low buzz + descending tone
