@@ -518,65 +518,82 @@ function ContractDeployer() {
     return true;
   });
 
-  // Sound effects using Web Audio API for better performance
+  // Sound effects using Web Audio API — richer layered sounds
   const playSound = (type: 'click' | 'success' | 'achievement' | 'error') => {
     if (!soundsEnabled) return;
     
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Different sound profiles for each type
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = ctx.currentTime;
+
+      // Helper: create a tone with envelope
+      const tone = (freq: number, start: number, dur: number, vol: number, waveform: OscillatorType = 'sine') => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = waveform;
+        osc.frequency.setValueAtTime(freq, now + start);
+        gain.gain.setValueAtTime(0, now + start);
+        gain.gain.linearRampToValueAtTime(vol, now + start + 0.008); // fast attack
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur); // natural decay
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + start);
+        osc.stop(now + start + dur);
+      };
+
+      // Helper: short noise burst (percussive "tack" texture)
+      const noiseBurst = (start: number, dur: number, vol: number) => {
+        const bufferSize = Math.floor(ctx.sampleRate * dur);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        const bandpass = ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.value = 3000;
+        bandpass.Q.value = 1.5;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(vol, now + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+        src.connect(bandpass);
+        bandpass.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(now + start);
+        src.stop(now + start + dur);
+      };
+
       switch (type) {
         case 'click':
-          oscillator.frequency.value = 800;
-          gainNode.gain.value = 0.1;
-          oscillator.start();
-          oscillator.stop(audioContext.currentTime + 0.05);
+          // "Tadak" — snappy two-hit percussive tap
+          noiseBurst(0, 0.04, 0.12);         // first hit
+          tone(1200, 0, 0.06, 0.08);          // bright transient
+          noiseBurst(0.06, 0.03, 0.08);       // second tap
+          tone(900, 0.06, 0.05, 0.06);        // lower follow-up
           break;
         case 'success':
-          // Two-tone success chime
-          oscillator.frequency.value = 523.25; // C5
-          gainNode.gain.value = 0.2;
-          oscillator.start();
-          oscillator.stop(audioContext.currentTime + 0.1);
-          
-          setTimeout(() => {
-            const osc2 = audioContext.createOscillator();
-            const gain2 = audioContext.createGain();
-            osc2.connect(gain2);
-            gain2.connect(audioContext.destination);
-            osc2.frequency.value = 659.25; // E5
-            gain2.gain.value = 0.2;
-            osc2.start();
-            osc2.stop(audioContext.currentTime + 0.15);
-          }, 100);
+          // Warm rising chord — C5, E5, G5 with shimmer
+          noiseBurst(0, 0.02, 0.06);           // initial pop
+          tone(523.25, 0.01, 0.25, 0.12);      // C5
+          tone(659.25, 0.06, 0.25, 0.10);      // E5
+          tone(783.99, 0.12, 0.30, 0.10);      // G5
+          tone(1046.5, 0.15, 0.20, 0.05, 'triangle'); // C6 sparkle
           break;
         case 'achievement':
-          // Three-tone fanfare
-          [523.25, 659.25, 783.99].forEach((freq, i) => {
-            setTimeout(() => {
-              const osc = audioContext.createOscillator();
-              const gain = audioContext.createGain();
-              osc.connect(gain);
-              gain.connect(audioContext.destination);
-              osc.frequency.value = freq;
-              gain.gain.value = 0.15;
-              osc.start();
-              osc.stop(audioContext.currentTime + 0.2);
-            }, i * 100);
-          });
+          // Triumphant fanfare — arpeggiated major chord + octave
+          noiseBurst(0, 0.03, 0.08);             // kick
+          tone(523.25, 0.02, 0.30, 0.12);        // C5
+          tone(659.25, 0.10, 0.28, 0.11);        // E5
+          tone(783.99, 0.18, 0.28, 0.11);        // G5
+          tone(1046.5, 0.26, 0.35, 0.13);        // C6 peak
+          tone(1318.5, 0.30, 0.25, 0.06, 'triangle'); // E6 shimmer
+          noiseBurst(0.28, 0.05, 0.04);          // final sparkle
           break;
         case 'error':
-          oscillator.frequency.value = 200;
-          gainNode.gain.value = 0.15;
-          oscillator.type = 'sawtooth';
-          oscillator.start();
-          oscillator.stop(audioContext.currentTime + 0.1);
+          // Low buzz + descending tone
+          tone(300, 0, 0.15, 0.12, 'sawtooth');
+          tone(200, 0.08, 0.15, 0.10, 'sawtooth');
+          noiseBurst(0, 0.06, 0.06);
           break;
       }
       
@@ -3400,21 +3417,21 @@ contract NumberStore {
 
                 {/* Streak - Compact Inline */}
                 {currentStreak > 0 && (
-                  <div className="p-2 border-2 border-[var(--ink)] bg-gradient-to-r from-orange-50 to-red-50 mb-3 flex items-center justify-between">
+                  <div className="p-2 border-2 border-[var(--pencil)] bg-[var(--light)] mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap 
-                        className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-400' : streakStatus === 'at-risk' ? 'text-yellow-400' : 'text-gray-400'}`} 
+                        className={`w-5 h-5 ${streakStatus === 'active' ? 'text-orange-400' : streakStatus === 'at-risk' ? 'text-yellow-400' : 'text-[var(--graphite)]'}`} 
                         strokeWidth={2}
                         fill={streakStatus === 'active' ? 'currentColor' : 'none'}
                       />
                       <div>
-                        <span className="text-xs font-bold text-black">{currentStreak} day streak</span>
+                        <span className="text-xs font-bold text-[var(--ink)]">{currentStreak} day streak</span>
                         {streakStatus === 'at-risk' && (
-                          <span className="text-[10px] text-yellow-700 ml-2">⚠️ At risk!</span>
+                          <span className="text-[10px] text-yellow-500 ml-2">⚠️ At risk!</span>
                         )}
                       </div>
                     </div>
-                    <span className="text-[10px] text-gray-700">Record: {longestStreak}</span>
+                    <span className="text-[10px] text-[var(--graphite)]">Record: {longestStreak}</span>
                   </div>
                 )}
                 
