@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { encodeFunctionData, decodeEventLog, createPublicClient, http } from 'viem';
+import { encodeFunctionData, decodeEventLog, createPublicClient, http, encodeAbiParameters } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { Attribution } from 'ox/erc8021';
 
@@ -540,6 +540,7 @@ contract MyContract {
   const [compileError, setCompileError] = useState<string | null>(null);
   const [compileWarnings, setCompileWarnings] = useState<string[]>([]);
   const [compiledContractName, setCompiledContractName] = useState<string | null>(null);
+  const [customConstructorArgs, setCustomConstructorArgs] = useState<Record<string, string>>({});
   
   // Sound effects state
   const [soundsEnabled, setSoundsEnabled] = useState(() => {
@@ -2475,7 +2476,40 @@ contract NumberStore {
       
       let deploymentBytecode = bytecode;
       
-      // Add constructor parameters if needed (not for custom — bytecode is already complete)
+      // For custom contracts: encode constructor args from ABI and append to bytecode
+      if (isCustom && compiledAbi) {
+        const ctor = compiledAbi.find((item: any) => item.type === 'constructor');
+        if (ctor && ctor.inputs && ctor.inputs.length > 0) {
+          try {
+            const paramTypes = ctor.inputs.map((input: any) => ({ type: input.type, name: input.name || '' }));
+            const paramValues = ctor.inputs.map((input: any) => {
+              const raw = customConstructorArgs[input.name || ''] || '';
+              // Parse based on Solidity type
+              if (input.type.startsWith('uint') || input.type.startsWith('int')) {
+                return BigInt(raw || '0');
+              } else if (input.type === 'bool') {
+                return raw.toLowerCase() === 'true' || raw === '1';
+              } else if (input.type === 'address') {
+                return raw as `0x${string}`;
+              } else if (input.type === 'bytes') {
+                return raw.startsWith('0x') ? raw : `0x${raw}` as `0x${string}`;
+              } else {
+                return raw; // string and others
+              }
+            });
+            const encoded = encodeAbiParameters(paramTypes, paramValues);
+            const bytecodeHex = deploymentBytecode.startsWith('0x') ? deploymentBytecode.slice(2) : deploymentBytecode;
+            const encodedHex = encoded.startsWith('0x') ? encoded.slice(2) : encoded;
+            deploymentBytecode = '0x' + bytecodeHex + encodedHex;
+          } catch (encodeError: any) {
+            setError(`Failed to encode constructor arguments: ${encodeError.message}`);
+            setDeploying(false);
+            return;
+          }
+        }
+      }
+      
+      // Add constructor parameters if needed (template contracts only)
       if (!isCustom && template.hasInput && inputValue.trim()) {
         try {
           const encodedParams = encodeConstructorParams(template, inputValue);
@@ -2833,6 +2867,27 @@ contract NumberStore {
       let bytecode = isCustom ? (compiledBytecode || '') : template.bytecode;
       if (!bytecode.startsWith('0x')) bytecode = '0x' + bytecode;
       let deploymentBytecode = bytecode;
+      // For custom contracts: encode constructor args from ABI
+      if (isCustom && compiledAbi) {
+        const ctor = compiledAbi.find((item: any) => item.type === 'constructor');
+        if (ctor && ctor.inputs && ctor.inputs.length > 0) {
+          try {
+            const paramTypes = ctor.inputs.map((input: any) => ({ type: input.type, name: input.name || '' }));
+            const paramValues = ctor.inputs.map((input: any) => {
+              const raw = customConstructorArgs[input.name || ''] || '';
+              if (input.type.startsWith('uint') || input.type.startsWith('int')) return BigInt(raw || '0');
+              else if (input.type === 'bool') return raw.toLowerCase() === 'true' || raw === '1';
+              else if (input.type === 'address') return raw as `0x${string}`;
+              else if (input.type === 'bytes') return (raw.startsWith('0x') ? raw : `0x${raw}`) as `0x${string}`;
+              else return raw;
+            });
+            const encoded = encodeAbiParameters(paramTypes, paramValues);
+            const bHex = deploymentBytecode.startsWith('0x') ? deploymentBytecode.slice(2) : deploymentBytecode;
+            const eHex = encoded.startsWith('0x') ? encoded.slice(2) : encoded;
+            deploymentBytecode = '0x' + bHex + eHex;
+          } catch {}
+        }
+      }
       if (!isCustom && template.hasInput && inputValue.trim()) {
         try {
           const encodedParams = encodeConstructorParams(template, inputValue);
@@ -4318,6 +4373,7 @@ contract NumberStore {
                       setCompileError(null);
                       setCompileWarnings([]);
                       setCompiledContractName(null);
+                      setCustomConstructorArgs({});
                     }}
                     className="sketch-input w-full px-4 py-3 font-mono text-sm leading-relaxed"
                     rows={14}
@@ -4377,6 +4433,34 @@ contract NumberStore {
                       </div>
                     </div>
                   )}
+
+                  {/* Constructor Arguments (dynamic from ABI) */}
+                  {compiledBytecode && compiledAbi && (() => {
+                    const ctor = compiledAbi.find((item: any) => item.type === 'constructor');
+                    if (!ctor || !ctor.inputs || ctor.inputs.length === 0) return null;
+                    return (
+                      <div className="mt-3 p-3 border-2 border-[var(--ink)] bg-[var(--highlight)]">
+                        <p className="text-xs font-bold text-[var(--ink)] mb-2 uppercase tracking-wider">Constructor Arguments</p>
+                        <div className="space-y-2">
+                          {ctor.inputs.map((input: any, idx: number) => (
+                            <div key={idx}>
+                              <label className="block text-xs text-[var(--graphite)] mb-1">
+                                <span className="font-mono font-bold text-[var(--ink)]">{input.name || `arg${idx}`}</span>
+                                <span className="ml-1 opacity-70">({input.type})</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={customConstructorArgs[input.name || `arg${idx}`] || ''}
+                                onChange={(e) => setCustomConstructorArgs(prev => ({ ...prev, [input.name || `arg${idx}`]: e.target.value }))}
+                                placeholder={input.type === 'string' ? 'Hello World' : input.type === 'bool' ? 'true or false' : input.type.startsWith('uint') ? '0' : input.type === 'address' ? '0x...' : `Enter ${input.type}`}
+                                className="sketch-input w-full px-3 py-2 font-mono text-sm"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Bytecode preview */}
                   {compiledBytecode && (
