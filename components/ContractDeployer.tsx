@@ -34,7 +34,8 @@ import {
   Moon,
   Sun,
   Volume2,
-  VolumeX
+  VolumeX,
+  Code2
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -345,6 +346,15 @@ const CONTRACT_TEMPLATES = {
     inputLabel: "Your Lucky Number",
     inputPlaceholder: "Enter any number (e.g. 42)",
     icon: Flame
+  },
+  custom: {
+    name: "Custom Contract",
+    description: "Write and deploy your own Solidity code",
+    bytecode: "",
+    abi: [],
+    hasInput: false,
+    isCustom: true,
+    icon: Code2
   }
 };
 
@@ -508,6 +518,28 @@ function ContractDeployer() {
   const [streakStatus, setStreakStatus] = useState<'active' | 'at-risk' | 'broken'>('active');
   const [showStreakMilestone, setShowStreakMilestone] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number>(0);
+  
+  // Custom contract compiler state
+  const [customCode, setCustomCode] = useState(`// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract MyContract {
+    uint256 public value;
+    
+    constructor(uint256 _value) {
+        value = _value;
+    }
+    
+    function setValue(uint256 _newValue) public {
+        value = _newValue;
+    }
+}`);
+  const [compiling, setCompiling] = useState(false);
+  const [compiledBytecode, setCompiledBytecode] = useState<string | null>(null);
+  const [compiledAbi, setCompiledAbi] = useState<any[] | null>(null);
+  const [compileError, setCompileError] = useState<string | null>(null);
+  const [compileWarnings, setCompileWarnings] = useState<string[]>([]);
+  const [compiledContractName, setCompiledContractName] = useState<string | null>(null);
   
   // Sound effects state
   const [soundsEnabled, setSoundsEnabled] = useState(() => {
@@ -2312,6 +2344,51 @@ contract NumberStore {
     }
   };
 
+  // Compile custom Solidity code via the /api/compile endpoint
+  const compileCustomContract = async () => {
+    setCompiling(true);
+    setCompileError(null);
+    setCompileWarnings([]);
+    setCompiledBytecode(null);
+    setCompiledAbi(null);
+    setCompiledContractName(null);
+
+    // Extract contract name from source code
+    const contractNameMatch = customCode.match(/contract\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+    if (!contractNameMatch) {
+      setCompileError('No contract found in source code. Make sure you have a "contract MyName { ... }" declaration.');
+      setCompiling(false);
+      return;
+    }
+
+    const detectedName = contractNameMatch[1];
+
+    try {
+      const res = await fetch('/api/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceCode: customCode, contractName: detectedName }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setCompileError(data.error || 'Compilation failed');
+        if (data.warnings) setCompileWarnings(data.warnings);
+      } else {
+        setCompiledBytecode(data.bytecode);
+        setCompiledAbi(data.abi || []);
+        setCompiledContractName(detectedName);
+        if (data.warnings) setCompileWarnings(data.warnings);
+        playSound('success');
+      }
+    } catch (err: any) {
+      setCompileError(`Network error: ${err.message || 'Failed to reach compile server'}`);
+    }
+
+    setCompiling(false);
+  };
+
   // Use public RPC to fetch receipt - more reliable than wallet provider
   const fetchReceiptFromRPC = async (txHash: string): Promise<any> => {
     const currentNetwork = getCurrentNetwork();
@@ -2371,8 +2448,15 @@ contract NumberStore {
 
     // Factory contract is deployed on both Base Mainnet and Base Sepolia
     const template = CONTRACT_TEMPLATES[selectedContract];
+    const isCustom = 'isCustom' in template && template.isCustom;
     
-    if (template.hasInput && !inputValue.trim()) {
+    // Custom contract: must be compiled first
+    if (isCustom && !compiledBytecode) {
+      setError('Please compile your contract first');
+      return;
+    }
+    
+    if (!isCustom && template.hasInput && !inputValue.trim()) {
       const inputType = 'inputType' in template ? template.inputType : 'value';
       setError(`Please enter a ${inputType === 'string' ? 'string value' : 'number'}`);
       return;
@@ -2384,15 +2468,15 @@ contract NumberStore {
     setTxHash(null);
 
     try {
-      let bytecode = template.bytecode;
+      let bytecode = isCustom ? (compiledBytecode || '') : template.bytecode;
       if (!bytecode.startsWith('0x')) {
         bytecode = '0x' + bytecode;
       }
       
       let deploymentBytecode = bytecode;
       
-      // Add constructor parameters if needed
-      if (template.hasInput && inputValue.trim()) {
+      // Add constructor parameters if needed (not for custom — bytecode is already complete)
+      if (!isCustom && template.hasInput && inputValue.trim()) {
         try {
           const encodedParams = encodeConstructorParams(template, inputValue);
           const bytecodeWithoutPrefix = bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode;
@@ -2577,7 +2661,7 @@ contract NumberStore {
             await saveContract({
               address: contractAddress,
               contractType: selectedContract,
-              contractName: template.name,
+              contractName: isCustom ? (compiledContractName || 'Custom Contract') : template.name,
               txHash: hash,
               timestamp: Date.now(),
               inputValue: inputValue || undefined,
@@ -2736,7 +2820,9 @@ contract NumberStore {
     const provider = getProvider();
     if (!provider) { setError('No wallet provider available'); return; }
     const template = CONTRACT_TEMPLATES[selectedContract];
-    if (template.hasInput && !inputValue.trim()) {
+    const isCustom = 'isCustom' in template && template.isCustom;
+    if (isCustom && !compiledBytecode) { setError('Please compile your contract first'); return; }
+    if (!isCustom && template.hasInput && !inputValue.trim()) {
       const inputType = 'inputType' in template ? template.inputType : 'value';
       setError(`Please enter a ${inputType === 'string' ? 'string value' : 'number'}`);
       return;
@@ -2744,10 +2830,10 @@ contract NumberStore {
     setEstimatingGas(true);
     setGasEstimateWei(null);
     try {
-      let bytecode = template.bytecode;
+      let bytecode = isCustom ? (compiledBytecode || '') : template.bytecode;
       if (!bytecode.startsWith('0x')) bytecode = '0x' + bytecode;
       let deploymentBytecode = bytecode;
-      if (template.hasInput && inputValue.trim()) {
+      if (!isCustom && template.hasInput && inputValue.trim()) {
         try {
           const encodedParams = encodeConstructorParams(template, inputValue);
           deploymentBytecode = '0x' + bytecode.slice(2) + encodedParams;
@@ -4168,7 +4254,7 @@ contract NumberStore {
                         <button
                           key={key}
                           type="button"
-                          onClick={() => { setSelectedContract(key as keyof typeof CONTRACT_TEMPLATES); setInputValue(''); setError(null); }}
+                          onClick={() => { setSelectedContract(key as keyof typeof CONTRACT_TEMPLATES); setInputValue(''); setError(null); setCompileError(null); setCompileWarnings([]); }}
                           className={`
                             w-full p-4 text-left transition-all border-2
                             ${isSelected
@@ -4211,26 +4297,127 @@ contract NumberStore {
           </div>
 
           {/* Input Field */}
-          {CONTRACT_TEMPLATES[selectedContract].hasInput && 'inputLabel' in CONTRACT_TEMPLATES[selectedContract] && (
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wider">
-                {'inputLabel' in CONTRACT_TEMPLATES[selectedContract] ? String(CONTRACT_TEMPLATES[selectedContract].inputLabel) : ''}
-              </label>
-              <input
-                type={'inputType' in CONTRACT_TEMPLATES[selectedContract] && CONTRACT_TEMPLATES[selectedContract].inputType === 'number' ? 'number' : 'text'}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={'inputPlaceholder' in CONTRACT_TEMPLATES[selectedContract] ? String(CONTRACT_TEMPLATES[selectedContract].inputPlaceholder || '') : ''}
-                className="sketch-input w-full px-4 py-3"
-                min={'inputType' in CONTRACT_TEMPLATES[selectedContract] && CONTRACT_TEMPLATES[selectedContract].inputType === 'number' ? '0' : undefined}
-              />
-            </div>
-          )}
+          {(() => {
+            const currentTemplate = CONTRACT_TEMPLATES[selectedContract];
+            const isCustom = 'isCustom' in currentTemplate && currentTemplate.isCustom;
+            
+            if (isCustom) {
+              return (
+                <div className="mb-6">
+                  {/* Solidity Code Editor */}
+                  <label className="block text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wider">
+                    Solidity Source Code
+                  </label>
+                  <textarea
+                    value={customCode}
+                    onChange={(e) => {
+                      setCustomCode(e.target.value);
+                      // Invalidate compiled bytecode when code changes
+                      setCompiledBytecode(null);
+                      setCompiledAbi(null);
+                      setCompileError(null);
+                      setCompileWarnings([]);
+                      setCompiledContractName(null);
+                    }}
+                    className="sketch-input w-full px-4 py-3 font-mono text-sm leading-relaxed"
+                    rows={14}
+                    spellCheck={false}
+                    placeholder="// Write your Solidity code here..."
+                    style={{ resize: 'vertical', tabSize: 4 }}
+                  />
+
+                  {/* Compile Button */}
+                  <button
+                    onClick={compileCustomContract}
+                    disabled={compiling || !customCode.trim()}
+                    className={`w-full mt-3 py-3 px-6 font-bold text-sm uppercase tracking-wider border-2 transition-all ${
+                      compiledBytecode
+                        ? 'border-green-600 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500'
+                        : 'border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
+                    }`}
+                  >
+                    {compiling ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Compiling...
+                      </span>
+                    ) : compiledBytecode ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Compiled — {compiledContractName || 'Ready'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <Code2 className="w-4 h-4" />
+                        Compile Contract
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Compile Error */}
+                  {compileError && (
+                    <div className="mt-3 p-3 border-2 border-red-400 bg-red-50 dark:bg-red-900/20">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                        <pre className="text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap font-mono overflow-x-auto">{compileError}</pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Compile Warnings */}
+                  {compileWarnings.length > 0 && (
+                    <div className="mt-3 p-3 border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                        <div className="text-xs text-yellow-700 dark:text-yellow-300 font-mono overflow-x-auto">
+                          {compileWarnings.map((w, i) => (
+                            <pre key={i} className="whitespace-pre-wrap mb-1">{w}</pre>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bytecode preview */}
+                  {compiledBytecode && (
+                    <div className="mt-3 p-3 border-2 border-[var(--pencil)] bg-[var(--highlight)]">
+                      <p className="text-xs font-bold text-[var(--ink)] mb-1 uppercase tracking-wider">Compiled Bytecode</p>
+                      <p className="text-xs text-[var(--graphite)] font-mono break-all">
+                        {compiledBytecode.slice(0, 80)}...
+                        <span className="text-[var(--graphite)] opacity-60"> ({Math.floor(compiledBytecode.length / 2)} bytes)</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Regular template input field
+            if (currentTemplate.hasInput && 'inputLabel' in currentTemplate) {
+              return (
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wider">
+                    {'inputLabel' in currentTemplate ? String(currentTemplate.inputLabel) : ''}
+                  </label>
+                  <input
+                    type={'inputType' in currentTemplate && currentTemplate.inputType === 'number' ? 'number' : 'text'}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={'inputPlaceholder' in currentTemplate ? String(currentTemplate.inputPlaceholder || '') : ''}
+                    className="sketch-input w-full px-4 py-3"
+                    min={'inputType' in currentTemplate && currentTemplate.inputType === 'number' ? '0' : undefined}
+                  />
+                </div>
+              );
+            }
+
+            return null;
+          })()}
 
           {/* Deploy Button */}
           <button
             onClick={requestDeployConfirm}
-            disabled={!account || deploying || estimatingGas || chainId !== getCurrentNetwork().chainId}
+            disabled={!account || deploying || estimatingGas || chainId !== getCurrentNetwork().chainId || (selectedContract === 'custom' && !compiledBytecode)}
             className="ink-button w-full py-4 px-6 text-lg"
           >
             {deploying ? (
@@ -4246,6 +4433,8 @@ contract NumberStore {
               </span>
             ) : chainId !== getCurrentNetwork().chainId ? (
               `Switch to ${getCurrentNetwork().name}`
+            ) : selectedContract === 'custom' && !compiledBytecode ? (
+              'Compile First to Deploy'
             ) : (
               'Deploy Contract'
             )}
@@ -5390,7 +5579,7 @@ contract NumberStore {
               <div className="space-y-2 mb-4 text-sm">
                 <div className="flex justify-between border-b border-[var(--pencil)] pb-1">
                   <span className="text-[var(--graphite)]">Contract</span>
-                  <span className="font-bold text-[var(--ink)]">{CONTRACT_TEMPLATES[selectedContract]?.name ?? selectedContract}</span>
+                  <span className="font-bold text-[var(--ink)]">{selectedContract === 'custom' ? (compiledContractName || 'Custom Contract') : (CONTRACT_TEMPLATES[selectedContract]?.name ?? selectedContract)}</span>
                 </div>
                 {inputValue && (
                   <div className="flex justify-between border-b border-[var(--pencil)] pb-1">
