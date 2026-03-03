@@ -363,6 +363,8 @@ const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
 const REFERRAL_KEY = 'base-deployer-referral';
 const NETWORK_KEY = 'base-deployer-network';
+const CUSTOM_PROMO_KEY = 'base-deployer-seen-custom-promo';
+const STREAK_NOTIF_KEY = 'base-deployer-streak-notif-sent';
 
 // Achievement system
 interface Achievement {
@@ -541,6 +543,11 @@ contract MyContract {
   const [compileWarnings, setCompileWarnings] = useState<string[]>([]);
   const [compiledContractName, setCompiledContractName] = useState<string | null>(null);
   const [customConstructorArgs, setCustomConstructorArgs] = useState<Record<string, string>>({});
+
+  // Custom contract promo modal
+  const [showCustomPromo, setShowCustomPromo] = useState(false);
+  // Farcaster notification details (url + token) for sending push notifications
+  const [notificationDetails, setNotificationDetails] = useState<{ url: string; token: string } | null>(null);
   
   // Sound effects state
   const [soundsEnabled, setSoundsEnabled] = useState(() => {
@@ -768,6 +775,10 @@ contract MyContract {
             
             if (hoursSinceActive < 24) {
               setStreakStatus('active');
+              // Reset the notification flag so it can fire again next time streak is at risk
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem(STREAK_NOTIF_KEY);
+              }
             } else if (hoursSinceActive < 48) {
               setStreakStatus('at-risk'); // Over 24h but under 48h
             } else {
@@ -1035,6 +1046,44 @@ contract MyContract {
       }
     }
   }, [account, farcasterUser]);
+
+  // Show custom contract promo modal after app finishes loading (one-time)
+  useEffect(() => {
+    if (appLoading) return;
+    if (typeof window !== 'undefined') {
+      const seen = localStorage.getItem(CUSTOM_PROMO_KEY);
+      if (!seen) {
+        // Small delay so the main UI renders first
+        const timer = setTimeout(() => setShowCustomPromo(true), 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [appLoading]);
+
+  // Send Farcaster notification when streak is at-risk
+  useEffect(() => {
+    if (streakStatus !== 'at-risk' || !notificationDetails || currentStreak === 0) return;
+    if (typeof window !== 'undefined') {
+      const alreadySent = localStorage.getItem(STREAK_NOTIF_KEY);
+      if (alreadySent) return; // Don't spam — one notification per at-risk window
+
+      localStorage.setItem(STREAK_NOTIF_KEY, Date.now().toString());
+
+      // Fire-and-forget notification via our API route
+      fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notificationUrl: notificationDetails.url,
+          token: notificationDetails.token,
+          title: '🔥 Your streak is at risk!',
+          body: `You have a ${currentStreak}-day deploy streak! Deploy a contract today to keep it alive.`,
+          targetUrl: 'https://base-one-tap-contract-deployer.vercel.app',
+          notificationId: `streak-at-risk-${Date.now()}`,
+        }),
+      }).catch(err => console.warn('Streak notification failed:', err));
+    }
+  }, [streakStatus, notificationDetails, currentStreak]);
 
   // Track referral and give points
   // Validate referral code
@@ -2015,6 +2064,14 @@ contract NumberStore {
         if (context?.client?.added) {
           setIsAppAdded(true);
         }
+        
+        // Capture notification details for sending push notifications
+        if ((context?.client as any)?.notificationDetails) {
+          const nd = (context.client as any).notificationDetails;
+          if (nd.url && nd.token) {
+            setNotificationDetails({ url: nd.url, token: nd.token });
+          }
+        }
       } catch (contextError) {
         console.log('Farcaster context error (normal outside Farcaster):', contextError);
         setIsInFarcaster(false);
@@ -2023,11 +2080,35 @@ contract NumberStore {
 
     initSDK();
     
+    // Listen for notification token updates from Farcaster
+    const handleMiniAppAdded = ({ notificationDetails: nd }: { notificationDetails?: { url: string; token: string } }) => {
+      setIsAppAdded(true);
+      if (nd?.url && nd?.token) {
+        setNotificationDetails({ url: nd.url, token: nd.token });
+      }
+    };
+    const handleNotificationsEnabled = ({ notificationDetails: nd }: { notificationDetails: { url: string; token: string } }) => {
+      if (nd?.url && nd?.token) {
+        setNotificationDetails({ url: nd.url, token: nd.token });
+      }
+    };
+    
+    try {
+      sdk.on('miniAppAdded', handleMiniAppAdded);
+      sdk.on('notificationsEnabled', handleNotificationsEnabled);
+    } catch (e) {
+      // SDK event listeners may not be available outside Farcaster
+    }
+    
     return () => {
       if (typeof window !== 'undefined' && window.ethereum && window.ethereum.removeListener) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       }
+      try {
+        sdk.off('miniAppAdded', handleMiniAppAdded);
+        sdk.off('notificationsEnabled', handleNotificationsEnabled);
+      } catch (e) {}
     };
   }, []);
 
@@ -5645,6 +5726,83 @@ contract NumberStore {
                 })()}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Custom Contract Feature Promo Modal (one-time) */}
+        {showCustomPromo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 animate-backdrop-in" onClick={() => {
+              setShowCustomPromo(false);
+              if (typeof window !== 'undefined') localStorage.setItem(CUSTOM_PROMO_KEY, 'true');
+            }}></div>
+            <div className="relative bg-[var(--paper)] border-4 border-[var(--ink)] rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-achievement-pop-in">
+              {/* Decorative corners */}
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[var(--ink)] rounded-tl-2xl"></div>
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[var(--ink)] rounded-tr-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[var(--ink)] rounded-bl-2xl"></div>
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[var(--ink)] rounded-br-2xl"></div>
+
+              {/* Close button */}
+              <button
+                onClick={() => {
+                  setShowCustomPromo(false);
+                  if (typeof window !== 'undefined') localStorage.setItem(CUSTOM_PROMO_KEY, 'true');
+                }}
+                className="absolute top-3 right-3 p-1 text-[var(--graphite)] hover:text-[var(--ink)] transition-colors"
+              >
+                <X className="w-5 h-5" strokeWidth={2} />
+              </button>
+
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 mb-3">
+                  <Code2 className="w-8 h-8 text-blue-600 dark:text-blue-400" strokeWidth={2} />
+                </div>
+                <h3 className="text-lg font-black text-[var(--ink)] uppercase tracking-wide">New Feature!</h3>
+              </div>
+
+              <div className="space-y-3 mb-5">
+                <p className="text-sm text-[var(--ink)] text-center font-medium">
+                  You can now <span className="font-black">write and deploy your own Solidity contracts</span> directly in the app!
+                </p>
+                <div className="p-3 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)] rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-[var(--ink)] flex-shrink-0 mt-0.5" strokeWidth={2} />
+                    <div className="text-xs text-[var(--graphite)] space-y-1">
+                      <p>Write any Solidity code in the built-in editor</p>
+                      <p>Compile on-the-fly with the latest Solidity compiler</p>
+                      <p>Constructor arguments are auto-detected from your ABI</p>
+                      <p>Deploy to Base Mainnet or Sepolia in one tap</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCustomPromo(false);
+                    if (typeof window !== 'undefined') localStorage.setItem(CUSTOM_PROMO_KEY, 'true');
+                  }}
+                  className="flex-1 py-2 px-4 border-2 border-[var(--ink)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--light)] transition-colors rounded"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCustomPromo(false);
+                    if (typeof window !== 'undefined') localStorage.setItem(CUSTOM_PROMO_KEY, 'true');
+                    setSelectedContract('custom');
+                    setInputValue('');
+                    setError(null);
+                  }}
+                  className="flex-1 py-2 px-4 bg-[var(--ink)] text-[var(--paper)] font-bold text-sm hover:opacity-90 transition-opacity rounded flex items-center justify-center gap-2"
+                >
+                  <Code2 className="w-4 h-4" />
+                  Try It Now
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
