@@ -1061,29 +1061,44 @@ contract MyContract {
   }, [appLoading]);
 
   // Send Farcaster notification when streak is at-risk
+  // This is a client-side fallback — the primary mechanism is the server-side cron at /api/cron/check-streaks
   useEffect(() => {
-    if (streakStatus !== 'at-risk' || !notificationDetails || currentStreak === 0) return;
+    if (streakStatus !== 'at-risk' || currentStreak === 0) return;
+    // Need either direct notification details or a FID to look up from Firebase
+    if (!notificationDetails && !farcasterUser?.fid) return;
     if (typeof window !== 'undefined') {
       const alreadySent = localStorage.getItem(STREAK_NOTIF_KEY);
       if (alreadySent) return; // Don't spam — one notification per at-risk window
 
       localStorage.setItem(STREAK_NOTIF_KEY, Date.now().toString());
 
+      // Use a stable notificationId (date-based) so Farcaster deduplicates properly
+      const today = new Date().toISOString().split('T')[0];
+      const stableNotifId = `streak-at-risk-${farcasterUser?.fid || 'unknown'}-${today}`;
+
       // Fire-and-forget notification via our API route
+      const payload: Record<string, any> = {
+        title: '🔥 Your streak is at risk!',
+        body: `You have a ${currentStreak}-day deploy streak! Deploy a contract today to keep it alive.`,
+        targetUrl: 'https://base-one-tap-contract-deployer.vercel.app',
+        notificationId: stableNotifId,
+      };
+
+      // Prefer direct token if available, otherwise use FID for server lookup
+      if (notificationDetails) {
+        payload.notificationUrl = notificationDetails.url;
+        payload.token = notificationDetails.token;
+      } else if (farcasterUser?.fid) {
+        payload.fid = farcasterUser.fid;
+      }
+
       fetch('/api/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          notificationUrl: notificationDetails.url,
-          token: notificationDetails.token,
-          title: '🔥 Your streak is at risk!',
-          body: `You have a ${currentStreak}-day deploy streak! Deploy a contract today to keep it alive.`,
-          targetUrl: 'https://base-one-tap-contract-deployer.vercel.app',
-          notificationId: `streak-at-risk-${Date.now()}`,
-        }),
+        body: JSON.stringify(payload),
       }).catch(err => console.warn('Streak notification failed:', err));
     }
-  }, [streakStatus, notificationDetails, currentStreak]);
+  }, [streakStatus, notificationDetails, currentStreak, farcasterUser]);
 
   // Track referral and give points
   // Validate referral code
@@ -2070,6 +2085,19 @@ contract NumberStore {
           const nd = (context.client as any).notificationDetails;
           if (nd.url && nd.token) {
             setNotificationDetails({ url: nd.url, token: nd.token });
+            // Also persist to Firebase so server-side cron can use it
+            const contextFid = context?.user?.fid;
+            if (contextFid) {
+              fetch('/api/save-notification-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fid: contextFid,
+                  notificationUrl: nd.url,
+                  token: nd.token,
+                }),
+              }).catch(err => console.warn('Failed to persist notification token:', err));
+            }
           }
         }
       } catch (contextError) {
@@ -2085,11 +2113,28 @@ contract NumberStore {
       setIsAppAdded(true);
       if (nd?.url && nd?.token) {
         setNotificationDetails({ url: nd.url, token: nd.token });
+        // Persist to Firebase — the webhook should handle this too, but do it as a fallback
+        const storedFid = farcasterUser?.fid;
+        if (storedFid) {
+          fetch('/api/save-notification-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid: storedFid, notificationUrl: nd.url, token: nd.token }),
+          }).catch(() => {});
+        }
       }
     };
     const handleNotificationsEnabled = ({ notificationDetails: nd }: { notificationDetails: { url: string; token: string } }) => {
       if (nd?.url && nd?.token) {
         setNotificationDetails({ url: nd.url, token: nd.token });
+        const storedFid = farcasterUser?.fid;
+        if (storedFid) {
+          fetch('/api/save-notification-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid: storedFid, notificationUrl: nd.url, token: nd.token }),
+          }).catch(() => {});
+        }
       }
     };
     

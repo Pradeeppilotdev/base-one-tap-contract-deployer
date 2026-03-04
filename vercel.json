@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/check-streaks",
+      "schedule": "0 18 * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/.well-known/farcaster.json",
