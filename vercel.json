@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/check-streaks",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/re-engage",
+      "schedule": "0 10 * * *"
     }
   ],
   "redirects": [
