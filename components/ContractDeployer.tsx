@@ -510,6 +510,10 @@ function ContractDeployer() {
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [gasEstimateWei, setGasEstimateWei] = useState<string | null>(null);
   const [estimatingGas, setEstimatingGas] = useState(false);
+  const [historySyncing, setHistorySyncing] = useState(false);
+  const [historySyncError, setHistorySyncError] = useState<string | null>(null);
+  const [historyLastSynced, setHistoryLastSynced] = useState<number | null>(null);
+  const [historySyncTrigger, setHistorySyncTrigger] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [appLoading, setAppLoading] = useState(true);
   const [showActivityFeed, setShowActivityFeed] = useState(false);
@@ -726,6 +730,8 @@ contract MyContract {
     const loadContracts = async () => {
       if (typeof window === 'undefined' || !account) {
         // If no account, just load from localStorage (for display before connection)
+        setHistorySyncing(false);
+        setHistorySyncError(null);
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           try {
@@ -738,6 +744,8 @@ contract MyContract {
       }
 
       try {
+        setHistorySyncing(true);
+        setHistorySyncError(null);
         // Try to load from backend first
         const response = await fetch(`/api/user-data?wallet=${account}`);
         let backendContracts: DeployedContract[] = [];
@@ -747,6 +755,7 @@ contract MyContract {
           const data = await response.json();
           backendContracts = data.contracts || [];
           backendAchievements = data.achievements || [];
+          setHistoryLastSynced(Date.now());
           
           // Load achievements from backend if available
           if (backendAchievements.length > 0) {
@@ -969,6 +978,7 @@ contract MyContract {
           
           if (syncResponse.ok) {
             console.log('Data synced to backend successfully');
+            setHistoryLastSynced(Date.now());
             // After successful sync, reload from backend to get the merged result
             const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
             if (reloadResponse.ok) {
@@ -1010,6 +1020,7 @@ contract MyContract {
         }
       } catch (error) {
         console.error('Error loading contracts:', error);
+        setHistorySyncError('Failed to sync history. Showing local data.');
         // Fallback to localStorage only
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
@@ -1020,6 +1031,7 @@ contract MyContract {
           }
         }
       } finally {
+        setHistorySyncing(false);
         setAppLoading(false);
       }
     };
@@ -1045,7 +1057,7 @@ contract MyContract {
         // Will be processed by useEffect below
       }
     }
-  }, [account, farcasterUser]);
+  }, [account, farcasterUser, historySyncTrigger]);
 
   // Show custom contract promo modal after app finishes loading (one-time)
   useEffect(() => {
@@ -1710,6 +1722,10 @@ contract MyContract {
     if (typeof window !== 'undefined') {
       localStorage.setItem(SHOW_HISTORY_KEY, String(newValue));
     }
+  };
+
+  const triggerHistorySync = () => {
+    setHistorySyncTrigger((prev) => prev + 1);
   };
 
   // Save deployed contracts to localStorage and backend
@@ -4915,10 +4931,40 @@ contract NumberStore {
             )}
           </button>
           
-          {showHistory && (
-            <div className="border-t-2 border-[var(--ink)]">
-              {appLoading ? (
-                <div className="p-4 space-y-3">
+            {showHistory && (
+              <div className="border-t-2 border-[var(--ink)]">
+                <div className="flex items-center justify-between gap-3 p-3 border-b-2 border-[var(--light)]">
+                  <div className="text-xs text-[var(--graphite)]">
+                    {historySyncError ? (
+                      <span className="text-red-600">{historySyncError}</span>
+                    ) : !account ? (
+                      'Connect a wallet to sync history across devices'
+                    ) : historySyncing ? (
+                      'Syncing history…'
+                    ) : historyLastSynced ? (
+                      `Last synced ${formatDate(historyLastSynced)}`
+                    ) : (
+                      'Not synced yet'
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={triggerHistorySync}
+                    disabled={!account || historySyncing}
+                    className="px-3 py-1.5 border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--light)] transition-colors flex items-center gap-2"
+                  >
+                    {historySyncing ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Syncing
+                      </>
+                    ) : (
+                      'Sync now'
+                    )}
+                  </button>
+                </div>
+                {appLoading ? (
+                  <div className="p-4 space-y-3">
                   {[1,2,3].map(i => (
                     <div key={i} className="animate-pulse flex items-center gap-3">
                       <div className="w-8 h-8 bg-[var(--pencil)] rounded opacity-40" />
