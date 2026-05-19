@@ -4394,6 +4394,7 @@ contract NumberStore {
               const activePage = Math.floor(entries.findIndex(([k]) => k === selectedContract) / PAGE_SIZE);
               const [carouselPage, setCarouselPage] = React.useState(activePage >= 0 ? activePage : 0);
               const dragStart = React.useRef<number | null>(null);
+              const lastWheelAt = React.useRef(0);
 
               const goTo = (p: number) => setCarouselPage(Math.max(0, Math.min(totalPages - 1, p)));
 
@@ -4415,6 +4416,16 @@ contract NumberStore {
                 dragStart.current = null;
               };
               const onPointerCancel = () => { dragStart.current = null; };
+              const onWheel = (e: React.WheelEvent) => {
+                const absX = Math.abs(e.deltaX);
+                const absY = Math.abs(e.deltaY);
+                if (absX <= absY || absX < 25) return;
+                const now = Date.now();
+                if (now - lastWheelAt.current < 350) return;
+                lastWheelAt.current = now;
+                e.preventDefault();
+                goTo(carouselPage + (e.deltaX > 0 ? 1 : -1));
+              };
 
               const pageEntries = entries.slice(carouselPage * PAGE_SIZE, carouselPage * PAGE_SIZE + PAGE_SIZE);
 
@@ -4427,6 +4438,7 @@ contract NumberStore {
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
                     onPointerCancel={onPointerCancel}
+                    onWheel={onWheel}
                   >
                     {pageEntries.map(([key, template]) => {
                       const Icon = template.icon;
