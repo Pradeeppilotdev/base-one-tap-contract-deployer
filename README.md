@@ -135,7 +135,6 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 BASESCAN_API_KEY=your_basescan_api_key
 CMC_PRO_API_KEY=your_coinmarketcap_api_key
-SIWE_SESSION_SECRET=your_long_random_secret
 ```
 
 **For hosted deployments (Vercel):**
