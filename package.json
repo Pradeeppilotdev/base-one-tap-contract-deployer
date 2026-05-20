@@ -22,6 +22,7 @@
     "@tanstack/react-query": "^5.90.11",
     "@vercel/analytics": "^1.6.1",
     "@vercel/kv": "^1.0.1",
+    "ethers": "^6.16.0",
     "firebase": "^12.6.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.294.0",
@@ -30,6 +31,7 @@
     "ox": "^0.13.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "siwe": "^3.0.0",
     "solc": "^0.8.28",
     "viem": "^2.40.3",
     "wagmi": "^2.19.5"

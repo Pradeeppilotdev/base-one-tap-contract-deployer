@@ -510,6 +510,9 @@ function ContractDeployer() {
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [gasEstimateWei, setGasEstimateWei] = useState<string | null>(null);
   const [estimatingGas, setEstimatingGas] = useState(false);
+  const [siweAddress, setSiweAddress] = useState<string | null>(null);
+  const [siweSigningIn, setSiweSigningIn] = useState(false);
+  const [siweError, setSiweError] = useState<string | null>(null);
   const [historySyncing, setHistorySyncing] = useState(false);
   const [historySyncError, setHistorySyncError] = useState<string | null>(null);
   const [historyLastSynced, setHistoryLastSynced] = useState<number | null>(null);
@@ -524,6 +527,12 @@ function ContractDeployer() {
   const [streakStatus, setStreakStatus] = useState<'active' | 'at-risk' | 'broken'>('active');
   const [showStreakMilestone, setShowStreakMilestone] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number>(0);
+
+  const isSiweSignedIn = Boolean(
+    account &&
+    siweAddress &&
+    siweAddress.toLowerCase() === account.toLowerCase()
+  );
   
   // Custom contract compiler state
   const [customCode, setCustomCode] = useState(`// SPDX-License-Identifier: MIT
@@ -724,6 +733,35 @@ contract MyContract {
       setTimeout(() => playSound('click'), 100);
     }
   };
+
+  useEffect(() => {
+    const checkSiweSession = async () => {
+      if (!account) {
+        setSiweAddress(null);
+        setSiweError(null);
+        return;
+      }
+      try {
+        const response = await fetch('/api/siwe/me');
+        if (!response.ok) {
+          setSiweAddress(null);
+          return;
+        }
+        const data = await response.json();
+        if (data?.address?.toLowerCase() === account.toLowerCase()) {
+          setSiweAddress(data.address);
+        } else {
+          setSiweAddress(null);
+          await fetch('/api/siwe/logout', { method: 'POST' });
+        }
+      } catch (err) {
+        console.warn('Failed to check SIWE session:', err);
+        setSiweAddress(null);
+      }
+    };
+
+    checkSiweSession();
+  }, [account]);
 
   // Load deployed contracts from backend and localStorage, migrate if needed
   useEffect(() => {
@@ -961,54 +999,58 @@ contract MyContract {
         
         // ALWAYS sync to backend to ensure consistency across devices
         // This ensures both devices have the same data
-        try {
-          const syncResponse = await fetch('/api/user-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              walletAddress: account,
-              contracts: finalContracts,
-              achievements: finalAchievements,
-              fid: farcasterUser?.fid,
-              username: farcasterUser?.username,
-              displayName: farcasterUser?.displayName,
-              pfpUrl: farcasterUser?.pfpUrl
-            })
-          });
-          
-          if (syncResponse.ok) {
-            console.log('Data synced to backend successfully');
-            setHistoryLastSynced(Date.now());
-            // After successful sync, reload from backend to get the merged result
-            const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
-            if (reloadResponse.ok) {
-              const reloadData = await reloadResponse.json();
-              // Check if user has been referred
-              if (reloadData.referredBy) {
-                setReferredBy(reloadData.referredBy);
-                setReferralValidated(true);
-              }
-              // Load referral points from backend
-              if (reloadData.referralPoints !== undefined) {
-                setReferralPoints(reloadData.referralPoints);
-              }
-              // Load clicks from backend
-              if (reloadData.clicks !== undefined) {
-                setUserClicks(reloadData.clicks);
-              }
-              // Load contracts from backend (always update, even if empty array)
-              if (reloadData.contracts !== undefined) {
-                setDeployedContracts(reloadData.contracts);
-                // Update achievements based on contract count
-                if (reloadData.achievements && reloadData.achievements.length > 0) {
-                  setAchievements(reloadData.achievements);
+        if (isSiweSignedIn) {
+          try {
+            const syncResponse = await fetch('/api/user-data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                walletAddress: account,
+                contracts: finalContracts,
+                achievements: finalAchievements,
+                fid: farcasterUser?.fid,
+                username: farcasterUser?.username,
+                displayName: farcasterUser?.displayName,
+                pfpUrl: farcasterUser?.pfpUrl
+              })
+            });
+
+            if (syncResponse.ok) {
+              console.log('Data synced to backend successfully');
+              setHistoryLastSynced(Date.now());
+              // After successful sync, reload from backend to get the merged result
+              const reloadResponse = await fetch(`/api/user-data?wallet=${account}`);
+              if (reloadResponse.ok) {
+                const reloadData = await reloadResponse.json();
+                // Check if user has been referred
+                if (reloadData.referredBy) {
+                  setReferredBy(reloadData.referredBy);
+                  setReferralValidated(true);
                 }
-                checkAchievements(reloadData.contracts.length, false);
+                // Load referral points from backend
+                if (reloadData.referralPoints !== undefined) {
+                  setReferralPoints(reloadData.referralPoints);
+                }
+                // Load clicks from backend
+                if (reloadData.clicks !== undefined) {
+                  setUserClicks(reloadData.clicks);
+                }
+                // Load contracts from backend (always update, even if empty array)
+                if (reloadData.contracts !== undefined) {
+                  setDeployedContracts(reloadData.contracts);
+                  // Update achievements based on contract count
+                  if (reloadData.achievements && reloadData.achievements.length > 0) {
+                    setAchievements(reloadData.achievements);
+                  }
+                  checkAchievements(reloadData.contracts.length, false);
+                }
               }
+            } else if (syncResponse.status === 401 || syncResponse.status === 403) {
+              setHistorySyncError('Sign in with Ethereum to sync history.');
             }
+          } catch (err) {
+            console.error('Failed to sync data to backend:', err);
           }
-        } catch (err) {
-          console.error('Failed to sync data to backend:', err);
         }
         
         // Update localStorage with final data (for offline fallback)
@@ -1057,7 +1099,7 @@ contract MyContract {
         // Will be processed by useEffect below
       }
     }
-  }, [account, farcasterUser, historySyncTrigger]);
+  }, [account, farcasterUser, historySyncTrigger, isSiweSignedIn]);
 
   // Show custom contract promo modal after app finishes loading (one-time)
   useEffect(() => {
@@ -1167,6 +1209,11 @@ contract MyContract {
 
   const trackReferral = async (referrerFid: string, newUserFid: string) => {
     if (!account) return;
+    if (!isSiweSignedIn) {
+      setError('Sign in with Ethereum to claim referral points');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     
     try {
       // Call API to track referral
@@ -1200,6 +1247,9 @@ contract MyContract {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('pending-referral');
         }
+      } else if (response.status === 401 || response.status === 403) {
+        setError('Sign in with Ethereum to claim referral points');
+        setTimeout(() => setError(null), 3000);
       } else {
         setError(data.error || 'Failed to track referral');
         setTimeout(() => setError(null), 3000);
@@ -1286,9 +1336,9 @@ contract MyContract {
         setClickCount(onChainClicks);
         
         // Sync on-chain clicks to Firebase (so leaderboard shows correct count)
-        if (onChainClicks > 0 && farcasterUser?.fid) {
+        if (onChainClicks > 0 && farcasterUser?.fid && isSiweSignedIn) {
           try {
-            await fetch('/api/user-data', {
+            const response = await fetch('/api/user-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1300,6 +1350,9 @@ contract MyContract {
                 pfpUrl: farcasterUser.pfpUrl
               })
             });
+            if (response.status === 401 || response.status === 403) {
+              setHistorySyncError('Sign in with Ethereum to sync history.');
+            }
           } catch (err) {
             console.error('Failed to sync clicks to backend:', err);
           }
@@ -1548,7 +1601,7 @@ contract MyContract {
           }
           
           // Save on-chain clicks to backend
-          if (account && onChainClicks > 0) {
+          if (account && onChainClicks > 0 && isSiweSignedIn) {
             try {
               const response = await fetch('/api/user-data', {
                 method: 'POST',
@@ -1595,6 +1648,8 @@ contract MyContract {
                     }
                   }
                 }
+              } else if (response.status === 401 || response.status === 403) {
+                setHistorySyncError('Sign in with Ethereum to sync history.');
               }
             } catch (err) {
               console.error('Failed to save clicks to backend:', err);
@@ -1673,8 +1728,8 @@ contract MyContract {
           }
         }
         
-        // Save to backend if account is available
-        if (account) {
+        // Save to backend if account is available and SIWE session exists
+        if (account && isSiweSignedIn) {
           setTimeout(async () => {
             try {
               const response = await fetch('/api/user-data', {
@@ -1701,6 +1756,8 @@ contract MyContract {
                     setAchievements(reloadData.achievements);
                   }
                 }
+              } else if (response.status === 401 || response.status === 403) {
+                setHistorySyncError('Sign in with Ethereum to sync history.');
               }
             } catch (err) {
               console.error('Failed to save achievements to backend:', err);
@@ -1728,6 +1785,99 @@ contract MyContract {
     setHistorySyncTrigger((prev) => prev + 1);
   };
 
+  const buildSiweMessage = (params: {
+    domain: string;
+    address: string;
+    statement: string;
+    uri: string;
+    chainId: number;
+    nonce: string;
+    issuedAt: string;
+  }) => {
+    return `${params.domain} wants you to sign in with your Ethereum account:\n` +
+      `${params.address}\n\n` +
+      `${params.statement}\n\n` +
+      `URI: ${params.uri}\n` +
+      `Version: 1\n` +
+      `Chain ID: ${params.chainId}\n` +
+      `Nonce: ${params.nonce}\n` +
+      `Issued At: ${params.issuedAt}`;
+  };
+
+  const signInWithEthereum = async () => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    const provider = getProvider();
+    if (!provider?.request) {
+      setError('No wallet provider available');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    try {
+      setSiweSigningIn(true);
+      setSiweError(null);
+      const nonceResponse = await fetch('/api/siwe/nonce');
+      const nonceData = await nonceResponse.json();
+      const nonce = nonceData?.nonce;
+      if (!nonce) {
+        throw new Error('Failed to get SIWE nonce');
+      }
+
+      const chainIdNumber = chainId ? parseInt(chainId, 16) : getCurrentNetwork().chainIdNumber;
+      const messageToSign = buildSiweMessage({
+        domain: window.location.host,
+        address: account,
+        statement: 'Sign in to Base Contract Deployer',
+        uri: window.location.origin,
+        chainId: chainIdNumber,
+        nonce,
+        issuedAt: new Date().toISOString(),
+      });
+      const signature = await provider.request({
+        method: 'personal_sign',
+        params: [messageToSign, account],
+      });
+
+      const verifyResponse = await fetch('/api/siwe/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: messageToSign, signature }),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        throw new Error(verifyData.error || 'SIWE verification failed');
+      }
+
+      if (verifyData.address && verifyData.address.toLowerCase() !== account.toLowerCase()) {
+        throw new Error('Signed-in address does not match connected wallet');
+      }
+
+      setSiweAddress(account);
+      setHistorySyncError(null);
+    } catch (err: any) {
+      setSiweError(err.message || 'Failed to sign in');
+      setError(err.message || 'Failed to sign in');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setSiweSigningIn(false);
+    }
+  };
+
+  const signOutSiwe = async () => {
+    try {
+      await fetch('/api/siwe/logout', { method: 'POST' });
+    } catch (err) {
+      console.warn('Failed to sign out SIWE:', err);
+    } finally {
+      setSiweAddress(null);
+      setSiweError(null);
+    }
+  };
+
   // Save deployed contracts to localStorage and backend
   // deployerAddress: The actual address from the transaction (account abstraction address)
   //                  If not provided, falls back to the connected account
@@ -1749,7 +1899,7 @@ contract MyContract {
     const walletAddressToUse = deployerAddress || account;
     
     // Save to backend immediately (wait for it to complete)
-    if (walletAddressToUse) {
+    if (walletAddressToUse && isSiweSignedIn) {
       try {
         // Get current achievements state - we need to wait a bit for checkAchievements to update
         // So we'll fetch achievements from state after a short delay
@@ -1817,6 +1967,8 @@ contract MyContract {
                   }
                 }
               }
+            } else if (response.status === 401 || response.status === 403) {
+              setHistorySyncError('Sign in with Ethereum to sync history.');
             }
           } catch (err) {
             console.error('Failed to save contract to backend:', err);
@@ -1826,6 +1978,8 @@ contract MyContract {
       } catch (err) {
         console.error('Error in saveContract:', err);
       }
+    } else if (walletAddressToUse && !isSiweSignedIn) {
+      setHistorySyncError('Sign in with Ethereum to sync history.');
     }
   };
 
@@ -2176,8 +2330,12 @@ contract NumberStore {
   const handleAccountsChanged = (accounts: string[]) => {
     if (accounts.length === 0) {
       setAccount(null);
+      void signOutSiwe();
     } else {
       setAccount(accounts[0]);
+      setSiweAddress(null);
+      setSiweError(null);
+      void signOutSiwe();
     }
   };
 
@@ -2481,6 +2639,7 @@ contract NumberStore {
     setChainId(null);
     setWalletType(null);
     setError(null);
+    void signOutSiwe();
     if (typeof window !== 'undefined' && window.ethereum && window.ethereum.removeListener) {
       window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -4368,6 +4527,39 @@ contract NumberStore {
                       </button>
                     </div>
                   </div>
+                  <div className="mt-3 pt-3 border-t border-[var(--light)] flex items-center justify-between gap-3 flex-wrap">
+                    <div className="text-xs text-[var(--graphite)]">
+                      {isSiweSignedIn ? 'Signed in with Ethereum' : 'Not signed in'}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isSiweSignedIn ? (
+                        <button
+                          onClick={signOutSiwe}
+                          className="px-3 py-1.5 text-xs border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] uppercase tracking-wider hover:bg-[var(--light)] transition-colors"
+                        >
+                          Sign out
+                        </button>
+                      ) : (
+                        <button
+                          onClick={signInWithEthereum}
+                          disabled={siweSigningIn}
+                          className="px-3 py-1.5 text-xs border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--sketch)] transition-colors flex items-center gap-2"
+                        >
+                          {siweSigningIn ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Signing…
+                            </>
+                          ) : (
+                            'Sign in with Ethereum'
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {siweError && (
+                    <p className="text-xs text-red-600 mt-2">{siweError}</p>
+                  )}
                 </div>
               )}
           </div>
@@ -4939,6 +5131,8 @@ contract NumberStore {
                       <span className="text-red-600">{historySyncError}</span>
                     ) : !account ? (
                       'Connect a wallet to sync history across devices'
+                    ) : !isSiweSignedIn ? (
+                      'Sign in with Ethereum to sync history across devices'
                     ) : historySyncing ? (
                       'Syncing history…'
                     ) : historyLastSynced ? (
@@ -4950,7 +5144,7 @@ contract NumberStore {
                   <button
                     type="button"
                     onClick={triggerHistorySync}
-                    disabled={!account || historySyncing}
+                    disabled={!account || historySyncing || !isSiweSignedIn}
                     className="px-3 py-1.5 border-2 border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--light)] transition-colors flex items-center gap-2"
                   >
                     {historySyncing ? (

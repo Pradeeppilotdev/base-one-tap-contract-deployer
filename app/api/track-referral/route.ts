@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getSiweSession } from '@/lib/siwe';
 
 // Get current month key (YYYY-MM format)
 const getCurrentMonthKey = () => {
@@ -18,6 +19,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      );
+    }
+
+    const session = getSiweSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'SIWE session required' },
+        { status: 401 }
+      );
+    }
+
+    if (session.address.toLowerCase() !== String(walletAddress).toLowerCase()) {
+      return NextResponse.json(
+        { error: 'SIWE session does not match wallet address' },
+        { status: 403 }
       );
     }
 
@@ -170,5 +186,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 
