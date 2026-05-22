@@ -301,7 +301,7 @@ Deploy on Vercel (recommended):
 3. Update the config with credentials
 4. Validate at https://base.dev/preview
 5. Publish via Farcaster
-
+//New Features incoming soon...
 ## Security & Notes
 
 - This app is a utility for wallet activity. Review contracts before using with real funds.
