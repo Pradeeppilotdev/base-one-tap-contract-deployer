@@ -548,6 +548,13 @@ contract MyContract {
   const [compiledContractName, setCompiledContractName] = useState<string | null>(null);
   const [customConstructorArgs, setCustomConstructorArgs] = useState<Record<string, string>>({});
 
+  // AI Prompt Generator state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiGeneratedSource, setAiGeneratedSource] = useState<string | null>(null);
+  const [aiGeneratedName, setAiGeneratedName] = useState<string | null>(null);
+
   // Custom contract promo modal
   const [showCustomPromo, setShowCustomPromo] = useState(false);
   // Farcaster notification details (url + token) for sending push notifications
@@ -2541,6 +2548,41 @@ contract NumberStore {
     setCompiling(false);
   };
 
+  // Generate Solidity code from natural language prompt using Gemini AI
+  const generateWithAI = async () => {
+    if (!aiPrompt.trim()) return;
+
+    setAiGenerating(true);
+    setAiError(null);
+    setAiGeneratedSource(null);
+    setAiGeneratedName(null);
+
+    try {
+      const res = await fetch('/api/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setAiError(data.error || 'Generation failed');
+        playSound('error');
+        return;
+      }
+
+      setAiGeneratedSource(data.sourceCode);
+      setAiGeneratedName(data.contractName);
+      playSound('success');
+    } catch (err: any) {
+      setAiError(`Network error: ${err.message || 'Failed to reach AI service'}`);
+      playSound('error');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   // Use public RPC to fetch receipt - more reliable than wallet provider
   const fetchReceiptFromRPC = async (txHash: string): Promise<any> => {
     const currentNetwork = getCurrentNetwork();
@@ -4522,6 +4564,36 @@ contract NumberStore {
             if (isCustom) {
               return (
                 <div className="mb-6">
+                  {/* AI Prompt Generator */}
+                  <div className="mb-6 p-4 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)] opacity-60">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
+                      <span className="font-bold text-sm uppercase tracking-wider text-[var(--ink)]">
+                        Generate with AI
+                      </span>
+                      <span className="ml-auto text-[10px] font-bold px-2 py-1 border border-[var(--ink)] rounded-full text-[var(--ink)]">
+                        COMING SOON
+                      </span>
+                    </div>
+                    <textarea
+                      disabled
+                      value=""
+                      className="sketch-input w-full px-4 py-3 text-sm leading-relaxed opacity-50 cursor-not-allowed"
+                      rows={2}
+                      placeholder="Describe the contract you want... (coming soon)"
+                      style={{ resize: 'vertical' }}
+                    />
+                    <div className="flex items-start gap-2 mt-3">
+                      <button
+                        disabled
+                        className="ink-button py-2.5 px-5 text-sm flex items-center gap-2 opacity-50 cursor-not-allowed"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Generate
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Solidity Code Editor */}
                   <label className="block text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wider">
                     Solidity Source Code
