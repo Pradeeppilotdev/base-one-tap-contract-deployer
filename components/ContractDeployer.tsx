@@ -4565,33 +4565,96 @@ contract NumberStore {
               return (
                 <div className="mb-6">
                   {/* AI Prompt Generator */}
-                  <div className="mb-6 p-4 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)] opacity-60">
+                  <div className="mb-6 p-4 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
                       <span className="font-bold text-sm uppercase tracking-wider text-[var(--ink)]">
                         Generate with AI
                       </span>
-                      <span className="ml-auto text-[10px] font-bold px-2 py-1 border border-[var(--ink)] rounded-full text-[var(--ink)]">
-                        COMING SOON
-                      </span>
                     </div>
                     <textarea
-                      disabled
-                      value=""
-                      className="sketch-input w-full px-4 py-3 text-sm leading-relaxed opacity-50 cursor-not-allowed"
-                      rows={2}
-                      placeholder="Describe the contract you want... (coming soon)"
+                      value={aiPrompt}
+                      onChange={(e) => {
+                        setAiPrompt(e.target.value);
+                        setAiError(null);
+                      }}
+                      className="sketch-input w-full px-4 py-3 text-sm leading-relaxed"
+                      rows={3}
+                      placeholder="Describe the contract you want... (e.g. 'A token with a max supply of 1 million that only the owner can mint')"
                       style={{ resize: 'vertical' }}
                     />
                     <div className="flex items-start gap-2 mt-3">
                       <button
-                        disabled
-                        className="ink-button py-2.5 px-5 text-sm flex items-center gap-2 opacity-50 cursor-not-allowed"
+                        onClick={generateWithAI}
+                        disabled={aiGenerating || !aiPrompt.trim()}
+                        className="ink-button py-2.5 px-5 text-sm flex items-center gap-2"
                       >
-                        <Sparkles className="w-4 h-4" />
-                        Generate
+                        {aiGenerating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Generate
+                          </>
+                        )}
                       </button>
+                      {aiGeneratedSource && (
+                        <button
+                          onClick={() => {
+                            setCustomCode(aiGeneratedSource);
+                            setCompiledBytecode(null);
+                            setCompiledAbi(null);
+                            setCompileError(null);
+                            setCompileWarnings([]);
+                            setCompiledContractName(aiGeneratedName);
+                            setCustomConstructorArgs({});
+                            setAiGeneratedSource(null);
+                            setAiGeneratedName(null);
+                            setAiPrompt('');
+                          }}
+                          className="ink-button-outline py-2.5 px-5 text-sm flex items-center gap-2"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          Use This Code
+                        </button>
+                      )}
+                      {aiGeneratedSource && !aiGenerating && (
+                        <button
+                          onClick={() => {
+                            setAiGeneratedSource(null);
+                            setAiGeneratedName(null);
+                            setAiError(null);
+                          }}
+                          className="ml-auto text-xs text-[var(--graphite)] hover:text-[var(--ink)] underline"
+                        >
+                          Dismiss
+                        </button>
+                      )}
                     </div>
+                    {aiError && (
+                      <div className="mt-3 p-3 border-2 border-red-400 bg-red-50 dark:bg-red-900/20">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                          <p className="text-xs text-red-700 dark:text-red-300">{aiError}</p>
+                        </div>
+                      </div>
+                    )}
+                    {aiGeneratedSource && !aiGenerating && (
+                      <div className="mt-3 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] sketch-card">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600" strokeWidth={2.5} />
+                          <span className="font-bold text-sm text-[var(--ink)]">Generated: {aiGeneratedName}</span>
+                        </div>
+                        <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-[150px] overflow-y-auto border-2 border-[var(--pencil)] bg-[var(--highlight)] p-2 text-[var(--ink)]">
+                          {aiGeneratedSource.length > 500
+                            ? aiGeneratedSource.slice(0, 500) + '...'
+                            : aiGeneratedSource}
+                        </pre>
+                      </div>
+                    )}
                   </div>
 
                   {/* Solidity Code Editor */}

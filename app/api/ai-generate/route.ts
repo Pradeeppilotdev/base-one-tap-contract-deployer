@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 
 const SYSTEM_PROMPT = `You are a Solidity smart contract expert. Generate only valid Solidity 0.8.19 code.
 
@@ -43,35 +43,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!GEMINI_API_KEY) {
+    if (!GROQ_API_KEY) {
       return NextResponse.json(
-        { error: 'GEMINI_API_KEY not configured on the server' },
+        { error: 'GROQ_API_KEY not configured on the server' },
         { status: 500 }
       );
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-    const response = await fetch(url, {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${SYSTEM_PROMPT}\n\nUser request: ${prompt}` }],
-          },
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
         ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 4096,
-        },
+        temperature: 0.2,
+        max_tokens: 4096,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Gemini API error:', response.status, errorText);
+      console.error('Groq API error:', response.status, errorText);
       return NextResponse.json(
         { error: `AI generation failed: ${response.statusText}` },
         { status: 502 }
@@ -79,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const text = data?.choices?.[0]?.message?.content || '';
 
     if (!text) {
       return NextResponse.json(
