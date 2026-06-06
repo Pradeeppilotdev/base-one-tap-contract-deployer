@@ -75,6 +75,46 @@ interface DeployedContract {
   gasSpent?: string; // In Wei
 }
 
+type WalletHost = 'farcaster' | 'base' | 'browser';
+
+const normalizeHost = (value?: string | null) => {
+  if (!value) return '';
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return value.toLowerCase();
+  }
+};
+
+const detectWalletHost = (context: any, isInMiniApp: boolean): WalletHost => {
+  const candidates = [
+    context?.location?.referrerDomain,
+    typeof document !== 'undefined' ? document.referrer : '',
+  ];
+
+  for (const candidate of candidates) {
+    const host = normalizeHost(candidate);
+    if (!host) continue;
+
+    if (
+      host.includes('base.app') ||
+      host.includes('base.org') ||
+      host.includes('coinbase')
+    ) {
+      return 'base';
+    }
+
+    if (
+      host.includes('warpcast') ||
+      host.includes('farcaster')
+    ) {
+      return 'farcaster';
+    }
+  }
+
+  return isInMiniApp ? 'farcaster' : 'browser';
+};
+
 // Factory Contract Addresses
 // Base Mainnet: 0xE94d001ae44ff0887FB0136D7DDbFa9d1332EEd3
 // Base Sepolia: 0x21E3Bf30a9cf163407cC25197E1152C80490a02E
@@ -463,8 +503,10 @@ function ContractDeployer() {
   const [deployedContracts, setDeployedContracts] = useState<DeployedContract[]>([]);
   const [showHistory, setShowHistory] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-  const [walletType, setWalletType] = useState<'farcaster' | 'external' | null>(null);
+  const [walletType, setWalletType] = useState<'farcaster' | 'external' | 'base' | null>(null);
   const [isInFarcaster, setIsInFarcaster] = useState(false);
+  const [walletHost, setWalletHost] = useState<WalletHost>('browser');
+  const [autoConnectingBaseWallet, setAutoConnectingBaseWallet] = useState(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const [achievementsPage, setAchievementsPage] = useState(1);
   const [sdkReady, setSdkReady] = useState(false);
@@ -524,6 +566,7 @@ function ContractDeployer() {
   const [streakStatus, setStreakStatus] = useState<'active' | 'at-risk' | 'broken'>('active');
   const [showStreakMilestone, setShowStreakMilestone] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number>(0);
+  const baseWalletAutoConnectAttemptedRef = useRef(false);
 
   // Custom contract compiler state
   const [customCode, setCustomCode] = useState(`// SPDX-License-Identifier: MIT
@@ -2028,6 +2071,7 @@ contract NumberStore {
     // Get Farcaster context (ready() is called at page level)
     const initSDK = async () => {
       setSdkReady(true);
+      const inMiniApp = await sdk.isInMiniApp().catch(() => false);
       
       // Check for supported chains and capabilities
       try {
@@ -2061,8 +2105,11 @@ contract NumberStore {
       try {
         const context = await sdk.context;
         console.log('Farcaster context:', context);
+        const detectedHost = detectWalletHost(context, inMiniApp);
+        setWalletHost(detectedHost);
+        setIsInFarcaster(detectedHost === 'farcaster');
         
-        if (context?.user) {
+        if (context?.user && detectedHost === 'farcaster') {
           setIsInFarcaster(true);
           const user = {
             fid: context.user.fid,
@@ -2105,6 +2152,8 @@ contract NumberStore {
               }
             }
           }
+        } else {
+          setIsInFarcaster(detectedHost === 'farcaster');
         }
         
         // Check if app is already added
@@ -2135,6 +2184,7 @@ contract NumberStore {
       } catch (contextError) {
         console.log('Farcaster context error (normal outside Farcaster):', contextError);
         setIsInFarcaster(false);
+        setWalletHost(inMiniApp ? 'farcaster' : 'browser');
       }
     };
 
@@ -2188,6 +2238,25 @@ contract NumberStore {
       } catch (e) {}
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      walletHost !== 'base' ||
+      account ||
+      !sdkReady ||
+      baseWalletAutoConnectAttemptedRef.current
+    ) {
+      return;
+    }
+
+    if (typeof window === 'undefined' || typeof window.ethereum === 'undefined') {
+      return;
+    }
+
+    baseWalletAutoConnectAttemptedRef.current = true;
+    setAutoConnectingBaseWallet(true);
+    void connectExternalWallet(true);
+  }, [walletHost, account, sdkReady]);
 
   const handleAccountsChanged = (accounts: string[]) => {
     if (accounts.length === 0) {
@@ -2461,17 +2530,22 @@ contract NumberStore {
     }
   };
 
-  const connectExternalWallet = async () => {
+  const connectExternalWallet = async (autoConnect = false) => {
     if (typeof window === 'undefined' || typeof window.ethereum === 'undefined') {
-      setError('Please install MetaMask or a Web3 wallet');
+      if (!autoConnect) {
+        setError('Please install MetaMask or a Web3 wallet');
+      }
+      setAutoConnectingBaseWallet(false);
       return;
     }
 
     try {
-      setError(null);
+      if (!autoConnect) {
+        setError(null);
+      }
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       setAccount(accounts[0]);
-      setWalletType('external');
+      setWalletType(walletHost === 'base' ? 'base' : 'external');
       
       const chain = await window.ethereum.request({ method: 'eth_chainId' });
       setChainId(chain);
@@ -2487,8 +2561,12 @@ contract NumberStore {
         await switchToCurrentNetwork();
       }
     } catch (err: any) {
-      setError(err.message);
-      playSound('error');
+      if (!autoConnect) {
+        setError(err.message);
+        playSound('error');
+      }
+    } finally {
+      setAutoConnectingBaseWallet(false);
     }
   };
 
@@ -2497,6 +2575,7 @@ contract NumberStore {
     setChainId(null);
     setWalletType(null);
     setError(null);
+    setAutoConnectingBaseWallet(false);
     if (typeof window !== 'undefined' && window.ethereum && window.ethereum.removeListener) {
       window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -2740,7 +2819,7 @@ contract NumberStore {
         gasEstimate = '0x200000';
       }
       
-      const isCoinbaseWallet = walletType === 'external' && window.ethereum && 
+      const isCoinbaseWallet = (walletType === 'external' || walletType === 'base') && window.ethereum && 
                                (window.ethereum.isCoinbaseWallet || (window.ethereum as any).isCoinbaseWallet);
       
       // Send transaction to factory contract (with ERC-8021 Builder Code attribution suffix)
@@ -4351,23 +4430,42 @@ contract NumberStore {
           <div className="mb-6">
             {!account ? (
               <div className="space-y-3">
-                {/* Primary: Mini App Wallet */}
-                <button
-                  onClick={connectFarcasterWallet}
-                  className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
-                >
-                  <Wallet className="w-5 h-5" strokeWidth={2} />
-                  Connect Mini App Wallet
-                </button>
-                
-                {/* Secondary: External Wallet */}
-                <button
-                  onClick={connectExternalWallet}
-                  className="ink-button-outline w-full py-3 px-6 flex items-center justify-center gap-3 text-sm"
-                >
-                  <ExternalLink className="w-4 h-4" strokeWidth={2} />
-                  Use External Wallet
-                </button>
+                {walletHost === 'base' ? (
+                  autoConnectingBaseWallet ? (
+                    <div className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg">
+                      <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} />
+                      Connecting Base Wallet…
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => connectExternalWallet()}
+                      className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
+                    >
+                      <Wallet className="w-5 h-5" strokeWidth={2} />
+                      Connect Base Wallet
+                    </button>
+                  )
+                ) : (
+                  <>
+                    {/* Primary: Mini App Wallet */}
+                    <button
+                      onClick={connectFarcasterWallet}
+                      className="ink-button w-full py-4 px-6 flex items-center justify-center gap-3 text-lg"
+                    >
+                      <Wallet className="w-5 h-5" strokeWidth={2} />
+                      Connect Mini App Wallet
+                    </button>
+                    
+                    {/* Secondary: External Wallet */}
+                    <button
+                      onClick={() => connectExternalWallet()}
+                      className="ink-button-outline w-full py-3 px-6 flex items-center justify-center gap-3 text-sm"
+                    >
+                      <ExternalLink className="w-4 h-4" strokeWidth={2} />
+                      Use External Wallet
+                    </button>
+                  </>
+                )}
               </div>
               ) : (
                 <div className="p-4 border-2 border-[var(--ink)] bg-[var(--paper)]">
@@ -4397,7 +4495,7 @@ contract NumberStore {
                             )}
                           </button>
                           <span className="text-xs text-[var(--graphite)] whitespace-nowrap">
-                            ({walletType === 'farcaster' ? 'Mini App' : 'External'})
+                            ({walletType === 'farcaster' ? 'Mini App' : walletType === 'base' ? 'Base App' : 'External'})
                           </span>
                         </div>
                       </div>
@@ -4580,7 +4678,7 @@ contract NumberStore {
                       }}
                       className="sketch-input w-full px-4 py-3 text-sm leading-relaxed"
                       rows={3}
-                      placeholder="Describe the contract you want... (e.g. 'A token with a max supply of 1 million that only the owner can mint')"
+                      placeholder="Describe the contract you want... (e.g. 'A simple voting contract where users can vote yes or no')"
                       style={{ resize: 'vertical' }}
                     />
                     <div className="flex items-start gap-2 mt-3">
@@ -4643,16 +4741,18 @@ contract NumberStore {
                       </div>
                     )}
                     {aiGeneratedSource && !aiGenerating && (
-                      <div className="mt-3 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] sketch-card">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" strokeWidth={2.5} />
-                          <span className="font-bold text-sm text-[var(--ink)]">Generated: {aiGeneratedName}</span>
+                      <div className="mt-3 p-3 border-2 border-green-400 bg-green-50 dark:bg-green-900/20">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                          <div className="text-xs text-green-700 dark:text-green-300">
+                            <p className="font-bold mb-1">Generated: {aiGeneratedName}</p>
+                            <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed max-h-[120px] overflow-y-auto border-t border-green-300 pt-1 mt-1">
+                              {aiGeneratedSource.length > 500
+                                ? aiGeneratedSource.slice(0, 500) + '...'
+                                : aiGeneratedSource}
+                            </pre>
+                          </div>
                         </div>
-                        <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-[150px] overflow-y-auto border-2 border-[var(--pencil)] bg-[var(--highlight)] p-2 text-[var(--ink)]">
-                          {aiGeneratedSource.length > 500
-                            ? aiGeneratedSource.slice(0, 500) + '...'
-                            : aiGeneratedSource}
-                        </pre>
                       </div>
                     )}
                   </div>
