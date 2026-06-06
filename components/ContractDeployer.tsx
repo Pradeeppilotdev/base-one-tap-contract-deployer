@@ -567,6 +567,7 @@ function ContractDeployer() {
   const [showStreakMilestone, setShowStreakMilestone] = useState(false);
   const [streakMilestone, setStreakMilestone] = useState<number>(0);
   const baseWalletAutoConnectAttemptedRef = useRef(false);
+  const enableReferrals = walletHost === 'farcaster';
 
   // Custom contract compiler state
   const [customCode, setCustomCode] = useState(`// SPDX-License-Identifier: MIT
@@ -1097,10 +1098,14 @@ contract MyContract {
         setShowHistory(showHistoryStored === 'true');
       }
       
-      // Load referral code
-      const referralStored = localStorage.getItem(REFERRAL_KEY);
-      if (referralStored) {
-        setReferralCode(referralStored);
+      // Load referral code only for Farcaster users
+      if (enableReferrals) {
+        const referralStored = localStorage.getItem(REFERRAL_KEY);
+        if (referralStored) {
+          setReferralCode(referralStored);
+        }
+      } else {
+        setReferralCode(null);
       }
       
       // Check for pending referral (will be tracked in separate useEffect)
@@ -1109,7 +1114,7 @@ contract MyContract {
         // Will be processed by useEffect below
       }
     }
-  }, [account, farcasterUser, historySyncTrigger]);
+  }, [account, farcasterUser, historySyncTrigger, enableReferrals]);
 
   // Show custom contract promo modal after app finishes loading (one-time)
   useEffect(() => {
@@ -3021,7 +3026,7 @@ contract NumberStore {
 
             // Track referral if this is the first contract deployment and there's a pending referral
             // Only track if user hasn't already been referred
-            if (deployedContracts.length === 0 && farcasterUser && !referredBy) {
+            if (enableReferrals && deployedContracts.length === 0 && farcasterUser && !referredBy) {
               const pendingReferral = typeof window !== 'undefined' ? localStorage.getItem('pending-referral') : null;
               if (pendingReferral) {
                 try {
@@ -3686,7 +3691,7 @@ contract NumberStore {
       const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://base-one-tap-contract-deployer.vercel.app';
       
       // Store referrer info for when the app opens (so ref can be tracked)
-      if (referralCode && farcasterUser && typeof window !== 'undefined') {
+      if (enableReferrals && referralCode && farcasterUser && typeof window !== 'undefined') {
         const referrerInfo = {
           username: farcasterUser.username || '',
           displayName: farcasterUser.displayName || '',
@@ -3703,13 +3708,13 @@ contract NumberStore {
       const shareUrl = farcasterMiniappUrl;
       
       // Build dynamic OG image URL with referrer info for embed preview
-      const ogImageUrl = referralCode && farcasterUser
+      const ogImageUrl = enableReferrals && referralCode && farcasterUser
         ? `${appUrl}/og-image.png?ref=${referralCode}&fid=${farcasterUser.fid}&username=${encodeURIComponent(farcasterUser.username || '')}&displayName=${encodeURIComponent(farcasterUser.displayName || '')}&pfpUrl=${encodeURIComponent(farcasterUser.pfpUrl || '')}`
         : `${appUrl}/og-image.png`;
 
       if (sdk?.actions?.composeCast) {
         // Share message with ref info
-        const shareTextWithRef = referralCode 
+        const shareTextWithRef = enableReferrals && referralCode 
           ? `${shareText}\n\nDeploy based like me!!\n\nUse my referral: ${referralCode}`
           : shareText;
         
@@ -5574,7 +5579,7 @@ contract NumberStore {
         </div>
 
         {/* Profile Modal */}
-        {showProfileModal && farcasterUser && (
+        {enableReferrals && showProfileModal && farcasterUser && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             onClick={() => setShowProfileModal(false)}
@@ -5761,7 +5766,7 @@ contract NumberStore {
         )}
 
         {/* Manual Referral Code Input Section */}
-        {!referralValidated && !referredBy && (
+        {enableReferrals && !referralValidated && !referredBy && (
           <div className="mt-6 mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--paper)] pencil-sketch-bg">
             <h3 className="font-bold text-[var(--ink)] text-sm uppercase tracking-wider mb-3">
               Enter Referral Code
@@ -5835,7 +5840,7 @@ contract NumberStore {
           {showAchievements && (
             <div className="border-t-2 border-[var(--ink)] p-4">
               {/* Referral Code Display */}
-              {referralCode && (
+              {enableReferrals && referralCode && (
                 <div className="text-xs text-[var(--graphite)] mb-3 pb-2 border-b border-[var(--pencil)]">
                   Ref: <span className="font-mono">{referralCode}</span>
                 </div>
@@ -5850,7 +5855,7 @@ contract NumberStore {
                 </div>
                 <div className="text-xs text-[var(--graphite)]">Contracts Deployed</div>
               </div>
-              {(referralPoints > 0 || referredBy) && (
+              {enableReferrals && (referralPoints > 0 || referredBy) && (
                 <div>
                   <div className="text-2xl font-bold text-[var(--ink)]">
                     {referralPoints}
