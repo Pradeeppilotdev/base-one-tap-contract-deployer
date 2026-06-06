@@ -2258,7 +2258,12 @@ contract NumberStore {
     void connectExternalWallet(true);
   }, [walletHost, account, sdkReady]);
 
-  const handleAccountsChanged = (accounts: string[]) => {
+  useEffect(() => {
+    if (!sdkReady) return;
+    void checkConnection();
+  }, [sdkReady, walletHost]);
+
+  const handleAccountsChanged = (accounts: readonly string[]) => {
     if (accounts.length === 0) {
       setAccount(null);
     } else {
@@ -2271,17 +2276,22 @@ contract NumberStore {
   };
 
   const checkConnection = async () => {
-    if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          const chain = await window.ethereum.request({ method: 'eth_chainId' });
-          setChainId(chain);
-        }
-      } catch (err) {
-        console.error('Error checking connection:', err);
+    try {
+      const provider = walletHost === 'base'
+        ? await getBaseWalletProvider()
+        : getProvider();
+
+      if (!provider?.request) return;
+
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+        const chain = await provider.request({ method: 'eth_chainId' });
+        setChainId(chain);
+        setWalletType(walletHost === 'base' ? 'base' : 'external');
       }
+    } catch (err) {
+      console.error('Error checking connection:', err);
     }
   };
 
@@ -2437,6 +2447,23 @@ contract NumberStore {
     return provider;
   };
 
+  const getBaseWalletProvider = async () => {
+    if (sdk?.wallet?.getEthereumProvider) {
+      const provider = await sdk.wallet.getEthereumProvider().catch(() => undefined);
+      if (provider) return provider;
+    }
+
+    if (sdk?.wallet?.ethProvider) {
+      return sdk.wallet.ethProvider;
+    }
+
+    if (typeof window !== 'undefined') {
+      return window.ethereum ?? null;
+    }
+
+    return null;
+  };
+
   const switchToCurrentNetwork = async () => {
     const currentNetwork = getCurrentNetwork();
     const provider = getProvider();
@@ -2531,7 +2558,13 @@ contract NumberStore {
   };
 
   const connectExternalWallet = async (autoConnect = false) => {
-    if (typeof window === 'undefined' || typeof window.ethereum === 'undefined') {
+    const provider = walletHost === 'base'
+      ? await getBaseWalletProvider()
+      : typeof window !== 'undefined'
+        ? window.ethereum
+        : null;
+
+    if (!provider) {
       if (!autoConnect) {
         setError('Please install MetaMask or a Web3 wallet');
       }
@@ -2543,17 +2576,27 @@ contract NumberStore {
       if (!autoConnect) {
         setError(null);
       }
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const accounts = autoConnect
+        ? await provider.request({ method: 'eth_accounts' })
+        : await provider.request({ method: 'eth_requestAccounts' });
+
+      if (!accounts || accounts.length === 0) {
+        if (!autoConnect) {
+          setError('No wallet account found');
+        }
+        return;
+      }
+
       setAccount(accounts[0]);
       setWalletType(walletHost === 'base' ? 'base' : 'external');
       
-      const chain = await window.ethereum.request({ method: 'eth_chainId' });
+      const chain = await provider.request({ method: 'eth_chainId' });
       setChainId(chain);
       
       // Set up listeners for external wallet
-      if (window.ethereum.on) {
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
+      if (provider.on) {
+        provider.on('accountsChanged', handleAccountsChanged);
+        provider.on('chainChanged', handleChainChanged);
       }
       
       const currentNetwork = getCurrentNetwork();
