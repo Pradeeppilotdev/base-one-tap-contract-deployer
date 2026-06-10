@@ -402,6 +402,7 @@ const STORAGE_KEY = 'base-deployer-contracts';
 const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
 const REFERRAL_KEY = 'base-deployer-referral';
+const AI_ANNOUNCEMENT_KEY = 'base-deployer-seen-ai-announcement';
 const NETWORK_KEY = 'base-deployer-network';
 const CUSTOM_PROMO_KEY = 'base-deployer-seen-custom-promo';
 const STREAK_NOTIF_KEY = 'base-deployer-streak-notif-sent';
@@ -598,6 +599,7 @@ contract MyContract {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiGeneratedSource, setAiGeneratedSource] = useState<string | null>(null);
   const [aiGeneratedName, setAiGeneratedName] = useState<string | null>(null);
+  const [showAiAnnouncement, setShowAiAnnouncement] = useState(false);
 
   // Custom contract promo modal
   const [showCustomPromo, setShowCustomPromo] = useState(false);
@@ -2262,6 +2264,16 @@ contract NumberStore {
     setAutoConnectingBaseWallet(true);
     void connectExternalWallet(true);
   }, [walletHost, account, sdkReady]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || appLoading) return;
+
+    const seenAiAnnouncement = localStorage.getItem(AI_ANNOUNCEMENT_KEY);
+    if (!seenAiAnnouncement) {
+      localStorage.setItem(AI_ANNOUNCEMENT_KEY, 'true');
+      setShowAiAnnouncement(true);
+    }
+  }, [appLoading]);
 
   useEffect(() => {
     if (!sdkReady) return;
@@ -6121,6 +6133,75 @@ contract NumberStore {
                 })()}
               </div>
             )}
+          </div>
+        )}
+
+        {/* AI Contract Generation Announcement Modal (one-time) */}
+        {showAiAnnouncement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 animate-backdrop-in" onClick={() => {
+              setShowAiAnnouncement(false);
+            }}></div>
+            <div className="relative bg-[var(--paper)] border-4 border-[var(--ink)] rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-achievement-pop-in">
+              {/* Decorative corners */}
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[var(--ink)] rounded-tl-2xl"></div>
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[var(--ink)] rounded-tr-2xl"></div>
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[var(--ink)] rounded-bl-2xl"></div>
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[var(--ink)] rounded-br-2xl"></div>
+
+              {/* Close button */}
+              <button
+                onClick={() => setShowAiAnnouncement(false)}
+                className="absolute top-3 right-3 p-1 text-[var(--graphite)] hover:text-[var(--ink)] transition-colors"
+              >
+                <X className="w-5 h-5" strokeWidth={2} />
+              </button>
+
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 mb-3">
+                  <Sparkles className="w-8 h-8 text-amber-600 dark:text-amber-400" strokeWidth={2} />
+                </div>
+                <h3 className="text-lg font-black text-[var(--ink)] uppercase tracking-wide">AI Contract Generation</h3>
+              </div>
+
+              <div className="space-y-3 mb-5">
+                <p className="text-sm text-[var(--ink)] text-center font-medium">
+                  Describe any smart contract in plain English, and AI will <span className="font-black">generate the Solidity code</span> instantly!
+                </p>
+                <div className="p-3 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)] rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-[var(--ink)] flex-shrink-0 mt-0.5" strokeWidth={2} />
+                    <div className="text-xs text-[var(--graphite)] space-y-1">
+                      <p>Type a prompt like &ldquo;A voting contract with yes/no&rdquo;</p>
+                      <p>AI generates ready-to-compile Solidity code</p>
+                      <p>Compile, deploy, and verify in one tap</p>
+                      <p>Works on Base Mainnet &amp; Sepolia</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAiAnnouncement(false)}
+                  className="flex-1 py-2 px-4 border-2 border-[var(--ink)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--light)] transition-colors rounded"
+                >
+                  Got It
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAiAnnouncement(false);
+                    setSelectedContract('custom');
+                    setInputValue('');
+                    setError(null);
+                  }}
+                  className="flex-1 py-2 px-4 bg-[var(--ink)] text-[var(--paper)] font-bold text-sm hover:opacity-90 transition-opacity rounded flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Try It Now
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
