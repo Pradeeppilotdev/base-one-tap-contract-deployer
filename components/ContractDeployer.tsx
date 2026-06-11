@@ -75,6 +75,14 @@ interface DeployedContract {
   gasSpent?: string; // In Wei
 }
 
+interface ContractDraft {
+  id: string;
+  name: string;
+  prompt: string;
+  sourceCode: string;
+  createdAt: number;
+}
+
 type WalletHost = 'farcaster' | 'base' | 'browser';
 
 const normalizeHost = (value?: string | null) => {
@@ -403,6 +411,39 @@ const SHOW_HISTORY_KEY = 'base-deployer-show-history';
 const ACHIEVEMENTS_KEY = 'base-deployer-achievements';
 const REFERRAL_KEY = 'base-deployer-referral';
 const AI_ANNOUNCEMENT_KEY = 'base-deployer-seen-ai-announcement';
+const CONTRACT_DRAFTS_KEY = 'base-deployer-contract-drafts';
+const FUNNEL_SESSION_KEY = 'base-deployer-funnel-session';
+
+const AI_EXAMPLE_PROMPTS = [
+  {
+    label: 'Tip Jar',
+    prompt: 'A tip jar contract where anyone can send ETH, the owner can withdraw, and every tip emits an event',
+  },
+  {
+    label: 'Voting',
+    prompt: 'A simple voting contract with yes and no votes where each wallet can only vote once',
+  },
+  {
+    label: 'Guestbook',
+    prompt: 'A guestbook contract where people can post a short public message and see the latest messages',
+  },
+  {
+    label: 'Meme Coin',
+    prompt: 'A simple fixed supply ERC20-like meme coin with name, symbol, decimals, transfer, balanceOf, and totalSupply',
+  },
+  {
+    label: 'Allowlist',
+    prompt: 'An owner-managed allowlist contract where the owner can add addresses and anyone can check if an address is allowed',
+  },
+];
+
+const DAILY_CONTRACT_IDEAS = [
+  'Build a public gratitude wall where anyone can leave a short thank-you note.',
+  'Build a tiny savings vault where only the owner can deposit and withdraw.',
+  'Build a poll contract for choosing one of three project names.',
+  'Build a public pledge board where wallets can make and count commitments.',
+  'Build a simple membership list managed by the contract owner.',
+];
 const NETWORK_KEY = 'base-deployer-network';
 const CUSTOM_PROMO_KEY = 'base-deployer-seen-custom-promo';
 const STREAK_NOTIF_KEY = 'base-deployer-streak-notif-sent';
@@ -497,6 +538,7 @@ function ContractDeployer() {
   });
   const [deploying, setDeploying] = useState(false);
   const [deployedAddress, setDeployedAddress] = useState<string | null>(null);
+  const [lastDeployedSummary, setLastDeployedSummary] = useState<{ name: string; networkName: string; explorerUrl: string } | null>(null);
   const [successFading, setSuccessFading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -600,6 +642,11 @@ contract MyContract {
   const [aiGeneratedSource, setAiGeneratedSource] = useState<string | null>(null);
   const [aiGeneratedName, setAiGeneratedName] = useState<string | null>(null);
   const [showAiAnnouncement, setShowAiAnnouncement] = useState(false);
+  const [contractDrafts, setContractDrafts] = useState<ContractDraft[]>([]);
+  const [draftSavedMessage, setDraftSavedMessage] = useState<string | null>(null);
+  const [sharingGenerated, setSharingGenerated] = useState(false);
+  const [funnelSessionId, setFunnelSessionId] = useState<string>('');
+  const dailyContractIdea = DAILY_CONTRACT_IDEAS[new Date().getDate() % DAILY_CONTRACT_IDEAS.length];
 
   // Custom contract promo modal
   const [showCustomPromo, setShowCustomPromo] = useState(false);
@@ -653,6 +700,12 @@ contract MyContract {
       window.removeEventListener('touchstart', unlock);
       window.removeEventListener('click', unlock);
     };
+  }, []);
+
+  useEffect(() => {
+    getOrCreateFunnelSessionId();
+    loadContractDrafts();
+    trackFunnelEvent('page_view');
   }, []);
 
   // Sound effects — click uses MP3, others use Web Audio synthesis
@@ -762,6 +815,190 @@ contract MyContract {
       }
     } catch (err) {
       console.warn('Audio playback failed:', err);
+    }
+  };
+
+  const getOrCreateFunnelSessionId = () => {
+    if (typeof window === 'undefined') return funnelSessionId || 'server';
+
+    let sessionId = localStorage.getItem(FUNNEL_SESSION_KEY);
+    if (!sessionId) {
+      sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(FUNNEL_SESSION_KEY, sessionId);
+    }
+
+    if (!funnelSessionId) {
+      setFunnelSessionId(sessionId);
+    }
+
+    return sessionId;
+  };
+
+  const trackFunnelEvent = (event: string, metadata: Record<string, any> = {}) => {
+    if (typeof window === 'undefined') return;
+
+    const payload = {
+      event,
+      sessionId: getOrCreateFunnelSessionId(),
+      walletAddress: account,
+      fid: farcasterUser?.fid,
+      walletHost,
+      network,
+      selectedContract,
+      metadata,
+    };
+
+    try {
+      const localEvents = JSON.parse(localStorage.getItem('base-deployer-local-funnel-events') || '[]');
+      localEvents.push({ ...payload, createdAtMs: Date.now() });
+      localStorage.setItem('base-deployer-local-funnel-events', JSON.stringify(localEvents.slice(-100)));
+    } catch {}
+
+    fetch('/api/funnel-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  };
+
+  const loadContractDrafts = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem(CONTRACT_DRAFTS_KEY);
+      setContractDrafts(stored ? JSON.parse(stored) : []);
+    } catch {
+      setContractDrafts([]);
+    }
+  };
+
+  const persistContractDrafts = (drafts: ContractDraft[]) => {
+    setContractDrafts(drafts);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(CONTRACT_DRAFTS_KEY, JSON.stringify(drafts));
+    }
+  };
+
+  const useGeneratedCode = () => {
+    if (!aiGeneratedSource) return;
+
+    setCustomCode(aiGeneratedSource);
+    setCompiledBytecode(null);
+    setCompiledAbi(null);
+    setCompileError(null);
+    setCompileWarnings([]);
+    setCompiledContractName(aiGeneratedName);
+    setCustomConstructorArgs({});
+    setAiGeneratedSource(null);
+    setAiGeneratedName(null);
+    setAiPrompt('');
+    trackFunnelEvent('generated_code_used', { contractName: aiGeneratedName });
+  };
+
+  const saveGeneratedDraft = () => {
+    if (!aiGeneratedSource) return;
+
+    const draft: ContractDraft = {
+      id: `draft-${Date.now()}`,
+      name: aiGeneratedName || 'GeneratedContract',
+      prompt: aiPrompt.trim(),
+      sourceCode: aiGeneratedSource,
+      createdAt: Date.now(),
+    };
+    const nextDrafts = [draft, ...contractDrafts.filter(existing => existing.sourceCode !== draft.sourceCode)].slice(0, 6);
+    persistContractDrafts(nextDrafts);
+    setDraftSavedMessage(`${draft.name} saved as a draft`);
+    trackFunnelEvent('draft_saved', { contractName: draft.name });
+    setTimeout(() => setDraftSavedMessage(null), 2500);
+  };
+
+  const loadDraft = (draft: ContractDraft) => {
+    setSelectedContract('custom');
+    setCustomCode(draft.sourceCode);
+    setCompiledBytecode(null);
+    setCompiledAbi(null);
+    setCompileError(null);
+    setCompileWarnings([]);
+    setCompiledContractName(draft.name);
+    setCustomConstructorArgs({});
+    setAiPrompt(draft.prompt);
+    setAiGeneratedSource(null);
+    setAiGeneratedName(null);
+    trackFunnelEvent('draft_loaded', { contractName: draft.name });
+  };
+
+  const selectExamplePrompt = (prompt: string, label: string) => {
+    setSelectedContract('custom');
+    setAiPrompt(prompt);
+    setAiError(null);
+    trackFunnelEvent('example_prompt_selected', { label });
+  };
+
+  const shareGeneratedContract = async () => {
+    if (!aiGeneratedSource && !compiledContractName) {
+      setError('Generate or compile a contract first');
+      setTimeout(() => setError(null), 2500);
+      return;
+    }
+
+    const contractName = aiGeneratedName || compiledContractName || 'a smart contract';
+    const shareText = `I just turned an idea into ${contractName} on Base. Try making your own contract in one tap.`;
+    const shareUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
+
+    setSharingGenerated(true);
+    trackFunnelEvent('pre_deploy_share_started', { contractName });
+
+    try {
+      if (sdk?.actions?.composeCast) {
+        await sdk.actions.composeCast({
+          text: shareText,
+          embeds: [shareUrl],
+        });
+      } else if (navigator.share) {
+        await navigator.share({
+          title: 'Base Contract Deployer',
+          text: shareText,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+        setError('Share text copied to clipboard');
+        setTimeout(() => setError(null), 2000);
+      }
+      trackFunnelEvent('pre_deploy_share_completed', { contractName });
+    } catch (err) {
+      console.log('Generated contract share error:', err);
+    } finally {
+      setSharingGenerated(false);
+    }
+  };
+
+  const shareDeployedContract = async () => {
+    if (!deployedAddress) return;
+
+    const contractName = lastDeployedSummary?.name || 'Smart Contract';
+    const explorerUrl = lastDeployedSummary?.explorerUrl || `${getCurrentNetwork().blockExplorer}/address/${deployedAddress}`;
+    const networkName = lastDeployedSummary?.networkName || getCurrentNetwork().name;
+    const shareText = `I just deployed ${contractName} on ${networkName}. Built and launched with Base Contract Deployer.`;
+
+    try {
+      if (sdk?.actions?.composeCast) {
+        await sdk.actions.composeCast({
+          text: shareText,
+          embeds: [explorerUrl],
+        });
+      } else if (navigator.share) {
+        await navigator.share({
+          title: `${contractName} on Base`,
+          text: shareText,
+          url: explorerUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(`${shareText}\n${explorerUrl}`);
+        setError('Deployed contract link copied to clipboard');
+        setTimeout(() => setError(null), 2000);
+      }
+    } catch (err) {
+      console.log('Deployed contract share error:', err);
     }
   };
 
@@ -2520,6 +2757,7 @@ contract NumberStore {
   const connectFarcasterWallet = async () => {
     try {
       setError(null);
+      trackFunnelEvent('wallet_connect_started', { method: 'farcaster' });
       
       if (!sdk || !sdk.wallet) {
         setError('Farcaster wallet not available');
@@ -2538,6 +2776,7 @@ contract NumberStore {
       if (accounts && accounts.length > 0) {
         setAccount(accounts[0]);
         setWalletType('farcaster');
+        trackFunnelEvent('wallet_connected', { method: 'farcaster' });
         
         const chain = await ethProvider.request({ method: 'eth_chainId' });
         setChainId(chain);
@@ -2592,6 +2831,7 @@ contract NumberStore {
     try {
       if (!autoConnect) {
         setError(null);
+        trackFunnelEvent('wallet_connect_started', { method: walletHost === 'base' ? 'base' : 'external' });
       }
       const accounts = autoConnect
         ? await provider.request({ method: 'eth_accounts' })
@@ -2606,6 +2846,7 @@ contract NumberStore {
 
       setAccount(accounts[0]);
       setWalletType(walletHost === 'base' ? 'base' : 'external');
+      trackFunnelEvent('wallet_connected', { method: walletHost === 'base' ? 'base' : 'external', autoConnect });
       
       const chain = await provider.request({ method: 'eth_chainId' });
       setChainId(chain);
@@ -2650,11 +2891,13 @@ contract NumberStore {
     setCompiledBytecode(null);
     setCompiledAbi(null);
     setCompiledContractName(null);
+    trackFunnelEvent('compile_started');
 
     // Extract contract name from source code
     const contractNameMatch = customCode.match(/contract\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
     if (!contractNameMatch) {
       setCompileError('No contract found in source code. Make sure you have a "contract MyName { ... }" declaration.');
+      trackFunnelEvent('compile_failed', { reason: 'missing_contract' });
       setCompiling(false);
       return;
     }
@@ -2673,15 +2916,18 @@ contract NumberStore {
       if (!res.ok || data.error) {
         setCompileError(data.error || 'Compilation failed');
         if (data.warnings) setCompileWarnings(data.warnings);
+        trackFunnelEvent('compile_failed', { contractName: detectedName, error: data.error || 'Compilation failed' });
       } else {
         setCompiledBytecode(data.bytecode);
         setCompiledAbi(data.abi || []);
         setCompiledContractName(detectedName);
         if (data.warnings) setCompileWarnings(data.warnings);
         playSound('success');
+        trackFunnelEvent('compile_succeeded', { contractName: detectedName });
       }
     } catch (err: any) {
       setCompileError(`Network error: ${err.message || 'Failed to reach compile server'}`);
+      trackFunnelEvent('compile_failed', { error: err.message || 'network_error' });
     }
 
     setCompiling(false);
@@ -2695,6 +2941,7 @@ contract NumberStore {
     setAiError(null);
     setAiGeneratedSource(null);
     setAiGeneratedName(null);
+    trackFunnelEvent('ai_prompt_submitted', { promptLength: aiPrompt.trim().length });
 
     try {
       const res = await fetch('/api/ai-generate', {
@@ -2708,15 +2955,18 @@ contract NumberStore {
       if (!res.ok || data.error) {
         setAiError(data.error || 'Generation failed');
         playSound('error');
+        trackFunnelEvent('ai_generation_failed', { error: data.error || 'Generation failed' });
         return;
       }
 
       setAiGeneratedSource(data.sourceCode);
       setAiGeneratedName(data.contractName);
       playSound('success');
+      trackFunnelEvent('ai_generated', { contractName: data.contractName, sourceLength: data.sourceCode?.length || 0 });
     } catch (err: any) {
       setAiError(`Network error: ${err.message || 'Failed to reach AI service'}`);
       playSound('error');
+      trackFunnelEvent('ai_generation_failed', { error: err.message || 'network_error' });
     } finally {
       setAiGenerating(false);
     }
@@ -2901,6 +3151,7 @@ contract NumberStore {
       });
 
       setTxHash(hash);
+      trackFunnelEvent('deploy_tx_submitted', { txHash: hash });
 
       // Poll for receipt using public RPC (more reliable than wallet provider)
       let receipt = null;
@@ -2956,19 +3207,18 @@ contract NumberStore {
           
           if (contractAddress && contractAddress !== '0x' && contractAddress !== '0x0000000000000000000000000000000000000000') {
             setDeployedAddress(contractAddress);
+            setLastDeployedSummary({
+              name: isCustom ? (compiledContractName || 'Custom Contract') : template.name,
+              networkName: currentNetwork.name,
+              explorerUrl: `${currentNetwork.blockExplorer}/address/${contractAddress}`,
+            });
+            trackFunnelEvent('deploy_succeeded', {
+              contractName: isCustom ? (compiledContractName || 'Custom Contract') : template.name,
+              contractAddress,
+              txHash: hash,
+            });
             playSound('success');
             setSuccessFading(false);
-            
-            // Trigger fade-out after 1.5 seconds, then clear after animation completes
-            setTimeout(() => {
-              setSuccessFading(true);
-            }, 1500);
-            
-            setTimeout(() => {
-              setDeployedAddress(null);
-              setTxHash(null);
-              setSuccessFading(false);
-            }, 2000);
             
             // Extract the actual deployer address from the transaction
             // With Farcaster's account abstraction, this will be the user's account abstraction address
@@ -3094,6 +3344,7 @@ contract NumberStore {
         } else if (isFailed) {
           const currentNetwork = getCurrentNetwork();
           setError(`Transaction failed. Check ${currentNetwork.name}: ${currentNetwork.blockExplorer}/tx/${hash}`);
+          trackFunnelEvent('deploy_failed', { reason: 'receipt_failed', txHash: hash });
           setTimeout(() => setError(null), 1000);
         } else {
           const currentNetwork = getCurrentNetwork();
@@ -3108,9 +3359,11 @@ contract NumberStore {
     } catch (err: any) {
       if (err.code === 4001 || err.message?.includes('User rejected')) {
         setError('Transaction cancelled');
+        trackFunnelEvent('deploy_failed', { reason: 'user_rejected' });
       } else {
         setError(err.message || 'Deployment failed');
         playSound('error');
+        trackFunnelEvent('deploy_failed', { reason: err.message || 'unknown' });
       }
       setTimeout(() => setError(null), 1000);
     } finally {
@@ -3195,6 +3448,7 @@ contract NumberStore {
     }
     setEstimatingGas(true);
     setGasEstimateWei(null);
+    let estimatedCostWei: string | null = null;
     try {
       let bytecode = isCustom ? (compiledBytecode || '') : template.bytecode;
       if (!bytecode.startsWith('0x')) bytecode = '0x' + bytecode;
@@ -3238,12 +3492,17 @@ contract NumberStore {
       });
       const gasPrice = await provider.request({ method: 'eth_gasPrice', params: [] }) as string;
       const gasCostWei = (BigInt(estimatedGas) * BigInt(gasPrice) * BigInt(12) / BigInt(10)).toString();
+      estimatedCostWei = gasCostWei;
       setGasEstimateWei(gasCostWei);
     } catch {
       setGasEstimateWei(null);
     }
     setEstimatingGas(false);
     setShowDeployConfirm(true);
+    trackFunnelEvent('deploy_summary_opened', {
+      contractName: isCustom ? (compiledContractName || 'Custom Contract') : template.name,
+      gasEstimateWei: estimatedCostWei,
+    });
   };
 
   // Export history as CSV
@@ -3685,18 +3944,12 @@ contract NumberStore {
   // Share the app via Farcaster with referral code
   const shareApp = async () => {
     try {
-      // Only allow sharing if user has deployed at least one contract
-      if (!deployedContracts || deployedContracts.length === 0) {
-        setError('Deploy at least one contract to share!');
-
-        setTimeout(() => setError(null), 3000);
-        return;
-      }
-
       const contractCount = deployedContracts.length;
-      const shareText = contractCount === 1 
-        ? `I just deployed my first smart contract on Base! Deploy yours with one tap!`
-        : `I've deployed ${contractCount} smart contracts on Base! Deploy yours with one tap!`;
+      const shareText = contractCount === 0
+        ? `I am turning contract ideas into Base smart contracts with AI. Try making one in a tap.`
+        : contractCount === 1 
+          ? `I just deployed my first smart contract on Base! Deploy yours with one tap!`
+          : `I've deployed ${contractCount} smart contracts on Base! Deploy yours with one tap!`;
       
       // Use Farcaster miniapp URL (this is the proper way to share miniapps)
       const farcasterMiniappUrl = 'https://farcaster.xyz/miniapps/C8S3fF6GC1Gg/base-contract-deployer';
@@ -4730,6 +4983,46 @@ contract NumberStore {
                         Generate with AI
                       </span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => selectExamplePrompt(dailyContractIdea, 'Daily idea')}
+                      className="w-full mb-3 p-3 text-left border-2 border-[var(--pencil)] bg-[var(--paper)] hover:border-[var(--ink)] transition-colors"
+                    >
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--graphite)]">Today's build idea</p>
+                      <p className="text-sm font-semibold text-[var(--ink)] mt-1">{dailyContractIdea}</p>
+                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+                      {AI_EXAMPLE_PROMPTS.map(example => (
+                        <button
+                          key={example.label}
+                          type="button"
+                          onClick={() => selectExamplePrompt(example.prompt, example.label)}
+                          className="min-h-[36px] px-2 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--light)] transition-colors"
+                        >
+                          {example.label}
+                        </button>
+                      ))}
+                    </div>
+                    {contractDrafts.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-[var(--graphite)] mb-2">Saved drafts</p>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {contractDrafts.map(draft => (
+                            <button
+                              key={draft.id}
+                              type="button"
+                              onClick={() => loadDraft(draft)}
+                              className="flex-shrink-0 max-w-[180px] px-3 py-2 border-2 border-[var(--pencil)] bg-[var(--paper)] text-left hover:border-[var(--ink)] transition-colors"
+                            >
+                              <p className="text-xs font-bold text-[var(--ink)] truncate">{draft.name}</p>
+                              <p className="text-[10px] text-[var(--graphite)] truncate">
+                                {draft.prompt || 'Saved Solidity draft'}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <textarea
                       value={aiPrompt}
                       onChange={(e) => {
@@ -4762,18 +5055,7 @@ contract NumberStore {
                         </button>
                         {aiGeneratedSource && (
                           <button
-                            onClick={() => {
-                              setCustomCode(aiGeneratedSource);
-                              setCompiledBytecode(null);
-                              setCompiledAbi(null);
-                              setCompileError(null);
-                              setCompileWarnings([]);
-                              setCompiledContractName(aiGeneratedName);
-                              setCustomConstructorArgs({});
-                              setAiGeneratedSource(null);
-                              setAiGeneratedName(null);
-                              setAiPrompt('');
-                            }}
+                            onClick={useGeneratedCode}
                             className="ink-button-outline min-h-[42px] min-w-0 w-full justify-center py-2.5 px-3 text-sm flex items-center gap-1.5 sm:w-auto sm:px-5 sm:gap-2"
                           >
                             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -4794,6 +5076,9 @@ contract NumberStore {
                         </button>
                       )}
                     </div>
+                    {draftSavedMessage && (
+                      <p className="mt-2 text-xs font-bold text-green-700 dark:text-green-300">{draftSavedMessage}</p>
+                    )}
                     {aiError && (
                       <div className="mt-3 p-3 border-2 border-red-400 bg-red-50 dark:bg-red-900/20">
                         <div className="flex items-start gap-2">
@@ -4813,6 +5098,23 @@ contract NumberStore {
                                 ? aiGeneratedSource.slice(0, 500) + '...'
                                 : aiGeneratedSource}
                             </pre>
+                            <div className="grid grid-cols-2 gap-2 mt-3">
+                              <button
+                                type="button"
+                                onClick={saveGeneratedDraft}
+                                className="min-h-[36px] px-2 py-2 border-2 border-green-500 bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                              >
+                                Save Draft
+                              </button>
+                              <button
+                                type="button"
+                                onClick={shareGeneratedContract}
+                                disabled={sharingGenerated}
+                                className="min-h-[36px] px-2 py-2 border-2 border-green-500 bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-60 transition-colors"
+                              >
+                                {sharingGenerated ? 'Sharing...' : 'Share Idea'}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -5017,6 +5319,13 @@ contract NumberStore {
                 <CheckCircle2 className="w-5 h-5 text-[var(--ink)]" strokeWidth={2} />
                 <p className="font-bold text-[var(--ink)] text-sm uppercase tracking-wide">Deployed Successfully</p>
               </div>
+              <div className="mb-3 p-3 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--graphite)]">Your on-chain contract card</p>
+                <p className="text-lg font-black text-[var(--ink)] leading-tight mt-1">
+                  {lastDeployedSummary?.name || 'Smart Contract'}
+                </p>
+                <p className="text-xs text-[var(--graphite)] mt-1">{lastDeployedSummary?.networkName || getCurrentNetwork().name}</p>
+              </div>
               <div className="flex items-center gap-2 p-3 bg-[var(--light)] border border-[var(--pencil)]">
                 <code className="flex-1 text-xs font-mono text-[var(--ink)] break-all">
                   {deployedAddress}
@@ -5033,15 +5342,25 @@ contract NumberStore {
                   )}
                 </button>
               </div>
-              <a
-                href={`${getCurrentNetwork().blockExplorer}/address/${deployedAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="sketch-link text-sm inline-flex items-center gap-2 mt-3"
-              >
-                View on BaseScan
-                <ExternalLink className="w-4 h-4" strokeWidth={2} />
-              </a>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <a
+                  href={lastDeployedSummary?.explorerUrl || `${getCurrentNetwork().blockExplorer}/address/${deployedAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-h-[40px] px-3 py-2 border-2 border-[var(--ink)] text-sm font-bold uppercase tracking-wide flex items-center justify-center gap-2 hover:bg-[var(--light)] transition-colors"
+                >
+                  BaseScan
+                  <ExternalLink className="w-4 h-4" strokeWidth={2} />
+                </a>
+                <button
+                  type="button"
+                  onClick={shareDeployedContract}
+                  className="min-h-[40px] px-3 py-2 border-2 border-[var(--ink)] text-sm font-bold uppercase tracking-wide flex items-center justify-center gap-2 hover:bg-[var(--light)] transition-colors"
+                >
+                  Share
+                  <Share2 className="w-4 h-4" strokeWidth={2} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -6311,6 +6630,10 @@ contract NumberStore {
                   <span className="text-[var(--graphite)]">Network</span>
                   <span className="font-bold text-[var(--ink)]">{getCurrentNetwork().name}</span>
                 </div>
+                <div className="flex justify-between border-b border-[var(--pencil)] pb-1">
+                  <span className="text-[var(--graphite)]">Owner</span>
+                  <span className="font-bold text-[var(--ink)] truncate max-w-[60%]">{account}</span>
+                </div>
                 {gasEstimateWei && (
                   <div className="flex justify-between">
                     <span className="text-[var(--graphite)]">Est. Gas Cost</span>
@@ -6325,6 +6648,12 @@ contract NumberStore {
                   </div>
                 )}
               </div>
+              <div className="mb-4 p-3 border-2 border-dashed border-[var(--pencil)] bg-[var(--highlight)]">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--ink)]">Before wallet opens</p>
+                <p className="text-sm text-[var(--graphite)] mt-1">
+                  You will own this contract. Your wallet will ask you to confirm the deploy transaction and gas.
+                </p>
+              </div>
 
               <div className="flex gap-3">
                 <button
@@ -6334,7 +6663,7 @@ contract NumberStore {
                   Cancel
                 </button>
                 <button
-                  onClick={() => { setShowDeployConfirm(false); deployContract(); }}
+                  onClick={() => { trackFunnelEvent('deploy_confirmed'); setShowDeployConfirm(false); deployContract(); }}
                   className="flex-1 py-2 px-4 bg-[var(--ink)] text-[var(--paper)] font-bold text-sm hover:opacity-90 transition-opacity rounded"
                 >
                   Deploy
