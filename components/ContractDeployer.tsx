@@ -4746,7 +4746,7 @@ contract NumberStore {
                         <button
                           onClick={generateWithAI}
                           disabled={aiGenerating || !aiPrompt.trim()}
-                          className="ink-button min-h-[42px] w-full justify-center py-2.5 px-3 text-sm flex items-center gap-2 whitespace-nowrap sm:w-auto sm:px-5"
+                          className="ink-button min-h-[42px] min-w-0 w-full justify-center py-2.5 px-3 text-sm flex items-center gap-2 sm:w-auto sm:px-5"
                         >
                           {aiGenerating ? (
                             <>
@@ -4756,7 +4756,7 @@ contract NumberStore {
                           ) : (
                             <>
                               <Sparkles className="w-4 h-4 flex-shrink-0" />
-                              Generate
+                              <span className="min-w-0 text-center leading-tight">Generate</span>
                             </>
                           )}
                         </button>
@@ -4774,10 +4774,10 @@ contract NumberStore {
                               setAiGeneratedName(null);
                               setAiPrompt('');
                             }}
-                            className="ink-button-outline min-h-[42px] w-full justify-center py-2.5 px-3 text-sm flex items-center gap-2 whitespace-nowrap sm:w-auto sm:px-5"
+                            className="ink-button-outline min-h-[42px] min-w-0 w-full justify-center py-2.5 px-3 text-sm flex items-center gap-1.5 sm:w-auto sm:px-5 sm:gap-2"
                           >
                             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                            Use This Code
+                            <span className="min-w-0 text-center leading-tight">Use This Code</span>
                           </button>
                         )}
                       </div>
