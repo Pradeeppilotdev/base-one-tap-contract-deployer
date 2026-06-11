@@ -4741,44 +4741,46 @@ contract NumberStore {
                       placeholder="Describe the contract you want... (e.g. 'A simple voting contract where users can vote yes or no')"
                       style={{ resize: 'vertical' }}
                     />
-                    <div className="flex items-start gap-2 mt-3">
-                      <button
-                        onClick={generateWithAI}
-                        disabled={aiGenerating || !aiPrompt.trim()}
-                        className="ink-button py-2.5 px-5 text-sm flex items-center gap-2"
-                      >
-                        {aiGenerating ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4" />
-                            Generate
-                          </>
-                        )}
-                      </button>
-                      {aiGeneratedSource && (
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                      <div className={`grid gap-2 ${aiGeneratedSource ? 'grid-cols-2' : 'grid-cols-1'} sm:flex sm:flex-wrap`}>
                         <button
-                          onClick={() => {
-                            setCustomCode(aiGeneratedSource);
-                            setCompiledBytecode(null);
-                            setCompiledAbi(null);
-                            setCompileError(null);
-                            setCompileWarnings([]);
-                            setCompiledContractName(aiGeneratedName);
-                            setCustomConstructorArgs({});
-                            setAiGeneratedSource(null);
-                            setAiGeneratedName(null);
-                            setAiPrompt('');
-                          }}
-                          className="ink-button-outline py-2.5 px-5 text-sm flex items-center gap-2"
+                          onClick={generateWithAI}
+                          disabled={aiGenerating || !aiPrompt.trim()}
+                          className="ink-button min-h-[42px] w-full justify-center py-2.5 px-3 text-sm flex items-center gap-2 whitespace-nowrap sm:w-auto sm:px-5"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
-                          Use This Code
+                          {aiGenerating ? (
+                            <>
+                              <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 flex-shrink-0" />
+                              Generate
+                            </>
+                          )}
                         </button>
-                      )}
+                        {aiGeneratedSource && (
+                          <button
+                            onClick={() => {
+                              setCustomCode(aiGeneratedSource);
+                              setCompiledBytecode(null);
+                              setCompiledAbi(null);
+                              setCompileError(null);
+                              setCompileWarnings([]);
+                              setCompiledContractName(aiGeneratedName);
+                              setCustomConstructorArgs({});
+                              setAiGeneratedSource(null);
+                              setAiGeneratedName(null);
+                              setAiPrompt('');
+                            }}
+                            className="ink-button-outline min-h-[42px] w-full justify-center py-2.5 px-3 text-sm flex items-center gap-2 whitespace-nowrap sm:w-auto sm:px-5"
+                          >
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                            Use This Code
+                          </button>
+                        )}
+                      </div>
                       {aiGeneratedSource && !aiGenerating && (
                         <button
                           onClick={() => {
@@ -4786,7 +4788,7 @@ contract NumberStore {
                             setAiGeneratedName(null);
                             setAiError(null);
                           }}
-                          className="ml-auto text-xs text-[var(--graphite)] hover:text-[var(--ink)] underline"
+                          className="self-end text-xs text-[var(--graphite)] hover:text-[var(--ink)] underline sm:ml-auto sm:self-start"
                         >
                           Dismiss
                         </button>
