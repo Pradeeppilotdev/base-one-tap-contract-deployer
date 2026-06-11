@@ -5077,7 +5077,7 @@ contract NumberStore {
                       )}
                     </div>
                     {draftSavedMessage && (
-                      <p className="mt-2 text-xs font-bold text-green-700 dark:text-green-300">{draftSavedMessage}</p>
+                      <p className="mt-2 text-xs font-bold text-[var(--ink)]">{draftSavedMessage}</p>
                     )}
                     {aiError && (
                       <div className="mt-3 p-3 border-2 border-red-400 bg-red-50 dark:bg-red-900/20">
@@ -5088,12 +5088,12 @@ contract NumberStore {
                       </div>
                     )}
                     {aiGeneratedSource && !aiGenerating && (
-                      <div className="mt-3 p-3 border-2 border-green-400 bg-green-50 dark:bg-green-900/20">
-                        <div className="flex items-start gap-2">
+                      <div className="mt-3 p-3 border-2 border-green-500 bg-[var(--paper)] dark:bg-green-900/20">
+                        <div className="flex min-w-0 items-start gap-2">
                           <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                          <div className="text-xs text-green-700 dark:text-green-300">
+                          <div className="min-w-0 flex-1 text-xs text-[var(--ink)]">
                             <p className="font-bold mb-1">Generated: {aiGeneratedName}</p>
-                            <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed max-h-[120px] overflow-y-auto border-t border-green-300 pt-1 mt-1">
+                            <pre className="block w-full max-w-full whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed max-h-[120px] overflow-auto border-t border-[var(--pencil)] pt-1 mt-1 text-[var(--ink)]">
                               {aiGeneratedSource.length > 500
                                 ? aiGeneratedSource.slice(0, 500) + '...'
                                 : aiGeneratedSource}
@@ -5102,17 +5102,17 @@ contract NumberStore {
                               <button
                                 type="button"
                                 onClick={saveGeneratedDraft}
-                                className="min-h-[36px] px-2 py-2 border-2 border-green-500 bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                                className="min-h-[36px] min-w-0 px-2 py-2 border-2 border-green-500 bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
                               >
-                                Save Draft
+                                <span className="block leading-tight">Save Draft</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={shareGeneratedContract}
                                 disabled={sharingGenerated}
-                                className="min-h-[36px] px-2 py-2 border-2 border-green-500 bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-60 transition-colors"
+                                className="min-h-[36px] min-w-0 px-2 py-2 border-2 border-green-500 bg-[var(--paper)] text-xs font-bold uppercase tracking-wide text-[var(--ink)] hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-60 transition-colors"
                               >
-                                {sharingGenerated ? 'Sharing...' : 'Share Idea'}
+                                <span className="block leading-tight">{sharingGenerated ? 'Sharing...' : 'Share Idea'}</span>
                               </button>
                             </div>
                           </div>
@@ -5150,7 +5150,7 @@ contract NumberStore {
                     disabled={compiling || !customCode.trim()}
                     className={`w-full mt-3 py-3 px-6 font-bold text-sm uppercase tracking-wider border-2 transition-all ${
                       compiledBytecode
-                        ? 'border-green-600 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500'
+                        ? 'border-green-600 bg-[var(--paper)] text-[var(--ink)] dark:bg-green-900/20 dark:border-green-500'
                         : 'border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--light)]'
                     }`}
                   >
@@ -5184,12 +5184,12 @@ contract NumberStore {
 
                   {/* Compile Warnings */}
                   {compileWarnings.length > 0 && (
-                    <div className="mt-3 p-3 border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
+                    <div className="mt-3 p-3 border-2 border-yellow-500 bg-[var(--paper)] dark:bg-yellow-900/20">
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                        <div className="text-xs text-yellow-700 dark:text-yellow-300 font-mono overflow-x-auto">
+                        <div className="text-xs text-[var(--ink)] font-mono overflow-x-auto">
                           {compileWarnings.map((w, i) => (
-                            <pre key={i} className="whitespace-pre-wrap mb-1">{w}</pre>
+                            <pre key={i} className="whitespace-pre-wrap mb-1 text-[var(--ink)]">{w}</pre>
                           ))}
                         </div>
                       </div>
