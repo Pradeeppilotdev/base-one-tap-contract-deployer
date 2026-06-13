@@ -1,22 +1,36 @@
 # Base One-Tap Contract Deployer
 
-A Farcaster Mini App that helps users boost their wallet activity on Base blockchain. Deploy smart contracts, interact with on-chain contracts, and track your wallet health — all designed to help users build on-chain credibility.
+A Farcaster Mini App that helps users build on-chain credibility on Base. Deploy smart contracts with one tap, generate contracts with AI, track wallet health, and compete on the leaderboard.
+
 One Place to Know and Do Everything!
 
 ## Features
 
 ### Core Functionality
-- **One-tap contract deployment** — Deploy smart contracts directly from the web UI
-- **On-chain interactions** — Click counter for easy contract interactions
+- **One-tap contract deployment** — Deploy pre-built contracts or custom Solidity code directly from the UI
+- **AI-powered contract generation** — Describe your contract idea in plain English and get ready-to-deploy Solidity code
+- **Custom Solidity compiler** — Write, compile, and deploy your own Solidity contracts (browser-side compilation via API)
+- **Contract drafts** — Save AI-generated drafts for later deployment
+- **Contract verification** — Auto-verify contracts on BaseScan
+- **Global Activity Feed** — See live deployments from all users in real-time
+- **Click counter** — On-chain interaction tracking
 - **Gas tracking** — Real-time gas cost monitoring with retroactive fetching for historical contracts
 - **Real-time ETH pricing** — Auto-refreshing ETH/USD rates from CoinMarketCap (cached 5 hours in Firebase)
-- **Wallet health metrics** — Current balance, gas spent, activity score, and reward strength
+- **Wallet health dashboard** — 4-page collapsible dashboard with contract count, gas spent, activity score, and reward strength
+- **Daily streak tracking** — Track consecutive deployment days with milestone celebrations
 - **Shareable On-Chain Resume** — Export wallet metrics as beautiful PNG images with download & social sharing
-- **Multiple contract templates**:
-  - String Storage — store and retrieve strings
-  - Calculator — simple arithmetic operations
-  - Counter — increment/decrement counter
-  - Click Counter — track on-chain clicks
+- **Referral system** — Share referral codes and earn points
+- **Achievement system** — 11 milestones from 1 to 1000 deployments
+
+### Contract Templates
+- String Storage — store and retrieve strings
+- Calculator — simple arithmetic operations
+- Counter — increment/decrement counter
+- Greeter — personalized greeting contract
+- Message Board — public message board
+- Number Store — store a number
+- Click Counter — track on-chain clicks
+- Custom Contract — write your own Solidity code
 
 ### Wallet Health Dashboard
 A comprehensive 4-page collapsible dashboard to track your on-chain activity:
@@ -25,9 +39,9 @@ A comprehensive 4-page collapsible dashboard to track your on-chain activity:
 - Contracts Deployed count
 - Unique Days Active
 - Total Transactions
-- Gas Spent — Total gas spent across all deployments in ETH and USD
+- Gas Spent — Total gas across all deployments in ETH and USD
 - Activity Score (out of 1000)
-- ETH Price (Live) — Real-time ETH/USD rate from CoinMarketCap with auto-refresh
+- ETH Price (Live) — Real-time ETH/USD rate from CoinMarketCap
 - Wallet Balance — Current balance in ETH and USD
 - Potential Reward Strength indicator (LOW / MEDIUM / MEDIUM-HIGH / HIGH)
 
@@ -39,33 +53,31 @@ A comprehensive 4-page collapsible dashboard to track your on-chain activity:
 - Dynamic tips for improvement
 
 **Page 3 - Weekly Activity Planner:**
-- 7-day week view (Mon-Sun) with elegant dot indicators
-- Daily activity status (● filled, ○ empty, ✕ missed)
+- 7-day week view (Mon-Sun) with dot indicators
+- Daily activity status
 - Smart contract suggestions for inactive days
-- "Missed :(" indicator for past missed days
 - Weekly goal tracking (5+ days/week)
 - Current activity streak counter
 
 **Page 4 - Activity Heatmap:**
-- Visual representation of last 30 days activity with Unicode blocks
-- Weekly action blocks (████████░░░░ style, screenshot-friendly)
+- Visual representation of last 30 days activity
+- Weekly action blocks
 - Best day stats
 - Longest streak counter
-- Activity level badge (GETTING STARTED / WARMING UP / ACTIVE / POWER USER)
+- Activity level badge
 
-### Collapsible Sections
-All major sections feature consistent expand/collapse UI with chevron icons:
-- **Wallet Health** — 4-page dashboard with pagination
-  - Gas Tracker shows total gas spent with retroactive ETH→USD conversion
-  - Real-time ETH prices fetched from CoinMarketCap (5-hour cache)
-  - Wallet balance widget with auto-refresh every 30 seconds
-- **Contracts Deployed** — List of deployed contracts with count badge and sorting
-  - Sort by newest or oldest deployment dates
-  - Copy contract address with one click
-  - Verify contracts on BaseScan
-- **Leaderboard** — Rankings with sorting and pagination
-- **Network Selection** — Choose between Base Mainnet or Sepolia testnet
-- **Your Stats & Achievements** — Stats and achievement progression
+### Live Activity Feed
+- See real-time deployments from all users
+- Auto-refreshes every 30 seconds
+- Shows user avatars, contract names, and deployment times
+- Click through to view contracts on BaseScan
+
+### AI Contract Generation
+- Describe your contract idea in natural language
+- Example prompts: Tip Jar, Voting, Guestbook, Meme Coin, Allowlist
+- Daily contract idea suggestions
+- Save generated contracts as drafts for later
+- Share generated contract ideas on Farcaster
 
 ### Reward Strength Criteria
 | Level | Requirements |
@@ -76,7 +88,7 @@ All major sections feature consistent expand/collapse UI with chevron icons:
 | LOW | Below MEDIUM thresholds |
 
 ### Achievement System
-11 achievement milestones with pagination (6 per page):
+11 achievement milestones:
 - **Deploy 1** — First Deploy
 - **Deploy 5** — Power User
 - **Deploy 10** — Contract Master
@@ -90,29 +102,28 @@ All major sections feature consistent expand/collapse UI with chevron icons:
 - **Deploy 1000** — Legendary Builder
 
 ### Social Features
-- **Leaderboard** — See top deployers with pagination (10 per page)
-  - Sortable by Contracts, Referrals, Clicks, and First Deploy date
-  - Clickable user profiles redirecting to Farcaster
-  - Shows FarcasterID with username, display name, and PFP
-- **Referral System** — Share referral codes and earn points
-- **Achievement System** — Unlock 11 milestones up to 1000 deployments
-- **Profile Modal** — View your stats, referrals, points, and clicks
+- **Leaderboard** — Top deployers sorted by contracts, referrals, clicks, or first deploy date
+- **Referral System** — Share codes, earn points, track referred users
+- **Global Activity Feed** — See who's deploying what in real-time
+- **On-Chain Resume** — Export and share your wallet credentials
 
 ### Visual & UX Features
 - Pencil sketch aesthetic with hand-drawn borders
-- Smooth fade animations for success messages (auto-disappear after 1.5 seconds)
-- Responsive mobile design with proper flex layouts
-- Consistent color scheme using CSS variables (--ink, --paper, --graphite, etc.)
-- Icons for all major sections and actions
-- Real-time transaction status with auto-clearing
+- Smooth animations for success, achievements, and streak milestones
+- Confetti celebrations for streak milestones
+- Sound effects with toggle (click, success, achievement, error)
+- Responsive mobile design
+- Dark mode support
 
 ### Technical Features
 - Farcaster SDK integration for user context
 - Firebase Firestore for cross-device data persistence
+- Funnel analytics for tracking user journey
 - Support for Base Mainnet and Base Sepolia testnet
-- Contract verification support via BaseScan API
-- Real-time deployment status tracking with automatic cleanup
-- Leaderboard sorting and pagination with smart contract interaction
+- Contract verification via BaseScan API
+- Daily streak system with at-risk notifications
+- IPFS upload for resume images
+- Cron jobs for streak checks and user re-engagement
 
 ## Prerequisites
 
@@ -133,12 +144,13 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 BASESCAN_API_KEY=your_basescan_api_key
 CMC_PRO_API_KEY=your_coinmarketcap_api_key
 ```
 
 **For hosted deployments (Vercel):**
-Also add `CMC_PRO_API_KEY` to your platform's environment variables settings. The CoinMarketCap API key is used server-side to fetch real-time ETH prices and is never exposed to the client.
+Add all env vars to your Vercel project settings. The CoinMarketCap API key is used server-side only.
 
 ## Quickstart — Local Development
 
@@ -158,76 +170,100 @@ Common npm scripts:
 - `npm run dev` — start development server
 - `npm run build` — build for production
 - `npm run start` — run production build
+- `npm run lint` — run linter
 
 ## Project Structure
 
 ```
 ├── app/
 │   ├── api/
-│   │   ├── eth-price/
-│   │   │   └── route.ts          # Real-time ETH price API with Firebase caching
-│   │   ├── leaderboard/
-│   │   │   └── route.ts          # Leaderboard aggregation API
-│   │   ├── user-data/
-│   │   │   └── route.ts          # User data persistence API
-│   │   ├── track-referral/
-│   │   │   └── route.ts          # Referral tracking API
-│   │   ├── validate-referral/
-│   │   │   └── route.ts          # Referral validation API
-│   │   ├── user-referral-info/
-│   │   │   └── route.ts          # User referral info API
-│   │   ├── verify-contract/
-│   │   │   └── route.ts          # Contract verification API
-│   │   └── webhook/
-│   │       └── route.ts          # Webhook endpoint
-│   ├── layout.tsx                # Root layout
-│   ├── page.tsx                  # Main page
-│   └── globals.css               # Global styles & animations
+│   │   ├── ai-generate/           # AI contract generation
+│   │   ├── compile/               # Solidity compiler
+│   │   ├── cron/                  # Streak checks & re-engagement
+│   │   ├── eth-price/             # Real-time ETH price with Firebase caching
+│   │   ├── funnel-event/          # Funnel analytics tracking
+│   │   ├── global-activity/       # Live activity feed
+│   │   ├── ipfs-upload/           # IPFS resume image upload
+│   │   ├── leaderboard/           # Leaderboard aggregation
+│   │   ├── resume-og/             # Resume OG image generation
+│   │   ├── save-notification-token/
+│   │   ├── send-notification/     # Farcaster notifications
+│   │   ├── track-referral/        # Referral tracking
+│   │   ├── user-data/             # User data persistence
+│   │   ├── user-referral-info/    # Referral info
+│   │   ├── validate-referral/     # Referral validation
+│   │   ├── verify-contract/       # Contract verification
+│   │   └── webhook/               # Webhook endpoint
+│   ├── resume/                    # Shareable On-Chain Resume page
+│   ├── layout.tsx                 # Root layout
+│   ├── page.tsx                   # Main page
+│   └── globals.css                # Global styles & animations
 ├── components/
-│   └── ContractDeployer.tsx      # Main contract deployer component
-├── contracts/
-│   ├── StringStorage.sol         # String storage contract
-│   ├── Calculator.sol            # Calculator contract
-│   ├── Counter.sol               # Counter contract
-│   └── ClickCounter.sol          # Click counter contract
+│   └── ContractDeployer.tsx       # Main application component (~7000 lines)
+├── contracts/                     # Solidity source files
+│   ├── StringStorage.sol
+│   ├── Calculator.sol
+│   ├── Counter.sol
+│   ├── Greeter.sol
+│   ├── MessageBoard.sol
+│   ├── NumberStore.sol
+│   ├── ClickCounter.sol
+│   └── ContractFactory.sol
 ├── lib/
-│   ├── firebase.ts               # Firebase configuration
-│   └── wagmi.ts                  # Wagmi configuration
-├── minikit.config.ts             # Mini app configuration
-├── next.config.js                # Next.js configuration
-└── package.json                  # Project dependencies
+│   ├── firebase.ts                # Firebase configuration
+│   └── wagmi.ts                   # Wagmi configuration
+├── providers/
+│   └── WagmiProvider.tsx          # Wagmi provider
+├── types/                         # TypeScript type declarations
+├── minikit.config.ts              # Mini app configuration
+├── next.config.js                 # Next.js configuration
+├── hardhat.config.ts              # Hardhat configuration
+└── package.json                   # Project dependencies
 ```
 
 ## Firebase Data Structure
 
 ```
 users/{walletAddress}
-├── contracts[]           # Deployed contracts array
-│   ├── address          # Contract address
-│   ├── contractType     # Contract template type
-│   ├── contractName     # Contract name
-│   ├── txHash           # Transaction hash
-│   ├── timestamp        # Deployment timestamp
-│   ├── inputValue       # Constructor input (if any)
-│   ├── gasSpent         # Gas cost in Wei
-│   └── network          # Network (mainnet/testnet)
-├── achievements[]        # Unlocked achievements
-├── clicks               # Total click count
-├── fid                  # Farcaster ID
-├── username             # Farcaster username
-├── displayName          # Display name
-├── pfpUrl               # Profile picture URL
-└── lastUpdated          # Timestamp
+├── contracts[]               # Deployed contracts array
+│   ├── address               # Contract address
+│   ├── contractType          # Contract template type
+│   ├── contractName          # Contract name
+│   ├── txHash                # Transaction hash
+│   ├── timestamp             # Deployment timestamp
+│   ├── inputValue            # Constructor input (if any)
+│   ├── gasSpent              # Gas cost in Wei
+│   └── network               # Network (mainnet/testnet)
+├── achievements[]            # Unlocked achievements
+├── clicks                    # Total click count
+├── fid                       # Farcaster ID
+├── username                  # Farcaster username
+├── displayName               # Display name
+├── pfpUrl                    # Profile picture URL
+├── currentStreak             # Current daily streak
+├── longestStreak             # Longest streak
+├── lastActiveDate            # Last active date (YYYY-MM-DD)
+├── referralPoints            # Referral points earned
+├── referredBy                # Referrer FID
+└── lastUpdated               # Timestamp
 
 referrals/{fid}
-├── referralCount        # Number of referrals
-├── totalPoints          # Points earned
-├── referredUsers[]      # List of referred users
-└── username             # Referrer username
+├── referralCount             # Number of referrals
+├── totalPoints               # Points earned
+├── referredUsers[]           # List of referred users
+└── username                  # Referrer username
 
 system/eth_price
-├── price                # Current ETH price in USD
-└── timestamp            # Last fetch timestamp (5-hour cache)
+├── price                     # Current ETH price in USD
+└── timestamp                 # Last fetch timestamp (5-hour cache)
+
+funnelEvents/ (auto-generated)
+├── event                     # Event type
+├── sessionId                 # User session
+├── walletAddress             # Wallet address
+├── fid                       # Farcaster ID
+├── metadata                  # Event metadata
+└── createdAt                 # Server timestamp
 ```
 
 ## Gas Tracker & Real-Time Pricing
@@ -253,31 +289,25 @@ A viral feature that lets users showcase their wallet metrics:
 
 **Features:**
 - **Beautiful Resume Card** — Displays key metrics in a professionally designed format
-- **Key Metrics Displayed**:
-  - Contracts Deployed
-  - Total Transactions
-  - Days Active
-  - Gas Spent (ETH)
-  - Reward Strength Level (LOW / MEDIUM / MEDIUM-HIGH / HIGH)
-- **Download as PNG** — Export resume as high-quality image with watermark
-- **Social Sharing**:
-  - Share directly to Twitter/X with pre-filled metrics
-  - Share to Farcaster with formatted text
-  - Pre-generated social captions included
-
-**Why It's Viral:**
-- Users want to flex their on-chain credentials
-- Screenshot-friendly design for Twitter/Farcaster
-- Includes "Base Deployer 🚀" watermark for attribution
-- Inspires others to build their own activity metrics
-- Perfect for proving wallet credibility for airdrops
+- **Key Metrics Displayed**: Contracts Deployed, Total Transactions, Days Active, Gas Spent (ETH), Reward Strength Level
+- **Download as PNG** — Export resume as high-quality image
+- **Social Sharing**: Share to Twitter/X or Farcaster with pre-filled captions
+- **IPFS Upload** — Optionally pin resume images to IPFS
 
 **Technical Details:**
 - Uses `html2canvas` library for DOM-to-image conversion
 - Renders with white background for optimal sharing
-- Automatic wallet address display (truncated)
-- Responsive design works on all devices
-- Social sharing uses native web share APIs and platform URLs
+- IPFS upload via Pinata API
+- Auto-generated OG images for shareable resume links
+
+## Daily Streak System
+
+Track daily deployment consistency:
+- **Streak tracking** — Consecutive days with at least one deployment
+- **Visual indicators** — Active, at-risk (missed a day), or broken status
+- **Milestone celebrations** — Confetti at 3, 7, 14, 30, 50, 100, 365 days
+- **Notifications** — At-risk reminders via Farcaster notifications
+- **Cron jobs** — Automated streak checks and re-engagement messages
 
 ## Deploying / Hosting
 
@@ -285,14 +315,9 @@ Deploy on Vercel (recommended):
 
 1. Push your code to GitHub
 2. Import the repository in Vercel
-3. Add environment variables in Vercel dashboard:
-   - All Firebase environment variables (from `.env.local`)
-   - `BASESCAN_API_KEY` for contract verification
-   - `CMC_PRO_API_KEY` for real-time ETH prices (**important**)
+3. Add environment variables in Vercel dashboard
 4. Update `minikit.config.ts` with your production URL
 5. Deploy
-
-**Note:** Without `CMC_PRO_API_KEY` set in the hosting platform's environment variables, the ETH price feed will fall back to the cached price or default $2500.
 
 ## Mini App Configuration
 
@@ -301,20 +326,13 @@ Deploy on Vercel (recommended):
 3. Update the config with credentials
 4. Validate at https://base.dev/preview
 5. Publish via Farcaster
-//New Features incoming soon...
+
 ## Security & Notes
 
 - This app is a utility for wallet activity. Review contracts before using with real funds.
 - Keep private keys and secrets in environment variables
 - Firebase rules should be configured for proper access control
-- **Firestore permissions:** The app requires the following rules for the system collection:
-  ```
-  match /system/{document=**} {
-    allow read, write: if true;
-  }
-  ```
-  This allows the ETH price cache to be read and written by all users.
-- **CoinMarketCap API:** This is a server-side only API call. Your API key is never exposed to the client and cannot be stolen from the browser console.
+- **CoinMarketCap API:** Server-side only. Your API key is never exposed to the client.
 
 ## Contributing
 
