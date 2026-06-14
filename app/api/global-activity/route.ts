@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 
 // GET - Fetch recent global activity feed
 export async function GET(request: NextRequest) {
@@ -12,13 +12,12 @@ export async function GET(request: NextRequest) {
       // Get all users
       const usersSnapshot = await getDocs(collection(db, 'users'));
       
-      // Collect all recent contracts from all users
+      // Collect all recent contract deployments from all users
       const allActivities: any[] = [];
       
       for (const userDoc of usersSnapshot.docs) {
         const userData = userDoc.data();
         const contracts = userData.contracts || [];
-        const clicks = userData.clicks || 0;
         
         // Add each contract deployment as an activity
         contracts.forEach((contract: any) => {
@@ -33,22 +32,9 @@ export async function GET(request: NextRequest) {
             contractAddress: contract.address,
             txHash: contract.txHash,
             timestamp: contract.timestamp,
-            network: 'base', // Could detect from address if needed
+            network: 'base',
           });
         });
-        
-        // Add click activity (aggregate as one item per user)
-        if (clicks > 0) {
-          allActivities.push({
-            type: 'clicks',
-            fid: userData.fid,
-            username: userData.username || 'Anonymous',
-            displayName: userData.displayName || userData.username || 'Anonymous',
-            pfpUrl: userData.pfpUrl || '',
-            clickCount: clicks,
-            timestamp: Date.now(), // We don't track individual click timestamps, use current time
-          });
-        }
       }
       
       // Sort by timestamp (most recent first)
