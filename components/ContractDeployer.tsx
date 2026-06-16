@@ -3522,70 +3522,6 @@ contract NumberStore {
     URL.revokeObjectURL(url);
   };
 
-  // Download resume as image
-  const downloadResumeAsImage = () => {
-    if (!account) return;
-    
-    setGeneratingResume(true);
-    
-    // Small delay to ensure rendering
-    setTimeout(async () => {
-      try {
-        const element = document.getElementById('resume-card');
-        if (!element) {
-          console.error('Resume card element not found');
-          setGeneratingResume(false);
-          return;
-        }
-
-        console.log('Starting html2canvas conversion...');
-        const canvas = await html2canvas(element, {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          logging: false,
-          allowTaint: true,
-          useCORS: true,
-          removeContainer: true,
-          windowHeight: element.scrollHeight,
-          windowWidth: element.scrollWidth
-        });
-
-        console.log('Canvas created, opening in new tab...');
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            console.error('Failed to create blob from canvas');
-            setGeneratingResume(false);
-            return;
-          }
-
-          // Create blob URL and open in new tab
-          const blobUrl = URL.createObjectURL(blob);
-          
-          // Try to download first (works on non-frame environments)
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = `base-deployer-resume-${account.slice(-6)}.png`;
-          
-          try {
-            link.click();
-          } catch (e) {
-            // If download fails (in frames), open in new tab instead
-            console.log('Download blocked, opening in new tab...');
-            window.open(blobUrl, '_blank');
-          }
-          
-          // Cleanup after a delay
-          setTimeout(() => {
-            setGeneratingResume(false);
-            console.log('Image generation complete');
-          }, 500);
-        }, 'image/png');
-      } catch (err) {
-        console.error('Error generating resume image:', err);
-        setGeneratingResume(false);
-      }
-    }, 100);
-  };
 
   // Share resume on Twitter with IPFS image
   const shareOnTwitter = async () => {
@@ -6390,24 +6326,6 @@ contract NumberStore {
 
                       {/* Action Buttons */}
                       <div className="space-y-2">
-                        <button
-                          onClick={downloadResumeAsImage}
-                          disabled={generatingResume}
-                          className="w-full px-4 py-3 border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] font-bold text-sm uppercase tracking-wider disabled:opacity-50 transition-colors hover:bg-[var(--sketch)]"
-                        >
-                          {generatingResume ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                              Generating...
-                            </span>
-                          ) : (
-                            <span className="flex items-center justify-center gap-2">
-                              <Download className="w-4 h-4" strokeWidth={2} />
-                              Download as Image
-                            </span>
-                          )}
-                        </button>
-
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={shareOnTwitter}
